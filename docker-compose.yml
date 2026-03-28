@@ -1,0 +1,307 @@
+version: "3.9"
+
+# ============================================================
+# IncidentCommander – Full Stack Docker Compose
+# ============================================================
+# Usage:
+#   docker compose up -d                  # start all services
+#   docker compose up -d --build          # rebuild & start
+#   docker compose --profile monitoring up -d   # include monitoring
+#   docker compose --profile traffic up -d      # include locust
+# ============================================================
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+    tag: "{{.Name}}"
+
+services:
+  # ──────────────────────────────────────────────
+  # Data tier
+  # ──────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: acmecorp
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    logging: *default-logging
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    logging: *default-logging
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    logging: *default-logging
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging: *default-logging
+
+  mailhog:
+    image: mailhog/mailhog:latest
+    ports:
+      - "1025:1025"  # SMTP
+      - "8025:8025"  # Web UI
+    logging: *default-logging
+
+  # ──────────────────────────────────────────────
+  # Application services
+  # ──────────────────────────────────────────────
+  checkout-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_BASE: http://localhost:4001
+      PAYMENTS_API_URL: http://payments-api:4001
+      INVENTORY_API_URL: http://inventory-service:4002
+      NOTIFICATION_API_URL: http://notification-service:4003
+    depends_on:
+      payments-api:
+        condition: service_healthy
+    logging: *default-logging
+
+  payments-api:
+    build:
+      context: ./backend/payments-api
+    ports:
+      - "4001:4001"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:password@postgres:5432/acmecorp
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      DB_POOL_SIZE: "10"
+      SERVICE_VERSION: "2.3.0"
+      PORT: "4001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4001/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    logging: *default-logging
+
+  inventory-service:
+    build:
+      context: ./backend/inventory-service
+    ports:
+      - "4002:4002"
+    environment:
+      DATABASE_URL: postgres://postgres:password@postgres:5432/acmecorp?sslmode=disable
+      REDIS_ADDR: redis:6379
+      REDIS_POOL_SIZE: "10"
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      PORT: "4002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4002/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    logging: *default-logging
+
+  order-worker:
+    build:
+      context: ./backend/order-worker
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      CELERY_CONCURRENCY: "4"
+      PAYMENTS_API_URL: http://payments-api:4001
+      INVENTORY_API_URL: http://inventory-service:4002
+      NOTIFICATION_API_URL: http://notification-service:4003
+    depends_on:
+      redis:
+        condition: service_healthy
+      payments-api:
+        condition: service_healthy
+    logging: *default-logging
+
+  notification-service:
+    build:
+      context: ./backend/notification-service
+    ports:
+      - "4003:4003"
+    environment:
+      SMTP_HOST: mailhog
+      SMTP_PORT: "1025"
+      PORT: "4003"
+    depends_on:
+      - mailhog
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4003/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    logging: *default-logging
+
+  # ──────────────────────────────────────────────
+  # RL Agent (OpenEnv server)
+  # ──────────────────────────────────────────────
+  rl-agent:
+    build:
+      context: ./rl-agent
+    ports:
+      - "8000:8000"
+    environment:
+      PROMETHEUS_URL: http://prometheus:9090
+      LOKI_URL: http://loki:3100
+      CHAOS_MESH_URL: ""
+      MOCK_MODE: "true"
+      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:-}"
+      OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+    depends_on:
+      payments-api:
+        condition: service_healthy
+      inventory-service:
+        condition: service_healthy
+    logging: *default-logging
+
+  # ──────────────────────────────────────────────
+  # Monitoring (profile: monitoring)
+  # ──────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    profiles: ["monitoring", "full"]
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./observability/prometheus/rules:/etc/prometheus/rules:ro
+      - promdata:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=15d"
+      - "--web.enable-lifecycle"
+    logging: *default-logging
+
+  loki:
+    image: grafana/loki:2.9.3
+    profiles: ["monitoring", "full"]
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./observability/loki/loki-config.yml:/etc/loki/local-config.yaml:ro
+      - lokidata:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    logging: *default-logging
+
+  promtail:
+    image: grafana/promtail:2.9.3
+    profiles: ["monitoring", "full"]
+    volumes:
+      - ./observability/loki/promtail-config.yml:/etc/promtail/config.yml:ro
+      - /var/log:/var/log:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      - loki
+    logging: *default-logging
+
+  grafana:
+    image: grafana/grafana:10.2.2
+    profiles: ["monitoring", "full"]
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./observability/grafana/provisioning/datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
+      - ./observability/grafana/provisioning/dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml:ro
+      - ./observability/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - grafanadata:/var/lib/grafana
+    depends_on:
+      - prometheus
+      - loki
+    logging: *default-logging
+
+  alertmanager:
+    image: prom/alertmanager:v0.26.0
+    profiles: ["monitoring", "full"]
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./observability/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    logging: *default-logging
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.52
+    profiles: ["monitoring", "full"]
+    ports:
+      - "16686:16686"  # UI
+      - "14268:14268"  # Collector HTTP
+      - "6831:6831/udp" # Agent compact
+    environment:
+      COLLECTOR_ZIPKIN_HOST_PORT: ":9411"
+    logging: *default-logging
+
+  # ──────────────────────────────────────────────
+  # Traffic generator (profile: traffic)
+  # ──────────────────────────────────────────────
+  locust:
+    image: locustio/locust:2.20.0
+    profiles: ["traffic", "full"]
+    ports:
+      - "8089:8089"
+    volumes:
+      - ./traffic/locustfile.py:/mnt/locust/locustfile.py:ro
+    command: -f /mnt/locust/locustfile.py --host=http://checkout-frontend:3000
+    depends_on:
+      - checkout-frontend
+    logging: *default-logging
+
+volumes:
+  pgdata:
+  promdata:
+  lokidata:
+  grafanadata:

@@ -1,0 +1,61 @@
+# AcmeCorp E-Commerce Helm Values
+
+global:
+  namespace: ecommerce
+  imageRegistry: ""
+
+checkoutFrontend:
+  image: checkout-frontend:latest
+  replicas: 2
+  port: 3000
+  resources:
+    requests: { cpu: "100m", memory: "256Mi" }
+    limits: { cpu: "500m", memory: "512Mi" }
+
+paymentsApi:
+  image: payments-api:latest
+  replicas: 2
+  port: 4001
+  env:
+    DATABASE_URL: "postgresql+asyncpg://postgres:password@postgres:5432/acmecorp"
+    KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
+    DB_POOL_SIZE: "10"
+    SERVICE_VERSION: "2.3.0"
+  resources:
+    requests: { cpu: "200m", memory: "256Mi" }
+    limits: { cpu: "1000m", memory: "1Gi" }
+
+inventoryService:
+  image: inventory-service:latest
+  replicas: 2
+  port: 4002
+  env:
+    DATABASE_URL: "postgres://postgres:password@postgres:5432/acmecorp?sslmode=disable"
+    REDIS_ADDR: "redis:6379"
+    REDIS_POOL_SIZE: "10"
+    KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
+  resources:
+    requests: { cpu: "100m", memory: "128Mi" }
+    limits: { cpu: "500m", memory: "512Mi" }
+
+orderWorker:
+  image: order-worker:latest
+  replicas: 1
+  env:
+    CELERY_BROKER_URL: "redis://redis:6379/1"
+    CELERY_RESULT_BACKEND: "redis://redis:6379/2"
+    CELERY_CONCURRENCY: "4"
+  resources:
+    requests: { cpu: "100m", memory: "256Mi" }
+    limits: { cpu: "500m", memory: "512Mi" }
+
+notificationService:
+  image: notification-service:latest
+  replicas: 1
+  port: 4003
+  env:
+    SMTP_HOST: "mailhog"
+    SMTP_PORT: "1025"
+  resources:
+    requests: { cpu: "50m", memory: "128Mi" }
+    limits: { cpu: "250m", memory: "256Mi" }

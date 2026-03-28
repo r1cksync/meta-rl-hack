@@ -1,0 +1,26 @@
+# Task 1 (Easy): Redis Connection Pool Exhaustion
+# Injects 500ms network latency on Redis, causing connection pool saturation
+# across inventory-service and order-worker.
+
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: redis-latency-injection
+  namespace: chaos-mesh
+  labels:
+    task: easy-redis-exhaustion
+    difficulty: easy
+spec:
+  action: delay
+  mode: all
+  selector:
+    namespaces:
+      - ecommerce
+    labelSelectors:
+      app: redis
+  delay:
+    latency: "500ms"
+    jitter: "50ms"
+    correlation: "75"
+  direction: both
+  duration: "15m"

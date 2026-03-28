@@ -1,0 +1,58 @@
+name: incident-commander
+version: "1.0.0"
+description: >
+  SRE incident response RL environment with real Kubernetes backend.
+  An AI agent plays an on-call Site Reliability Engineer at AcmeCorp,
+  diagnosing and mitigating production incidents on a live e-commerce
+  platform. Observations come from real Prometheus metrics, Loki logs,
+  and Alertmanager alerts. Actions execute real kubectl commands.
+  Reward is shaped from real error-rate reduction and postmortem quality.
+
+author: IncidentCommander Team
+license: MIT
+
+tasks:
+  - id: task1
+    name: Redis Connection Pool Exhaustion
+    difficulty: easy
+    target_score: 0.80
+    description: >
+      Network latency injection between inventory-service and Redis
+      causes connection pool exhaustion. Agent must identify the
+      Chaos Mesh experiment and delete it.
+
+  - id: task2
+    name: Cascading Failure via Payments OOM
+    difficulty: medium
+    target_score: 0.45
+    description: >
+      Memory stress on payments-api causes OOM kills, which cascades
+      to Kafka consumer lag on inventory-service. The root cause is
+      payments-api, not inventory-service. Agent must rollback
+      payments-api deployment.
+
+  - id: task3
+    name: Silent Decimal Corruption
+    difficulty: hard
+    target_score: 0.20
+    description: >
+      A bad deployment (v2.3.2) silently truncates order totals from
+      NUMERIC(12,4) to NUMERIC(12,2). A concurrent postgres VACUUM
+      ANALYZE creates a red herring CPU spike. Agent must identify
+      the decimal bug, rollback, and recommend a data audit.
+
+observation_space: structured_dict
+action_space: discrete_with_typed_params
+reward_range: [-2.0, 1.0]
+
+endpoints:
+  reset: POST /reset
+  step: POST /step
+  state: GET /state
+
+tags:
+  - openenv
+  - sre
+  - incident-response
+  - kubernetes
+  - reinforcement-learning

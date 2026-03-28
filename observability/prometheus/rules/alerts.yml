@@ -1,0 +1,113 @@
+groups:
+  - name: service_health
+    rules:
+      - alert: ServiceDown
+        expr: up == 0
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service {{ $labels.job }} is down"
+          description: "{{ $labels.instance }} has been unreachable for 30s."
+
+      - alert: HighErrorRate
+        expr: |
+          (
+            sum(rate(http_requests_total{status=~"5.."}[5m])) by (job)
+            /
+            sum(rate(http_requests_total[5m])) by (job)
+          ) > 0.05
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High error rate on {{ $labels.job }}"
+          description: "Error rate is {{ $value | humanizePercentage }} for {{ $labels.job }}."
+
+      - alert: HighLatencyP99
+        expr: |
+          histogram_quantile(0.99,
+            sum(rate(http_request_duration_seconds_bucket[5m])) by (le, job)
+          ) > 2.0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "P99 latency above 2s on {{ $labels.job }}"
+
+  - name: resource_alerts
+    rules:
+      - alert: HighMemoryUsage
+        expr: |
+          (container_memory_usage_bytes / container_spec_memory_limit_bytes) > 0.85
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Container {{ $labels.name }} using >85% memory"
+
+      - alert: HighCPUUsage
+        expr: |
+          rate(container_cpu_usage_seconds_total[5m]) > 0.9
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Container {{ $labels.name }} CPU usage >90%"
+
+  - name: redis_alerts
+    rules:
+      - alert: RedisConnectionPoolExhaustion
+        expr: |
+          redis_connected_clients / redis_config_maxclients > 0.8
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Redis connection pool >80% utilized"
+
+      - alert: RedisHighMemory
+        expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.85
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redis memory >85%"
+
+  - name: kafka_alerts
+    rules:
+      - alert: KafkaConsumerLag
+        expr: kafka_consumergroup_lag_sum > 1000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Kafka consumer group {{ $labels.consumergroup }} lag >1000"
+
+  - name: business_alerts
+    rules:
+      - alert: OrderFailureRateHigh
+        expr: |
+          (
+            sum(rate(orders_failed_total[5m]))
+            /
+            sum(rate(orders_created_total[5m]))
+          ) > 0.1
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Order failure rate >10%"
+
+      - alert: PaymentAmountAnomaly
+        expr: |
+          abs(
+            avg_over_time(payment_amount_sum[5m])
+            -
+            avg_over_time(payment_amount_sum[1h])
+          ) / stddev_over_time(payment_amount_sum[1h]) > 3
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Payment amounts deviating >3σ from hourly mean"

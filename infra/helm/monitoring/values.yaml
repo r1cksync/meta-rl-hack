@@ -1,0 +1,24 @@
+# Monitoring Stack Values
+
+prometheus:
+  enabled: true
+  retention: 15d
+  scrapeInterval: 15s
+
+loki:
+  enabled: true
+  retention: 72h  # 30d in production
+  
+grafana:
+  enabled: true
+  adminPassword: admin
+  dashboards:
+    enabled: true
+
+jaeger:
+  enabled: true
+  allInOne: true  # false in production (use Cassandra backend)
+  samplingRate: 1.0  # 0.1 in production
+
+alertmanager:
+  enabled: true

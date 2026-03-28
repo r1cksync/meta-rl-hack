@@ -1,0 +1,14 @@
+{
+  "task_id": "task2",
+  "difficulty": "medium",
+  "target_score": 0.45,
+  "fault_type": "chaos_mesh",
+  "chaos_experiment_name": "payments-memory-stress",
+  "ground_truth_root_cause": "payments_api_oom_memory_leak",
+  "correct_mitigation_action": "rollback_deployment",
+  "correct_mitigation_target": "payments-api",
+  "wrong_mitigation_penalty_services": ["inventory-service", "checkout-frontend", "order-worker", "notification-service"],
+  "useful_log_keywords": ["OOMKilled", "MemoryError", "payments", "exit code 137", "memory pressure"],
+  "red_herrings": ["inventory-consumer-lag"],
+  "reference_postmortem": "At T+00:01, payments-api pods began experiencing memory pressure from an injected stress test. By T+00:03, OOM kills started (exit code 137) causing unacknowledged Kafka messages to accumulate. The inventory-service consumer lag alert fired as a cascade effect, NOT as the root cause. Root cause: memory stress injection on payments-api pods. Mitigation: rollback payments-api deployment to previous stable revision. Follow-up: set memory resource limits, implement OOM kill alerting directly on payments-api, review Kafka consumer acknowledgment resilience."
+}

@@ -1,0 +1,7 @@
+apiVersion: v2
+name: ecommerce
+description: AcmeCorp e-commerce platform umbrella chart
+version: 1.0.0
+type: application
+
+dependencies: []

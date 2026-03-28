@@ -1,0 +1,24 @@
+# Task 2 (Medium): Cascading OOM in payments-api
+# Applies memory stress to payments-api pods causing repeated OOM kills
+# that cascade to order-worker and notification-service failures.
+
+apiVersion: chaos-mesh.org/v1alpha1
+kind: StressChaos
+metadata:
+  name: payments-memory-stress
+  namespace: chaos-mesh
+  labels:
+    task: medium-payments-oom
+    difficulty: medium
+spec:
+  mode: all
+  selector:
+    namespaces:
+      - ecommerce
+    labelSelectors:
+      app: payments-api
+  stressors:
+    memory:
+      workers: 4
+      size: "256MB"
+  duration: "20m"

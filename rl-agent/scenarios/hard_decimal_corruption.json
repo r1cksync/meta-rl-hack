@@ -1,0 +1,14 @@
+{
+  "task_id": "task3",
+  "difficulty": "hard",
+  "target_score": 0.20,
+  "fault_type": "bad_deployment",
+  "chaos_experiment_name": null,
+  "ground_truth_root_cause": "payments_decimal_serialization_bug_v2_3_2",
+  "correct_mitigation_action": "rollback_deployment",
+  "correct_mitigation_target": "payments-api",
+  "wrong_mitigation_penalty_services": ["inventory-service", "checkout-frontend", "order-worker", "notification-service", "postgres"],
+  "useful_log_keywords": ["decimal", "rounding", "NUMERIC", "serialization", "truncat", "precision", "v2.3.2"],
+  "red_herrings": ["VACUUM ANALYZE", "autovacuum", "postgres-replica", "high CPU"],
+  "reference_postmortem": "At T-06:00, payments-api was updated to v2.3.2 which changed the total_amount column precision from NUMERIC(12,4) to NUMERIC(12,2), causing silent truncation of order totals. For example, an order of $49.9975 would be stored as $49.99, losing $0.0075 per transaction. At T+00:00 (episode start), a scheduled VACUUM ANALYZE on postgres-replica caused a CPU spike — this was a red herring unrelated to the silent data corruption. Root cause: payments-api v2.3.2 decimal serialization bug. Mitigation: rollback payments-api to v2.3.0. Critical follow-up: conduct a full data audit of all orders created between the v2.3.2 deployment and the rollback to identify and correct truncated amounts; implement schema validation tests in CI/CD."
+}

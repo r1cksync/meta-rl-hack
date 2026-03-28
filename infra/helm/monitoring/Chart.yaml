@@ -1,0 +1,5 @@
+apiVersion: v2
+name: monitoring
+description: Monitoring stack (Prometheus, Loki, Grafana, Jaeger)
+version: 1.0.0
+type: application

@@ -1,0 +1,43 @@
+# Task 3 (Hard): Silent Decimal Corruption
+#
+# This task is NOT a Chaos Mesh fault. It simulates a bad deployment:
+# payments-api v2.3.2 introduced a floating-point bug in total calculation
+# (using float instead of Decimal), causing silent rounding errors on
+# orders with items like $9.99 × 3 = $29.97 → $29.969999...
+#
+# The fault is injected by deploying the buggy version of payments-api.
+# See: backend/payments-api/versions/payments-api-v2.3.2/buggy_total.py
+#
+# To inject this fault:
+#   kubectl set image deployment/payments-api \
+#     payments-api=payments-api:v2.3.2 \
+#     -n ecommerce
+#
+# The agent must discover the issue through:
+# 1. Observing PaymentAmountAnomaly alerts
+# 2. Checking logs showing mismatched totals
+# 3. Comparing v2.3.0 vs v2.3.2 behavior
+# 4. Identifying the floating-point root cause
+# 5. Rolling back to v2.3.0
+
+# Optional: Network partition to make debugging harder
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: intermittent-partition
+  namespace: chaos-mesh
+  labels:
+    task: hard-decimal-corruption
+    difficulty: hard
+spec:
+  action: partition
+  mode: one
+  selector:
+    namespaces:
+      - ecommerce
+    labelSelectors:
+      app: payments-api
+  direction: both
+  duration: "30s"
+  scheduler:
+    cron: "*/5 * * * *"

@@ -1,0 +1,14 @@
+{
+  "task_id": "task1",
+  "difficulty": "easy",
+  "target_score": 0.80,
+  "fault_type": "chaos_mesh",
+  "chaos_experiment_name": "redis-latency-inject",
+  "ground_truth_root_cause": "redis_connection_pool_exhaustion",
+  "correct_mitigation_action": "delete_chaos_experiment",
+  "correct_mitigation_target": "redis-latency-inject",
+  "wrong_mitigation_penalty_services": ["inventory-service", "checkout-frontend", "payments-api"],
+  "useful_log_keywords": ["ConnectionPoolTimeout", "redis", "pool", "timeout"],
+  "red_herrings": [],
+  "reference_postmortem": "At T+00:02, inventory-service began logging ConnectionPoolTimeoutError at high frequency. Root cause was a network latency injection on the path between inventory-service and Redis that caused all connection pool slots to become occupied waiting for responses. Mitigation: remove Chaos Mesh network latency experiment. Follow-up: increase Redis connection pool size from 10 to 20 and add circuit breaker around Redis calls."
+}
