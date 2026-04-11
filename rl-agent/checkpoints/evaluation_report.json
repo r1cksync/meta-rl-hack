@@ -1,0 +1,82 @@
+{
+  "overall": {
+    "model": "checkpoints\\final_model.zip",
+    "total_episodes": 90,
+    "mean_reward": 1.0500000000000003,
+    "std_reward": 2.220446049250313e-16,
+    "median_reward": 1.05,
+    "success_rate": 1.0,
+    "action_distribution": {
+      "query_logs": 540,
+      "submit_postmortem": 90
+    }
+  },
+  "per_task": {
+    "task1": {
+      "task_name": "Redis Connection Pool Exhaustion (Easy)",
+      "n_episodes": 30,
+      "mean_reward": 1.0500000000000003,
+      "std_reward": 2.220446049250313e-16,
+      "median_reward": 1.05,
+      "min_reward": 1.05,
+      "max_reward": 1.05,
+      "pct_25_reward": 1.05,
+      "pct_75_reward": 1.05,
+      "success_rate": 1.0,
+      "mean_episode_length": 7.0,
+      "std_episode_length": 0.0,
+      "min_episode_length": 7,
+      "max_episode_length": 7,
+      "action_distribution": {
+        "query_logs": 180,
+        "submit_postmortem": 30
+      },
+      "most_common_sequence": "query_logs \u2192 query_logs \u2192 query_logs \u2192 query_logs \u2192 query_logs \u2192 query_logs \u2192 submit_postmortem",
+      "most_common_seq_frequency": 1.0
+    },
+    "task2": {
+      "task_name": "Cascading Failure via Payments OOM (Medium)",
+      "n_episodes": 30,
+      "mean_reward": 1.0500000000000003,
+      "std_reward": 2.220446049250313e-16,
+      "median_reward": 1.05,
+      "min_reward": 1.05,
+      "max_reward": 1.05,
+      "pct_25_reward": 1.05,
+      "pct_75_reward": 1.05,
+      "success_rate": 1.0,
+      "mean_episode_length": 7.0,
+      "std_episode_length": 0.0,
+      "min_episode_length": 7,
+      "max_episode_length": 7,
+      "action_distribution": {
+        "query_logs": 180,
+        "submit_postmortem": 30
+      },
+      "most_common_sequence": "query_logs \u2192 query_logs \u2192 query_logs \u2192 query_logs \u2192 query_logs \u2192 query_logs \u2192 submit_postmortem",
+      "most_common_seq_frequency": 1.0
+    },
+    "task3": {
+      "task_name": "Silent Decimal Corruption (Hard)",
+      "n_episodes": 30,
+      "mean_reward": 1.0500000000000003,
+      "std_reward": 2.220446049250313e-16,
+      "median_reward": 1.05,
+      "min_reward": 1.05,
+      "max_reward": 1.05,
+      "pct_25_reward": 1.05,
+      "pct_75_reward": 1.05,
+      "success_rate": 1.0,
+      "mean_episode_length": 7.0,
+      "std_episode_length": 0.0,
+      "min_episode_length": 7,
+      "max_episode_length": 7,
+      "action_distribution": {
+        "query_logs": 180,
+        "submit_postmortem": 30
+      },
+      "most_common_sequence": "query_logs \u2192 query_logs \u2192 query_logs \u2192 query_logs \u2192 query_logs \u2192 query_logs \u2192 submit_postmortem",
+      "most_common_seq_frequency": 1.0
+    }
+  }
+}
