@@ -1,0 +1,14 @@
+{
+  "task_id": "task4",
+  "difficulty": "easy",
+  "target_score": 0.80,
+  "fault_type": "chaos_mesh",
+  "chaos_experiment_name": "kafka-network-partition",
+  "ground_truth_root_cause": "kafka_broker_network_partition",
+  "correct_mitigation_action": "delete_chaos_experiment",
+  "correct_mitigation_target": "kafka-network-partition",
+  "wrong_mitigation_penalty_services": ["payments-api", "inventory-service", "checkout-frontend"],
+  "useful_log_keywords": ["consumer lag", "kafka", "partition", "broker", "rebalance", "disconnect"],
+  "red_herrings": [],
+  "reference_postmortem": "At T+00:01, Kafka consumers across order-worker and notification-service began falling behind due to a network partition between the Kafka broker and application pods. Consumer lag spiked to >5000 messages within 2 minutes. The root cause was a Chaos Mesh network partition experiment targeting the Kafka broker. Mitigation: delete the Chaos Mesh experiment. Follow-up: implement Kafka consumer lag alerting thresholds, add multi-broker redundancy, and test consumer reconnection resilience."
+}

@@ -1,0 +1,14 @@
+{
+  "task_id": "task7",
+  "difficulty": "hard",
+  "target_score": 0.20,
+  "fault_type": "bad_deployment",
+  "chaos_experiment_name": null,
+  "ground_truth_root_cause": "config_hot_reload_race_condition",
+  "correct_mitigation_action": "restart_pods",
+  "correct_mitigation_target": "inventory-service",
+  "wrong_mitigation_penalty_services": ["payments-api", "checkout-frontend", "order-worker", "notification-service"],
+  "useful_log_keywords": ["config", "reload", "race", "stale", "inconsistent", "hot reload", "feature flag", "toggle"],
+  "red_herrings": ["redis connection pool", "GC pause", "heap"],
+  "reference_postmortem": "At T-01:00, a ConfigMap update triggered a hot-reload in inventory-service. Due to a race condition in the reload handler, 2 of 4 pods loaded the new config while 2 retained stale values, causing inconsistent behavior: some pods returned prices in cents while others returned in dollars. The 'redis connection pool' and 'GC pause' alerts are unrelated — the Redis pool recovered on its own and the GC pauses are within normal JVM behavior. Root cause: ConfigMap hot-reload race condition in inventory-service. Mitigation: restart inventory-service pods to force consistent config load. Follow-up: implement config version checksums in health checks, switch to immutable ConfigMaps with rolling deployments, add config consistency verification endpoint."
+}

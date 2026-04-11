@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IncidentCommander — SRE Dashboard</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: #0a0e17;
+            color: #e0e6ed;
+            min-height: 100vh;
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 16px 24px;
+            background: linear-gradient(90deg, #0d1117, #161b22);
+            border-bottom: 1px solid #21262d;
+        }
+        .header h1 { font-size: 20px; font-weight: 600; color: #f0f6fc; }
+        .badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .badge-connected { background: #238636; color: #fff; }
+        .badge-disconnected { background: #da3633; color: #fff; }
+        select {
+            background: #21262d;
+            color: #c9d1d9;
+            border: 1px solid #30363d;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        .btn {
+            padding: 6px 16px;
+            border-radius: 6px;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+        .btn-primary { background: #238636; color: #fff; }
+        .btn-primary:hover { background: #2ea043; }
+        .btn-danger { background: #da3633; color: #fff; }
+        .btn-danger:hover { background: #f85149; }
+        .btn-blue { background: #1f6feb; color: #fff; }
+        .btn-blue:hover { background: #388bfd; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            padding: 16px 24px;
+        }
+        .panel {
+            background: #0d1117;
+            border: 1px solid #21262d;
+            border-radius: 8px;
+            padding: 16px;
+        }
+        .panel-title {
+            color: #58a6ff;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            padding: 0 24px 16px;
+        }
+        .stat-card {
+            background: #0d1117;
+            border: 1px solid #21262d;
+            border-radius: 8px;
+            padding: 16px;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #58a6ff;
+        }
+        .stat-value.green { color: #3fb950; }
+        .stat-value.red { color: #f85149; }
+        .stat-value.yellow { color: #d29922; }
+        .stat-label {
+            font-size: 11px;
+            color: #8b949e;
+            text-transform: uppercase;
+            margin-top: 4px;
+            letter-spacing: 0.5px;
+        }
+
+        /* Episode Summary */
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #21262d;
+            font-size: 13px;
+        }
+        .summary-row:last-child { border-bottom: none; }
+        .summary-label { color: #8b949e; }
+        .summary-value { font-weight: 600; }
+        .summary-value.yes { color: #3fb950; }
+        .summary-value.no { color: #f85149; }
+
+        /* Action tags */
+        .action-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 12px;
+        }
+        .action-tag {
+            padding: 3px 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            font-family: monospace;
+        }
+        .tag-read { background: #0d419d; color: #79c0ff; }
+        .tag-write { background: #490f0f; color: #f85149; }
+        .tag-terminal { background: #1a4721; color: #3fb950; }
+
+        /* Alert table */
+        .alert-list { font-size: 13px; }
+        .alert-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 0;
+            border-bottom: 1px solid #21262d;
+        }
+        .alert-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .alert-dot.critical { background: #f85149; }
+        .alert-dot.warning { background: #d29922; }
+        .alert-dot.info { background: #58a6ff; }
+
+        /* Service health */
+        .health-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 0;
+            font-size: 13px;
+        }
+        .health-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .health-dot.green { background: #3fb950; }
+        .health-dot.yellow { background: #d29922; }
+        .health-dot.red { background: #f85149; }
+        .health-name { flex: 1; }
+        .health-err { color: #8b949e; font-family: monospace; }
+
+        /* Log viewer */
+        .log-viewer {
+            background: #010409;
+            border: 1px solid #21262d;
+            border-radius: 6px;
+            padding: 12px;
+            font-family: 'Cascadia Code', 'Fira Code', monospace;
+            font-size: 12px;
+            line-height: 1.6;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .log-error { color: #f85149; }
+        .log-warn { color: #d29922; }
+        .log-info { color: #8b949e; }
+        .log-debug { color: #6e7681; }
+
+        .full-width { grid-column: 1 / -1; }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .grid { grid-template-columns: 1fr; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🚨 IncidentCommander Dashboard</h1>
+        <span id="connBadge" class="badge badge-connected">Connected</span>
+        <select id="taskSelect">
+            <option value="task1">Task 1 — Redis Pool Exhaustion (Easy)</option>
+            <option value="task2">Task 2 — Cascading OOM (Medium)</option>
+            <option value="task3">Task 3 — Decimal Corruption (Hard)</option>
+            <option value="task4">Task 4 — Kafka Consumer Lag (Easy)</option>
+            <option value="task5">Task 5 — DNS Resolution Failure (Medium)</option>
+            <option value="task6">Task 6 — TLS Certificate Expiry (Hard)</option>
+            <option value="task7">Task 7 — Config Hot-Reload Race (Hard)</option>
+        </select>
+        <button id="btnBaseline" class="btn btn-primary" onclick="runBaseline()">Run Baseline</button>
+        <button id="btnReset" class="btn btn-blue" onclick="resetEnv()">Reset</button>
+    </div>
+
+    <div class="stats-grid" style="padding-top: 16px;">
+        <div class="stat-card">
+            <div id="statStep" class="stat-value">0</div>
+            <div class="stat-label">Step</div>
+        </div>
+        <div class="stat-card">
+            <div id="statBlast" class="stat-value yellow">0.0%</div>
+            <div class="stat-label">Blast Radius</div>
+        </div>
+        <div class="stat-card">
+            <div id="statReward" class="stat-value green">0.00</div>
+            <div class="stat-label">Cumulative Reward</div>
+        </div>
+        <div class="stat-card">
+            <div id="statScore" class="stat-value">—</div>
+            <div class="stat-label">Episode Score</div>
+        </div>
+    </div>
+
+    <div class="grid">
+        <!-- Blast Radius & Reward Chart -->
+        <div class="panel">
+            <div class="panel-title">Blast Radius & Cumulative Reward</div>
+            <div id="chartBlastReward" style="height: 280px;"></div>
+        </div>
+
+        <!-- Service Health -->
+        <div class="panel">
+            <div class="panel-title">Service Health</div>
+            <div id="serviceHealth"></div>
+            <div id="chartServiceErrors" style="height: 160px; margin-top: 12px;"></div>
+        </div>
+
+        <!-- Action Timeline -->
+        <div class="panel">
+            <div class="panel-title">Action Timeline & Rewards</div>
+            <div id="chartActionTimeline" style="height: 280px;"></div>
+        </div>
+
+        <!-- Episode Summary -->
+        <div class="panel">
+            <div class="panel-title">Episode Summary</div>
+            <div id="episodeSummary"></div>
+            <div class="panel-title" style="margin-top: 16px;">Available Actions</div>
+            <div id="actionTags" class="action-tags"></div>
+        </div>
+
+        <!-- Active Alerts -->
+        <div class="panel">
+            <div class="panel-title">Active Alerts</div>
+            <div id="alertList" class="alert-list"></div>
+        </div>
+
+        <!-- Reward Breakdown -->
+        <div class="panel">
+            <div class="panel-title">Reward Breakdown</div>
+            <div id="chartRewardBreakdown" style="height: 280px;"></div>
+        </div>
+
+        <!-- Recent Logs -->
+        <div class="panel full-width">
+            <div class="panel-title">Recent Logs</div>
+            <div id="logViewer" class="log-viewer">Waiting for episode data...</div>
+        </div>
+    </div>
+
+    <script>
+        const BASE = window.location.origin;
+        let episodeData = {
+            steps: [],
+            blastHistory: [],
+            rewardHistory: [],
+            cumulativeRewards: [],
+            actionLabels: [],
+            state: null,
+            obs: null,
+        };
+
+        const READ_ACTIONS = ['query_logs', 'query_metrics', 'get_service_dependencies', 'get_trace'];
+        const WRITE_ACTIONS = ['rollback_deployment', 'restart_pods', 'scale_deployment', 'apply_config_patch', 'delete_chaos_experiment'];
+        const TERMINAL_ACTIONS = ['submit_postmortem'];
+
+        function plotLayout(extra = {}) {
+            return {
+                paper_bgcolor: '#0d1117',
+                plot_bgcolor: '#0d1117',
+                font: { color: '#8b949e', size: 11 },
+                margin: { l: 45, r: 20, t: 10, b: 35 },
+                xaxis: { gridcolor: '#21262d', zerolinecolor: '#21262d' },
+                yaxis: { gridcolor: '#21262d', zerolinecolor: '#21262d' },
+                ...extra,
+            };
+        }
+
+        function initCharts() {
+            Plotly.newPlot('chartBlastReward', [
+                { x: [], y: [], name: 'Blast Radius %', type: 'scatter', mode: 'lines+markers', line: { color: '#f85149', width: 2 } },
+                { x: [], y: [], name: 'Cumulative Reward', type: 'scatter', mode: 'lines+markers', line: { color: '#3fb950', width: 2 }, yaxis: 'y2' },
+            ], plotLayout({
+                yaxis: { title: 'Blast Radius %', gridcolor: '#21262d', titlefont: { color: '#f85149' } },
+                yaxis2: { title: 'Cumulative Reward', overlaying: 'y', side: 'right', gridcolor: '#21262d', titlefont: { color: '#3fb950' } },
+                legend: { x: 0, y: 1.15, orientation: 'h', font: { size: 10 } },
+                showlegend: true,
+            }), { responsive: true, displayModeBar: false });
+
+            Plotly.newPlot('chartActionTimeline', [
+                { x: [], y: [], name: 'Step Reward', type: 'bar', marker: { color: '#238636' } },
+                { x: [], y: [], name: 'Cumulative', type: 'scatter', mode: 'lines+markers', line: { color: '#58a6ff', width: 2 }, yaxis: 'y2' },
+            ], plotLayout({
+                xaxis: { title: 'Step', gridcolor: '#21262d' },
+                yaxis: { title: 'Reward', gridcolor: '#21262d' },
+                yaxis2: { overlaying: 'y', side: 'right', gridcolor: '#21262d' },
+                legend: { x: 0, y: 1.15, orientation: 'h', font: { size: 10 } },
+                showlegend: true,
+                bargap: 0.3,
+            }), { responsive: true, displayModeBar: false });
+
+            Plotly.newPlot('chartRewardBreakdown', [
+                { labels: [], values: [], type: 'pie', hole: 0.4,
+                  marker: { colors: ['#3fb950', '#238636', '#1f6feb', '#58a6ff', '#f85149', '#da3633', '#d29922'] },
+                  textinfo: 'label+percent', textfont: { size: 10, color: '#c9d1d9' }
+                },
+            ], plotLayout({ showlegend: false }), { responsive: true, displayModeBar: false });
+
+            Plotly.newPlot('chartServiceErrors', [
+                { x: [], y: [], type: 'bar', marker: { color: [] } },
+            ], plotLayout({
+                yaxis: { title: 'Error Rate %', gridcolor: '#21262d' },
+                bargap: 0.4,
+                margin: { l: 45, r: 10, t: 5, b: 55 },
+            }), { responsive: true, displayModeBar: false });
+        }
+
+        function updateCharts() {
+            const d = episodeData;
+            Plotly.react('chartBlastReward', [
+                { x: d.steps, y: d.blastHistory, name: 'Blast Radius %', type: 'scatter', mode: 'lines+markers', line: { color: '#f85149', width: 2 }, marker: { size: 6 } },
+                { x: d.steps, y: d.cumulativeRewards, name: 'Cumulative Reward', type: 'scatter', mode: 'lines+markers', line: { color: '#3fb950', width: 2 }, marker: { size: 6 }, yaxis: 'y2' },
+            ], plotLayout({
+                yaxis: { title: 'Blast Radius %', gridcolor: '#21262d', titlefont: { color: '#f85149' } },
+                yaxis2: { title: 'Cumulative Reward', overlaying: 'y', side: 'right', gridcolor: '#21262d', titlefont: { color: '#3fb950' } },
+                legend: { x: 0, y: 1.15, orientation: 'h', font: { size: 10 } },
+                showlegend: true,
+            }));
+
+            const barColors = d.rewardHistory.map(r => r >= 0 ? '#238636' : '#da3633');
+            Plotly.react('chartActionTimeline', [
+                { x: d.actionLabels, y: d.rewardHistory, name: 'Step Reward', type: 'bar', marker: { color: barColors } },
+                { x: d.actionLabels, y: d.cumulativeRewards, name: 'Cumulative', type: 'scatter', mode: 'lines+markers', line: { color: '#58a6ff', width: 2 }, yaxis: 'y2' },
+            ], plotLayout({
+                xaxis: { title: 'Step', gridcolor: '#21262d' },
+                yaxis: { title: 'Reward', gridcolor: '#21262d' },
+                yaxis2: { overlaying: 'y', side: 'right', gridcolor: '#21262d' },
+                legend: { x: 0, y: 1.15, orientation: 'h', font: { size: 10 } },
+                showlegend: true,
+                bargap: 0.3,
+            }));
+        }
+
+        function updateServiceHealth(obs) {
+            const sh = obs.service_health || {};
+            let html = '';
+            const names = [], errs = [], colors = [];
+            for (const [name, svc] of Object.entries(sh)) {
+                const h = svc.health || 'green';
+                const errPct = ((svc.error_rate_2m || 0) * 100).toFixed(1);
+                html += `<div class="health-bar">
+                    <span class="health-dot ${h}"></span>
+                    <span class="health-name">${name}</span>
+                    <span class="health-err">${errPct}% err</span>
+                    <span style="color:#8b949e">${svc.p99_latency_ms?.toFixed(0) || 0}ms p99</span>
+                    <span style="color:#8b949e">${svc.ready_replicas}/${svc.replica_count}</span>
+                </div>`;
+                names.push(name);
+                errs.push(parseFloat(errPct));
+                colors.push(h === 'red' ? '#f85149' : h === 'yellow' ? '#d29922' : '#3fb950');
+            }
+            document.getElementById('serviceHealth').innerHTML = html;
+            Plotly.react('chartServiceErrors', [
+                { x: names, y: errs, type: 'bar', marker: { color: colors } },
+            ], plotLayout({
+                yaxis: { title: 'Error Rate %', gridcolor: '#21262d' },
+                bargap: 0.4,
+                margin: { l: 45, r: 10, t: 5, b: 55 },
+            }));
+        }
+
+        function updateAlerts(obs) {
+            const alerts = obs.active_alerts || [];
+            if (!alerts.length) {
+                document.getElementById('alertList').innerHTML = '<div style="color:#8b949e;padding:8px 0;">No active alerts</div>';
+                return;
+            }
+            let html = '';
+            for (const a of alerts) {
+                const sev = (a.severity || 'info').toLowerCase();
+                const summary = a.annotations?.summary || '';
+                html += `<div class="alert-item">
+                    <span class="alert-dot ${sev}"></span>
+                    <span><strong>${a.alert_name}</strong> on ${a.service}</span>
+                    <span style="color:#8b949e;margin-left:auto;font-size:12px;">${summary}</span>
+                </div>`;
+            }
+            document.getElementById('alertList').innerHTML = html;
+        }
+
+        function updateLogs(obs) {
+            const logs = obs.recent_logs || [];
+            if (!logs.length) {
+                document.getElementById('logViewer').innerHTML = '<span class="log-info">No logs available</span>';
+                return;
+            }
+            let html = '';
+            for (const l of logs) {
+                const cls = l.level === 'ERROR' ? 'log-error' : l.level === 'WARN' ? 'log-warn' : l.level === 'DEBUG' ? 'log-debug' : 'log-info';
+                html += `<div class="${cls}">[${l.level}] [${l.service}] ${l.message}</div>`;
+            }
+            document.getElementById('logViewer').innerHTML = html;
+        }
+
+        function updateEpisodeSummary(state) {
+            if (!state) return;
+            const inv = state.investigation || {};
+            const items = [
+                ['Steps', state.step_count],
+                ['Cumulative Reward', (state.cumulative_reward || 0).toFixed(2)],
+                ['Logs Inspected', inv.logs_inspected?.length > 0 ? inv.logs_inspected.join(', ') : 'None'],
+                ['Metrics Inspected', inv.metrics_inspected ? 'Yes' : 'No'],
+                ['Deps Inspected', inv.deps_inspected?.length > 0 ? inv.deps_inspected.join(', ') : 'None'],
+                ['Traces Inspected', inv.traces_inspected ? 'Yes' : 'No'],
+                ['Mitigation Applied', state.mitigation_applied ? 'Yes' : 'No'],
+                ['Root Cause Identified', state.root_cause_identified ? 'Yes' : 'No'],
+                ['Episode Done', state.done ? 'Yes' : 'No'],
+            ];
+            let html = '';
+            for (const [label, value] of items) {
+                const cls = value === 'Yes' ? 'yes' : value === 'No' ? 'no' : '';
+                html += `<div class="summary-row"><span class="summary-label">${label}</span><span class="summary-value ${cls}">${value}</span></div>`;
+            }
+            document.getElementById('episodeSummary').innerHTML = html;
+
+            // Update reward breakdown pie
+            const bd = state.last_reward_breakdown || {};
+            const labels = Object.keys(bd).filter(k => bd[k] !== 0);
+            const values = labels.map(k => Math.abs(bd[k]));
+            if (labels.length > 0) {
+                const pieColors = labels.map(k => bd[k] >= 0 ? '#3fb950' : '#f85149');
+                Plotly.react('chartRewardBreakdown', [{
+                    labels: labels, values: values, type: 'pie', hole: 0.4,
+                    marker: { colors: pieColors },
+                    textinfo: 'label+percent', textfont: { size: 10, color: '#c9d1d9' },
+                }], plotLayout({ showlegend: false }));
+            }
+        }
+
+        function updateActionTags() {
+            const allActions = [...READ_ACTIONS, ...WRITE_ACTIONS, ...TERMINAL_ACTIONS];
+            let html = '';
+            for (const a of allActions) {
+                const cls = READ_ACTIONS.includes(a) ? 'tag-read' : WRITE_ACTIONS.includes(a) ? 'tag-write' : 'tag-terminal';
+                html += `<span class="action-tag ${cls}">${a}</span>`;
+            }
+            document.getElementById('actionTags').innerHTML = html;
+        }
+
+        function updateStats(obs, state) {
+            document.getElementById('statStep').textContent = obs?.step_count ?? state?.step_count ?? 0;
+            const blast = obs?.blast_radius_pct ?? state?.blast_radius_pct ?? 0;
+            const blastEl = document.getElementById('statBlast');
+            blastEl.textContent = blast.toFixed(1) + '%';
+            blastEl.className = 'stat-value ' + (blast > 20 ? 'red' : blast > 5 ? 'yellow' : 'green');
+
+            const reward = state?.cumulative_reward ?? 0;
+            const rewardEl = document.getElementById('statReward');
+            rewardEl.textContent = reward.toFixed(2);
+            rewardEl.className = 'stat-value ' + (reward > 0 ? 'green' : reward < 0 ? 'red' : '');
+        }
+
+        async function resetEnv() {
+            const taskId = document.getElementById('taskSelect').value;
+            episodeData = { steps: [], blastHistory: [], rewardHistory: [], cumulativeRewards: [], actionLabels: [], state: null, obs: null };
+            try {
+                const res = await fetch(`${BASE}/reset`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ task_id: taskId }),
+                });
+                const obs = await res.json();
+                episodeData.obs = obs;
+
+                // Get state
+                const stRes = await fetch(`${BASE}/state`);
+                episodeData.state = await stRes.json();
+
+                episodeData.steps.push(0);
+                episodeData.blastHistory.push(obs.blast_radius_pct);
+                episodeData.rewardHistory.push(0);
+                episodeData.cumulativeRewards.push(0);
+                episodeData.actionLabels.push('reset');
+
+                updateCharts();
+                updateServiceHealth(obs);
+                updateAlerts(obs);
+                updateLogs(obs);
+                updateEpisodeSummary(episodeData.state);
+                updateStats(obs, episodeData.state);
+                document.getElementById('statScore').textContent = '—';
+                document.getElementById('connBadge').className = 'badge badge-connected';
+                document.getElementById('connBadge').textContent = 'Connected';
+            } catch (e) {
+                document.getElementById('connBadge').className = 'badge badge-disconnected';
+                document.getElementById('connBadge').textContent = 'Error';
+                console.error(e);
+            }
+        }
+
+        async function runBaseline() {
+            const taskId = document.getElementById('taskSelect').value;
+            const btn = document.getElementById('btnBaseline');
+            btn.disabled = true;
+            btn.textContent = 'Running...';
+
+            try {
+                const res = await fetch(`${BASE}/baseline`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ task_id: taskId }),
+                });
+                const data = await res.json();
+                // Replay the baseline
+                episodeData = {
+                    steps: data.steps || [],
+                    blastHistory: data.blast_history || [],
+                    rewardHistory: data.rewards || [],
+                    cumulativeRewards: data.cumulative_rewards || [],
+                    actionLabels: data.action_labels || [],
+                    state: data.final_state || null,
+                    obs: data.final_obs || null,
+                };
+
+                updateCharts();
+                if (episodeData.obs) {
+                    updateServiceHealth(episodeData.obs);
+                    updateAlerts(episodeData.obs);
+                    updateLogs(episodeData.obs);
+                }
+                updateEpisodeSummary(episodeData.state);
+                updateStats(episodeData.obs, episodeData.state);
+
+                // Show score
+                const scoreEl = document.getElementById('statScore');
+                if (data.score !== undefined) {
+                    scoreEl.textContent = data.score.toFixed(3);
+                    scoreEl.className = 'stat-value ' + (data.score > 0.6 ? 'green' : data.score > 0.3 ? 'yellow' : 'red');
+                }
+            } catch (e) {
+                console.error('Baseline failed:', e);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Run Baseline';
+            }
+        }
+
+        // Health check polling
+        async function checkHealth() {
+            try {
+                const res = await fetch(`${BASE}/health`, { signal: AbortSignal.timeout(5000) });
+                const data = await res.json();
+                document.getElementById('connBadge').className = 'badge badge-connected';
+                document.getElementById('connBadge').textContent = 'Connected';
+            } catch {
+                document.getElementById('connBadge').className = 'badge badge-disconnected';
+                document.getElementById('connBadge').textContent = 'Disconnected';
+            }
+        }
+
+        // Init
+        initCharts();
+        updateActionTags();
+        checkHealth();
+        setInterval(checkHealth, 15000);
+        // Auto-reset on load
+        resetEnv();
+    </script>
+</body>
+</html>

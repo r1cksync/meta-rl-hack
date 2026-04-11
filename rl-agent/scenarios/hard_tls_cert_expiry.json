@@ -1,0 +1,14 @@
+{
+  "task_id": "task6",
+  "difficulty": "hard",
+  "target_score": 0.20,
+  "fault_type": "bad_deployment",
+  "chaos_experiment_name": null,
+  "ground_truth_root_cause": "tls_certificate_expired_mutual_auth",
+  "correct_mitigation_action": "apply_config_patch",
+  "correct_mitigation_target": "payments-api",
+  "wrong_mitigation_penalty_services": ["inventory-service", "checkout-frontend", "order-worker", "notification-service"],
+  "useful_log_keywords": ["TLS", "certificate", "expired", "x509", "handshake", "mutual", "mTLS", "SSL"],
+  "red_herrings": ["connection reset by peer", "ECONNRESET", "upstream timeout"],
+  "reference_postmortem": "At T-00:30, the mTLS certificate used for inter-service communication between payments-api and postgres expired. This caused all new database connections to fail with 'x509: certificate has expired' errors. The agent must identify that the 'connection reset by peer' and 'upstream timeout' errors visible across services are symptoms of the expired certificate, not the root cause. The postgres CPU load is normal — investigating it is a dead end. Mitigation: apply config patch to rotate the TLS certificate or temporarily disable mTLS. Follow-up: implement automated certificate rotation with cert-manager, add certificate expiry monitoring with 30-day advance alerting, set up mTLS health checks."
+}

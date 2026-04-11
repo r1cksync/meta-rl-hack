@@ -315,7 +315,7 @@ def main():
     parser.add_argument("--task", default="all", help="Task ID: task1, task2, task3, or all")
     args = parser.parse_args()
 
-    tasks = ["task1", "task2", "task3"] if args.task == "all" else [args.task]
+    tasks = ["task1", "task2", "task3", "task4", "task5", "task6", "task7"] if args.task == "all" else [args.task]
 
     for task_id in tasks:
         run_episode(task_id)

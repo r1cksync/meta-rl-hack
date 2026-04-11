@@ -46,6 +46,10 @@ TASK_FILE_MAP = {
     "task1": "easy_redis_exhaustion.json",
     "task2": "medium_payments_oom.json",
     "task3": "hard_decimal_corruption.json",
+    "task4": "easy_kafka_consumer_lag.json",
+    "task5": "medium_dns_resolution.json",
+    "task6": "hard_tls_cert_expiry.json",
+    "task7": "hard_config_race_condition.json",
 }
 
 # Ground truth for reward computation
@@ -53,6 +57,10 @@ CORRECT_SERVICES = {
     "task1": None,  # correct action is delete_chaos_experiment, not a deploy target
     "task2": "payments-api",
     "task3": "payments-api",
+    "task4": None,  # correct action is delete_chaos_experiment
+    "task5": None,  # correct action is delete_chaos_experiment
+    "task6": "payments-api",
+    "task7": "inventory-service",
 }
 
 ALL_AVAILABLE_ACTIONS = [a.value for a in ActionType]
@@ -99,6 +107,15 @@ class IncidentCommanderEnv:
         self._root_cause_identified: bool = False
         self._mitigation_applied: bool = False
         self._cumulative_reward: float = 0.0
+        # Investigation tracking (for context-gated rewards)
+        self._inspected_logs: set[str] = set()        # services whose logs were queried
+        self._inspected_metrics: bool = False
+        self._inspected_deps: set[str] = set()        # services whose deps were queried
+        self._inspected_traces: bool = False
+        # Holistic grading state
+        self._last_reward_breakdown: dict[str, float] = {}
+        self._last_action_correct: bool = False
+        self._episode_scores: dict[str, float] = {}
 
     # ------------------------------------------------------------------
     # OpenEnv API
@@ -143,6 +160,13 @@ class IncidentCommanderEnv:
         self._root_cause_identified = False
         self._mitigation_applied = False
         self._cumulative_reward = 0.0
+        self._inspected_logs = set()
+        self._inspected_metrics = False
+        self._inspected_deps = set()
+        self._inspected_traces = False
+        self._last_reward_breakdown = {}
+        self._last_action_correct = False
+        self._episode_scores = {}
         return self._build_mock_observation()
 
     def _sync_step(self, action: Action) -> StepResult:
@@ -181,12 +205,18 @@ class IncidentCommanderEnv:
         t = action.type
         p = action.params
         if t == ActionType.QUERY_LOGS:
-            return self._mock_query_logs(p.get("service", ""), p.get("filter_text"))
+            svc = p.get("service", "")
+            self._inspected_logs.add(svc)
+            return self._mock_query_logs(svc, p.get("filter_text"))
         elif t == ActionType.QUERY_METRICS:
+            self._inspected_metrics = True
             return f"[MOCK] Metrics query result for '{p.get('promql', '')}': value=0.05 (simulated)"
         elif t == ActionType.GET_SERVICE_DEPENDENCIES:
-            return self._action_get_deps(service=p.get("service", ""))
+            svc = p.get("service", "")
+            self._inspected_deps.add(svc)
+            return self._action_get_deps(service=svc)
         elif t == ActionType.GET_TRACE:
+            self._inspected_traces = True
             return f"[MOCK] Trace {p.get('trace_id', '')}: checkout-frontend -> payments-api (45ms) -> postgres (12ms)"
         elif t == ActionType.ROLLBACK_DEPLOYMENT:
             deploy = p.get("deployment", "")
@@ -229,6 +259,13 @@ class IncidentCommanderEnv:
             "action_history": self._action_history,
             "root_cause_identified": self._root_cause_identified,
             "mitigation_applied": self._mitigation_applied,
+            "investigation": {
+                "logs_inspected": sorted(self._inspected_logs),
+                "metrics_inspected": self._inspected_metrics,
+                "deps_inspected": sorted(self._inspected_deps),
+                "traces_inspected": self._inspected_traces,
+            },
+            "last_reward_breakdown": self._last_reward_breakdown,
         }
 
     # ------------------------------------------------------------------
@@ -496,6 +533,87 @@ class IncidentCommanderEnv:
                 LogLine(timestamp=now - timedelta(seconds=60), service="payments-api",
                         level="DEBUG", message="Storing amount 49.9975 as NUMERIC(12,2) -> 49.99"),
             ]
+        elif task and task.task_id == "task4":
+            alerts = [
+                Alert(alert_name="KafkaConsumerLagCritical", severity="critical", service="order-worker",
+                      firing_since=now - timedelta(minutes=2),
+                      annotations={"summary": "Kafka consumer lag >5000 messages on order-events topic"}),
+                Alert(alert_name="KafkaConsumerLagHigh", severity="warning", service="notification-service",
+                      firing_since=now - timedelta(minutes=1),
+                      annotations={"summary": "Kafka consumer lag >2000 messages on notification-events topic"}),
+            ]
+            logs = [
+                LogLine(timestamp=now - timedelta(seconds=5), service="order-worker",
+                        level="ERROR", message="KafkaConsumerError: Broker disconnected during fetch — partition rebalance in progress"),
+                LogLine(timestamp=now - timedelta(seconds=10), service="order-worker",
+                        level="ERROR", message="Consumer group 'order-consumers' lost partition assignment for order-events-0"),
+                LogLine(timestamp=now - timedelta(seconds=20), service="notification-service",
+                        level="WARN", message="Kafka consumer lag increasing: 3842 messages behind on notification-events"),
+                LogLine(timestamp=now - timedelta(seconds=30), service="order-worker",
+                        level="ERROR", message="KafkaConsumerError: Failed to connect to broker kafka-0:9092 — NetworkPartition"),
+            ]
+        elif task and task.task_id == "task5":
+            alerts = [
+                Alert(alert_name="FrontendErrorRate", severity="critical", service="checkout-frontend",
+                      firing_since=now - timedelta(minutes=2),
+                      annotations={"summary": "502 error rate >40% on checkout-frontend"}),
+                Alert(alert_name="HealthCheckFailing", severity="warning", service="payments-api",
+                      firing_since=now - timedelta(minutes=1),
+                      annotations={"summary": "Health check endpoint returning connection refused"}),
+            ]
+            logs = [
+                LogLine(timestamp=now - timedelta(seconds=5), service="checkout-frontend",
+                        level="ERROR", message="DNS lookup failed: NXDOMAIN for payments-api.ecommerce.svc.cluster.local"),
+                LogLine(timestamp=now - timedelta(seconds=10), service="inventory-service",
+                        level="ERROR", message="DNS resolution timeout: could not resolve redis.ecommerce.svc.cluster.local within 5s"),
+                LogLine(timestamp=now - timedelta(seconds=15), service="checkout-frontend",
+                        level="ERROR", message="HTTP 502: upstream connection refused — name resolution failed for inventory-service"),
+                LogLine(timestamp=now - timedelta(seconds=25), service="payments-api",
+                        level="WARN", message="Connection refused on health check — internal name resolution failure"),
+            ]
+        elif task and task.task_id == "task6":
+            alerts = [
+                Alert(alert_name="PostgresConnectionErrors", severity="critical", service="payments-api",
+                      firing_since=now - timedelta(minutes=2),
+                      annotations={"summary": "payments-api cannot establish database connections — all queries failing"}),
+                Alert(alert_name="UpstreamTimeout", severity="warning", service="checkout-frontend",
+                      firing_since=now - timedelta(minutes=1),
+                      annotations={"summary": "Upstream timeout connecting to payments-api"}),
+            ]
+            logs = [
+                LogLine(timestamp=now - timedelta(seconds=5), service="payments-api",
+                        level="ERROR", message="x509: certificate has expired or is not yet valid — TLS handshake failed to postgres"),
+                LogLine(timestamp=now - timedelta(seconds=10), service="payments-api",
+                        level="ERROR", message="ECONNRESET: connection reset by peer during mTLS handshake with postgres:5432"),
+                LogLine(timestamp=now - timedelta(seconds=20), service="checkout-frontend",
+                        level="ERROR", message="upstream timeout: payments-api did not respond within 10s"),
+                LogLine(timestamp=now - timedelta(seconds=30), service="payments-api",
+                        level="ERROR", message="SSL_ERROR: certificate verify failed — /etc/ssl/certs/mtls-cert.pem expired 30 minutes ago"),
+            ]
+        elif task and task.task_id == "task7":
+            alerts = [
+                Alert(alert_name="InventoryPricingInconsistency", severity="critical", service="inventory-service",
+                      firing_since=now - timedelta(minutes=3),
+                      annotations={"summary": "Inconsistent pricing returned across inventory-service pods"}),
+                Alert(alert_name="RedisConnectionPoolWarn", severity="warning", service="inventory-service",
+                      firing_since=now - timedelta(minutes=1),
+                      annotations={"summary": "Redis connection pool brief saturation (recovered)"}),
+                Alert(alert_name="JVMGCPause", severity="info", service="inventory-service",
+                      firing_since=now - timedelta(minutes=2),
+                      annotations={"summary": "GC pause >200ms detected on inventory-service pod-2"}),
+            ]
+            logs = [
+                LogLine(timestamp=now - timedelta(seconds=5), service="inventory-service",
+                        level="ERROR", message="Config hot-reload completed on pod-0 — feature flag 'pricing_in_cents' = true"),
+                LogLine(timestamp=now - timedelta(seconds=10), service="inventory-service",
+                        level="ERROR", message="Config reload FAILED on pod-2 — stale config retained, 'pricing_in_cents' = false"),
+                LogLine(timestamp=now - timedelta(seconds=15), service="inventory-service",
+                        level="WARN", message="Price mismatch: pod-0 returned $12.99 (cents mode), pod-2 returned $1299.00 (dollars mode)"),
+                LogLine(timestamp=now - timedelta(seconds=25), service="inventory-service",
+                        level="INFO", message="Redis connection pool recovered — transient saturation due to reconnect burst"),
+                LogLine(timestamp=now - timedelta(seconds=40), service="inventory-service",
+                        level="DEBUG", message="JVM GC pause 215ms — within normal parameters"),
+            ]
 
         services = {}
         for svc in ["payments-api", "inventory-service", "order-worker", "notification-service", "checkout-frontend"]:
@@ -504,6 +622,16 @@ class IncidentCommanderEnv:
                 err = 0.25 if not self._mitigation_applied else 0.02
             elif task and task.task_id == "task2" and svc == "payments-api":
                 err = 0.35 if not self._mitigation_applied else 0.02
+            elif task and task.task_id == "task4" and svc in ("order-worker", "notification-service"):
+                err = 0.20 if not self._mitigation_applied else 0.02
+            elif task and task.task_id == "task5" and svc == "checkout-frontend":
+                err = 0.45 if not self._mitigation_applied else 0.02
+            elif task and task.task_id == "task5" and svc in ("payments-api", "inventory-service"):
+                err = 0.15 if not self._mitigation_applied else 0.02
+            elif task and task.task_id == "task6" and svc == "payments-api":
+                err = 0.50 if not self._mitigation_applied else 0.02
+            elif task and task.task_id == "task7" and svc == "inventory-service":
+                err = 0.30 if not self._mitigation_applied else 0.02
             services[svc] = ServiceStatus(
                 name=svc,
                 health=HealthStatus.RED if err > 0.1 else HealthStatus.GREEN,
@@ -646,6 +774,49 @@ class IncidentCommanderEnv:
                 f"[{(now - timedelta(seconds=2)).isoformat()}] [INFO] [postgres] VACUUM ANALYZE running on public.orders (autovacuum scheduled)",
                 f"[{(now - timedelta(seconds=5)).isoformat()}] [INFO] [postgres] CPU spike detected during VACUUM ANALYZE - expected behavior",
             ]
+        elif task.task_id == "task4" and service == "order-worker":
+            lines = [
+                f"[{(now - timedelta(seconds=3)).isoformat()}] [ERROR] [order-worker] KafkaConsumerError: Broker disconnected — partition rebalance in progress",
+                f"[{(now - timedelta(seconds=8)).isoformat()}] [ERROR] [order-worker] Consumer group 'order-consumers' lost all partition assignments",
+                f"[{(now - timedelta(seconds=15)).isoformat()}] [ERROR] [order-worker] Failed to connect to broker kafka-0:9092 — NetworkPartition",
+                f"[{(now - timedelta(seconds=20)).isoformat()}] [WARN] [order-worker] Consumer lag: 5231 messages behind on order-events",
+            ]
+        elif task.task_id == "task4" and service == "notification-service":
+            lines = [
+                f"[{(now - timedelta(seconds=5)).isoformat()}] [WARN] [notification-service] Kafka consumer lag: 3842 messages behind on notification-events",
+                f"[{(now - timedelta(seconds=12)).isoformat()}] [ERROR] [notification-service] KafkaConsumerError: Broker disconnect during fetch",
+            ]
+        elif task.task_id == "task5" and service == "checkout-frontend":
+            lines = [
+                f"[{(now - timedelta(seconds=3)).isoformat()}] [ERROR] [checkout-frontend] DNS lookup failed: NXDOMAIN for payments-api.ecommerce.svc.cluster.local",
+                f"[{(now - timedelta(seconds=8)).isoformat()}] [ERROR] [checkout-frontend] HTTP 502: upstream connection refused — name resolution failed",
+                f"[{(now - timedelta(seconds=15)).isoformat()}] [ERROR] [checkout-frontend] DNS resolution timeout for inventory-service.ecommerce.svc.cluster.local",
+            ]
+        elif task.task_id == "task5" and service in ("payments-api", "inventory-service"):
+            lines = [
+                f"[{(now - timedelta(seconds=5)).isoformat()}] [ERROR] [{service}] DNS resolution timeout: cannot resolve dependencies",
+                f"[{(now - timedelta(seconds=10)).isoformat()}] [WARN] [{service}] Service discovery lookup failed — name resolution error",
+            ]
+        elif task.task_id == "task6" and service == "payments-api":
+            lines = [
+                f"[{(now - timedelta(seconds=3)).isoformat()}] [ERROR] [payments-api] x509: certificate has expired or is not yet valid — TLS handshake failed",
+                f"[{(now - timedelta(seconds=8)).isoformat()}] [ERROR] [payments-api] ECONNRESET: connection reset by peer during mTLS handshake with postgres:5432",
+                f"[{(now - timedelta(seconds=15)).isoformat()}] [ERROR] [payments-api] SSL_ERROR: certificate verify failed — /etc/ssl/certs/mtls-cert.pem expired 30 minutes ago",
+                f"[{(now - timedelta(seconds=20)).isoformat()}] [ERROR] [payments-api] Cannot establish any database connections — all TLS handshakes failing",
+            ]
+        elif task.task_id == "task6" and service == "checkout-frontend":
+            lines = [
+                f"[{(now - timedelta(seconds=5)).isoformat()}] [ERROR] [checkout-frontend] upstream timeout: payments-api did not respond within 10s",
+                f"[{(now - timedelta(seconds=12)).isoformat()}] [ERROR] [checkout-frontend] ECONNRESET reading from payments-api",
+            ]
+        elif task.task_id == "task7" and service == "inventory-service":
+            lines = [
+                f"[{(now - timedelta(seconds=3)).isoformat()}] [ERROR] [inventory-service] Config hot-reload completed on pod-0: 'pricing_in_cents' = true",
+                f"[{(now - timedelta(seconds=8)).isoformat()}] [ERROR] [inventory-service] Config reload FAILED on pod-2 — stale config retained: 'pricing_in_cents' = false",
+                f"[{(now - timedelta(seconds=12)).isoformat()}] [WARN] [inventory-service] Price mismatch: pod-0 returned $12.99 (cents mode), pod-2 returned $1299.00 (dollars mode)",
+                f"[{(now - timedelta(seconds=20)).isoformat()}] [INFO] [inventory-service] Redis connection pool recovered — transient saturation",
+                f"[{(now - timedelta(seconds=30)).isoformat()}] [DEBUG] [inventory-service] JVM GC pause 215ms — within normal range",
+            ]
         else:
             lines = [f"[{now.isoformat()}] [INFO] [{service}] Service operating normally. No errors detected."]
 
@@ -756,7 +927,7 @@ class IncidentCommanderEnv:
     # ------------------------------------------------------------------
 
     def _compute_reward(self, obs: Observation, action: Action, action_result: str) -> float:
-        """Deterministic shaped reward. Never uses random numbers."""
+        """Deterministic shaped reward with context-gated penalties. Never uses random numbers."""
         if self._task is None:
             return 0.0
 
@@ -765,6 +936,27 @@ class IncidentCommanderEnv:
 
         task = self._task
         task_id = task.task_id
+
+        # --- Step cost: -0.01 per step (encourages efficiency) ---
+        breakdown["step_cost"] = -0.01
+
+        # --- First-time read actions (investigation bonus): +0.05 each ---
+        if action.type == ActionType.QUERY_LOGS:
+            svc = action.params.get("service", "")
+            first_time = len([a for a in self._action_history if a["action_type"] == "query_logs" and a.get("params", {}).get("service") == svc]) == 0
+            if first_time:
+                breakdown["investigation_bonus"] = 0.05
+        elif action.type == ActionType.QUERY_METRICS:
+            if not any(a["action_type"] == "query_metrics" for a in self._action_history):
+                breakdown["investigation_bonus"] = 0.05
+        elif action.type == ActionType.GET_SERVICE_DEPENDENCIES:
+            svc = action.params.get("service", "")
+            first_time = len([a for a in self._action_history if a["action_type"] == "get_service_dependencies" and a.get("params", {}).get("service") == svc]) == 0
+            if first_time:
+                breakdown["investigation_bonus"] = 0.05
+        elif action.type == ActionType.GET_TRACE:
+            if not any(a["action_type"] == "get_trace" for a in self._action_history):
+                breakdown["investigation_bonus"] = 0.05
 
         # --- Root cause identification (+0.3) ---
         if action.type == ActionType.SUBMIT_POSTMORTEM:
@@ -798,6 +990,23 @@ class IncidentCommanderEnv:
             except (json.JSONDecodeError, AttributeError):
                 pass
 
+        # --- Context-gated penalty: acting without investigating (-0.20) ---
+        # If agent takes a write action without having inspected any logs first,
+        # it gets penalized for acting blind
+        if action.type in WRITE_ACTIONS:
+            if len(self._inspected_logs) == 0 and not self._inspected_metrics:
+                breakdown["acting_blind_penalty"] = -0.20
+
+        # --- Context-gated penalty: ignoring evidence (-0.15) ---
+        # If agent saw a red herring service and targets it anyway
+        if action.type in WRITE_ACTIONS and action.type != ActionType.DELETE_CHAOS_EXPERIMENT:
+            target_deploy = action.params.get("deployment", "")
+            if task.red_herrings:
+                for herring in task.red_herrings:
+                    if herring.lower() in target_deploy.lower():
+                        breakdown["red_herring_penalty"] = -0.15
+                        break
+
         # --- Wrong service penalty (-0.15) ---
         if action.type in WRITE_ACTIONS and action.type != ActionType.DELETE_CHAOS_EXPERIMENT:
             target_deploy = action.params.get("deployment", "")
@@ -820,6 +1029,66 @@ class IncidentCommanderEnv:
         self._last_action_correct = breakdown.get("correct_mitigation", 0) > 0
 
         return total
+
+    # ------------------------------------------------------------------
+    # Holistic Episode Grading
+    # ------------------------------------------------------------------
+
+    def grade_episode(self) -> dict[str, float]:
+        """Grade the full episode holistically (separate from per-step reward).
+        Returns a score dict with component scores and total in [0.001, 0.999].
+        """
+        scores: dict[str, float] = {}
+        if not self._task or not self._done:
+            return {"total": 0.001, "error": "episode not complete"}
+
+        task = self._task
+
+        # 1. Investigation thoroughness (0-0.25)
+        investigation_score = 0.0
+        if len(self._inspected_logs) > 0:
+            investigation_score += 0.05
+        if len(self._inspected_logs) >= 2:
+            investigation_score += 0.05
+        if self._inspected_metrics:
+            investigation_score += 0.05
+        if len(self._inspected_deps) > 0:
+            investigation_score += 0.05
+        if self._inspected_traces:
+            investigation_score += 0.05
+        scores["investigation"] = investigation_score
+
+        # 2. Correct mitigation (0 or 0.25)
+        scores["mitigation"] = 0.25 if self._mitigation_applied else 0.0
+
+        # 3. Root cause identification (0 or 0.25)
+        scores["root_cause"] = 0.25 if self._root_cause_identified else 0.0
+
+        # 4. Efficiency (0-0.15) — faster is better
+        steps = self._step_count
+        if steps <= 5:
+            scores["efficiency"] = 0.15
+        elif steps <= 10:
+            scores["efficiency"] = 0.10
+        elif steps <= 15:
+            scores["efficiency"] = 0.05
+        else:
+            scores["efficiency"] = 0.0
+
+        # 5. No unnecessary damage (0-0.10)
+        wrong_actions = sum(1 for a in self._action_history
+                          if a.get("reward", 0) < -0.1)
+        if wrong_actions == 0:
+            scores["no_damage"] = 0.10
+        elif wrong_actions == 1:
+            scores["no_damage"] = 0.05
+        else:
+            scores["no_damage"] = 0.0
+
+        raw_total = sum(scores.values())
+        scores["total"] = float(max(0.001, min(0.999, raw_total)))
+        self._episode_scores = scores
+        return scores
 
     # ------------------------------------------------------------------
     # Kubernetes Helpers (real cluster)

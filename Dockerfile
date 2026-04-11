@@ -24,6 +24,7 @@ RUN pip install --no-cache-dir \
 COPY rl-agent/environment /app/environment
 COPY rl-agent/scenarios /app/scenarios
 COPY rl-agent/server.py /app/server.py
+COPY rl-agent/dashboard.html /app/dashboard.html
 COPY openenv.yaml /app/openenv.yaml
 COPY inference.py /app/inference.py
 

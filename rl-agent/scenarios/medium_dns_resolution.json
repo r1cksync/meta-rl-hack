@@ -1,0 +1,14 @@
+{
+  "task_id": "task5",
+  "difficulty": "medium",
+  "target_score": 0.45,
+  "fault_type": "chaos_mesh",
+  "chaos_experiment_name": "dns-resolution-delay",
+  "ground_truth_root_cause": "dns_resolution_failure_service_discovery",
+  "correct_mitigation_action": "delete_chaos_experiment",
+  "correct_mitigation_target": "dns-resolution-delay",
+  "wrong_mitigation_penalty_services": ["payments-api", "postgres", "redis"],
+  "useful_log_keywords": ["DNS", "resolve", "NXDOMAIN", "timeout", "service discovery", "lookup failed", "name resolution"],
+  "red_herrings": ["connection refused", "health check failed"],
+  "reference_postmortem": "At T+00:01, checkout-frontend began returning 502 errors when calling downstream services. Investigation revealed DNS resolution failures — services could not resolve each other's hostnames via CoreDNS. Logs showed NXDOMAIN and lookup timeout errors across multiple services. The root cause was a Chaos Mesh DNS fault injection causing intermittent resolution delays. The 'connection refused' errors on health checks were a secondary effect. Mitigation: remove DNS chaos experiment. Follow-up: add DNS resolution monitoring, implement service mesh sidecar for resilient service discovery, add retry with exponential backoff on DNS failures."
+}

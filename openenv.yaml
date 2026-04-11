@@ -6,7 +6,9 @@ description: >
   diagnosing and mitigating production incidents on a live e-commerce
   platform. Observations come from real Prometheus metrics, Loki logs,
   and Alertmanager alerts. Actions execute real kubectl commands.
-  Reward is shaped from real error-rate reduction and postmortem quality.
+  Features context-gated rewards that penalize agents for ignoring
+  evidence, red herring scenarios, and holistic per-episode grading
+  separate from per-step rewards.
 
 author: IncidentCommander Team
 license: MIT
@@ -41,14 +43,61 @@ tasks:
       ANALYZE creates a red herring CPU spike. Agent must identify
       the decimal bug, rollback, and recommend a data audit.
 
+  - id: task4
+    name: Kafka Broker Network Partition
+    difficulty: easy
+    target_score: 0.80
+    description: >
+      Network partition isolates Kafka broker from application pods,
+      causing consumer lag >5000 messages across order-worker and
+      notification-service. Agent must find and delete the Chaos Mesh
+      network partition experiment.
+
+  - id: task5
+    name: DNS Resolution Failure
+    difficulty: medium
+    target_score: 0.45
+    description: >
+      DNS chaos injection causes NXDOMAIN and resolution timeouts
+      across all services. checkout-frontend shows 502 errors.
+      Health check "connection refused" errors are secondary symptoms,
+      not the root cause. Agent must delete the DNS chaos experiment.
+
+  - id: task6
+    name: TLS Certificate Expiry Cascade
+    difficulty: hard
+    target_score: 0.20
+    description: >
+      Expired mTLS certificate breaks the payments-api to postgres
+      connection path. All database queries fail with x509 errors.
+      ECONNRESET and upstream timeout alerts across other services
+      are symptoms of the cascade. Agent must apply a config patch
+      to rotate the certificate.
+
+  - id: task7
+    name: ConfigMap Hot-Reload Race Condition
+    difficulty: hard
+    target_score: 0.20
+    description: >
+      A ConfigMap update triggers hot-reload in inventory-service
+      but a race condition causes 2 of 4 pods to load new config
+      while 2 retain stale values. Redis pool saturation and GC
+      pause alerts are unrelated red herrings. Agent must restart
+      inventory-service pods to force consistent config.
+
 observation_space: structured_dict
 action_space: discrete_with_typed_params
 reward_range: [-2.0, 1.0]
+score_range: [0.001, 0.999]
 
 endpoints:
   reset: POST /reset
   step: POST /step
   state: GET /state
+  tasks: GET /tasks
+  grader: POST /grader
+  baseline: POST /baseline
+  dashboard: GET /dashboard
 
 tags:
   - openenv
