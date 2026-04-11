@@ -1,3 +1,14 @@
+---
+title: Incident Commander
+emoji: 🚨
+colorFrom: red
+colorTo: orange
+sdk: docker
+pinned: false
+tags:
+  - openenv
+---
+
 # 🚨 IncidentCommander
 
 **An OpenEnv-compatible RL environment where AI agents learn Site Reliability Engineering (SRE) incident response on a live e-commerce platform.**
