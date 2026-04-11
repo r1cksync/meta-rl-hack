@@ -8,8 +8,9 @@ from __future__ import annotations
 import os
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Body, FastAPI, HTTPException
 from pydantic import BaseModel
+from typing import Optional
 
 from environment.env import IncidentCommanderEnv
 from environment.models import Action, ActionType, Observation, StepResult
@@ -31,7 +32,7 @@ app = FastAPI(
 
 
 class ResetRequest(BaseModel):
-    task_id: str
+    task_id: str = "task1"
 
 
 class StepRequest(BaseModel):
@@ -40,18 +41,21 @@ class StepRequest(BaseModel):
 
 
 @app.post("/reset")
-def reset(req: ResetRequest) -> dict:
+def reset(req: Optional[ResetRequest] = Body(default=None)) -> dict:
     env: IncidentCommanderEnv = app.state.env
+    task_id = req.task_id if req is not None else "task1"
     try:
-        obs = env.reset(req.task_id)
+        obs = env.reset(task_id)
         return obs.model_dump(mode="json")
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
 @app.post("/step")
-def step(req: StepRequest) -> dict:
+def step(req: Optional[StepRequest] = Body(default=None)) -> dict:
     env: IncidentCommanderEnv = app.state.env
+    if req is None:
+        raise HTTPException(status_code=400, detail="action_type is required")
     try:
         action = Action(type=ActionType(req.action_type), params=req.params)
     except ValueError:
