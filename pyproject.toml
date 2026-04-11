@@ -29,12 +29,12 @@ dev = [
 ]
 
 [project.scripts]
-server = "rl-agent.server:app"
+server = "incident_commander.server.app:main"
 
 [tool.setuptools]
 include-package-data = true
-packages = ["environment", "environment.graders"]
-package-dir = { "environment" = "rl-agent/environment", "environment.graders" = "rl-agent/environment/graders" }
+packages = ["incident_commander", "incident_commander.server", "incident_commander.environment", "incident_commander.environment.graders"]
+package-dir = { "incident_commander" = ".", "incident_commander.server" = "server", "incident_commander.environment" = "rl-agent/environment", "incident_commander.environment.graders" = "rl-agent/environment/graders" }
 
 [tool.setuptools.package-data]
-environment = ["**/*.yaml", "**/*.yml", "**/*.json"]
+"incident_commander.environment" = ["**/*.yaml", "**/*.yml", "**/*.json"]
