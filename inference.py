@@ -212,19 +212,23 @@ def run_episode(task_id: str) -> tuple[bool, int, list[float]]:
                         "recommended_followups": "escalate to senior SRE",
                     },
                 )
-                result = env.step(action)
-                action_str = f"submit_postmortem(fallback)"
+                try:
+                    result = env.step(action)
+                    step_reward = float(result.reward)
+                except Exception:
+                    step_reward = 0.0
+                    result = None
+                action_str = "submit_postmortem(fallback)"
                 error_str = str(exc).replace("\n", " ")[:200]
-                print(f"[STEP] step={step_num} action={action_str} reward={result.reward:.2f} done=true error={error_str}")
-                rewards.append(result.reward)
-                success = result.reward > 0
+                print(f"[STEP] step={step_num} action={action_str} reward={step_reward:.2f} done=true error={error_str}")
+                rewards.append(step_reward)
+                success = step_reward > 0
                 break
 
             action = parse_model_action(response)
 
             if action is None:
                 # No valid action parsed — retry prompt
-                content = (response.choices[0].message.content or "")[:200]
                 messages.append({"role": "assistant", "content": response.choices[0].message.content or ""})
                 messages.append({"role": "user", "content": "Please respond with a tool call to take your next action."})
                 print(f"[STEP] step={step_num} action=parse_error reward=0.00 done=false error=null")
@@ -245,9 +249,25 @@ def run_episode(task_id: str) -> tuple[bool, int, list[float]]:
                 ]
             messages.append(assistant_msg)
 
+            # Safely extract params with type coercion to avoid crashes on null LLM output
+            safe_params: dict = {}
+            for k, v in (action.params or {}).items():
+                if v is None:
+                    safe_params[k] = ""
+                else:
+                    safe_params[k] = v
+            action.params = safe_params
+
             # Execute action
-            result = env.step(action)
-            reward = result.reward
+            try:
+                result = env.step(action)
+                reward = float(result.reward)
+            except Exception as step_exc:
+                error_str = str(step_exc).replace("\n", " ")[:200]
+                print(f"[STEP] step={step_num} action=step_error reward=0.00 done=false error={error_str}")
+                rewards.append(0.0)
+                continue
+
             rewards.append(reward)
 
             action_str = f"{action.type.value}({json.dumps(action.params, separators=(',', ':'))})"
@@ -261,7 +281,7 @@ def run_episode(task_id: str) -> tuple[bool, int, list[float]]:
                 messages.append({
                     "role": "tool",
                     "tool_call_id": msg.tool_calls[0].id,
-                    "content": result.observation.last_action_result or "Action executed.",
+                    "content": (result.observation.last_action_result or "Action executed.") if result.observation else "Action executed.",
                 })
 
             if result.done:
@@ -275,10 +295,13 @@ def run_episode(task_id: str) -> tuple[bool, int, list[float]]:
         print(f"[STEP] step={step_num} action=error reward=0.00 done=true error={error_str}")
         rewards.append(0.0)
 
-    # --- [END] ---
-    rewards_str = ",".join(f"{r:.2f}" for r in rewards)
-    success_str = "true" if success else "false"
-    print(f"[END] success={success_str} steps={len(rewards)} rewards={rewards_str}")
+    finally:
+        # --- [END] — always emitted even on crash ---
+        raw_score = sum(rewards) if rewards else 0.0
+        score = float(max(0.001, min(0.999, raw_score)))
+        rewards_str = ",".join(f"{r:.2f}" for r in rewards)
+        success_str = "true" if success else "false"
+        print(f"[END] success={success_str} steps={len(rewards)} score={score:.3f} rewards={rewards_str}")
 
     return success, len(rewards), rewards
 
