@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "openenv-incident-commander"
+version = "1.0.0"
+description = "SRE incident response RL environment for OpenEnv"
+requires-python = ">=3.10"
+dependencies = [
+    "openenv-core>=0.2.0",
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+    "pydantic>=2.5.0",
+    "httpx>=0.25.0",
+    "structlog>=23.2.0",
+    "numpy>=1.26.0",
+    "openai>=1.3.0",
+    "websockets",
+    "requests>=2.25.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.21.0",
+    "stable-baselines3>=2.0.0",
+    "gymnasium>=0.29.0",
+]
+
+[project.scripts]
+server = "rl-agent.server:app"
+
+[tool.setuptools]
+include-package-data = true
+packages = ["environment", "environment.graders"]
+package-dir = { "environment" = "rl-agent/environment", "environment.graders" = "rl-agent/environment/graders" }
+
+[tool.setuptools.package-data]
+environment = ["**/*.yaml", "**/*.yml", "**/*.json"]
