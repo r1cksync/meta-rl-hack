@@ -12,6 +12,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-EXPOSE 8000
+# Environment variables for OpenEnv compliance
+ENV MOCK_MODE=true
+ENV INCIDENT_COMMANDER_MOCK=true
 
-CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8000"]
+EXPOSE 7860
+
+CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "7860"]

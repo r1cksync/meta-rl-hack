@@ -72,18 +72,23 @@ def score_mitigations(mitigations: str, task_id: str) -> float:
     return 0.0
 
 
+_ST_MODEL = None
+
+
 def score_writing_quality(text: str, reference: str) -> float:
     """Cosine similarity using sentence-transformers.
 
     Returns 0.1 if sim > 0.6, 0.05 if sim > 0.4, else 0.0.
     Falls back to keyword overlap if sentence-transformers unavailable.
     """
+    global _ST_MODEL
     try:
         from sentence_transformers import SentenceTransformer, util
 
-        model = SentenceTransformer("all-MiniLM-L6-v2")
-        emb_a = model.encode(text, convert_to_tensor=True)
-        emb_b = model.encode(reference, convert_to_tensor=True)
+        if _ST_MODEL is None:
+            _ST_MODEL = SentenceTransformer("all-MiniLM-L6-v2")
+        emb_a = _ST_MODEL.encode(text, convert_to_tensor=True)
+        emb_b = _ST_MODEL.encode(reference, convert_to_tensor=True)
         sim = float(util.cos_sim(emb_a, emb_b)[0][0])
     except ImportError:
         # Fallback: simple word-overlap Jaccard similarity

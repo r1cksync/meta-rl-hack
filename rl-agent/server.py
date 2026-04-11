@@ -17,9 +17,8 @@ from environment.models import Action, ActionType, Observation, StepResult
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    app.state.env = IncidentCommanderEnv(
-        use_mock=os.getenv("INCIDENT_COMMANDER_MOCK", "true").lower() == "true"
-    )
+    mock_val = os.getenv("MOCK_MODE", os.getenv("INCIDENT_COMMANDER_MOCK", "true"))
+    app.state.env = IncidentCommanderEnv(use_mock=mock_val.lower() == "true")
     yield
 
 

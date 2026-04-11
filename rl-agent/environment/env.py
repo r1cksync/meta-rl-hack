@@ -104,13 +104,119 @@ class IncidentCommanderEnv:
     # OpenEnv API
     # ------------------------------------------------------------------
 
+    def _run_async(self, coro):
+        """Run an async coroutine, creating a new event loop if needed."""
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_closed():
+                raise RuntimeError
+            return loop.run_until_complete(coro)
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            return loop.run_until_complete(coro)
+
     def reset(self, task_id: str) -> Observation:
         """Reset the environment for a new episode."""
-        return asyncio.get_event_loop().run_until_complete(self._async_reset(task_id))
+        if self._mock:
+            return self._sync_reset(task_id)
+        return self._run_async(self._async_reset(task_id))
 
     def step(self, action: Action) -> StepResult:
         """Execute one action and return result."""
-        return asyncio.get_event_loop().run_until_complete(self._async_step(action))
+        if self._mock:
+            return self._sync_step(action)
+        return self._run_async(self._async_step(action))
+
+    def _sync_reset(self, task_id: str) -> Observation:
+        """Fast synchronous reset for mock mode."""
+        filename = TASK_FILE_MAP.get(task_id)
+        if not filename:
+            raise ValueError(f"Unknown task_id: {task_id}. Must be one of {list(TASK_FILE_MAP.keys())}")
+        scenario_path = SCENARIOS_DIR / filename
+        with open(scenario_path) as f:
+            self._task = TaskScenario(**json.load(f))
+        self._step_count = 0
+        self._done = False
+        self._blast_tracker.reset()
+        self._action_history = []
+        self._root_cause_identified = False
+        self._mitigation_applied = False
+        self._cumulative_reward = 0.0
+        return self._build_mock_observation()
+
+    def _sync_step(self, action: Action) -> StepResult:
+        """Fast synchronous step for mock mode."""
+        if self._done:
+            raise RuntimeError("Episode is done. Call reset() to start a new episode.")
+        if self._task is None:
+            raise RuntimeError("No task loaded. Call reset() first.")
+        if action.type not in ActionType:
+            raise ValueError(f"Invalid action type: {action.type}")
+
+        action_result = self._sync_execute_action(action)
+        obs = self._build_mock_observation(action_result=action_result)
+        self._blast_tracker.record(self._step_count, obs.blast_radius_pct, action.type.value)
+        reward = self._compute_reward(obs, action, action_result)
+        self._cumulative_reward += reward
+        self._action_history.append({
+            "step": self._step_count,
+            "action_type": action.type.value,
+            "params": action.params,
+            "reward": reward,
+        })
+        self._step_count += 1
+        done = action.type == ActionType.SUBMIT_POSTMORTEM or self._step_count >= 20
+        self._done = done
+        info = {
+            "reward_breakdown": self._last_reward_breakdown,
+            "action_was_correct": self._last_action_correct,
+            "current_blast_radius": obs.blast_radius_pct,
+            "cumulative_reward": self._cumulative_reward,
+        }
+        return StepResult(observation=obs, reward=reward, done=done, info=info)
+
+    def _sync_execute_action(self, action: Action) -> str:
+        """Synchronous action execution for mock mode."""
+        t = action.type
+        p = action.params
+        if t == ActionType.QUERY_LOGS:
+            return self._mock_query_logs(p.get("service", ""), p.get("filter_text"))
+        elif t == ActionType.QUERY_METRICS:
+            return f"[MOCK] Metrics query result for '{p.get('promql', '')}': value=0.05 (simulated)"
+        elif t == ActionType.GET_SERVICE_DEPENDENCIES:
+            return self._action_get_deps(service=p.get("service", ""))
+        elif t == ActionType.GET_TRACE:
+            return f"[MOCK] Trace {p.get('trace_id', '')}: checkout-frontend -> payments-api (45ms) -> postgres (12ms)"
+        elif t == ActionType.ROLLBACK_DEPLOYMENT:
+            deploy = p.get("deployment", "")
+            correct = CORRECT_SERVICES.get(self._task.task_id if self._task else "")
+            if deploy == correct:
+                self._mitigation_applied = True
+            return f"[MOCK] Rolled back deployment/{deploy} to previous revision."
+        elif t == ActionType.RESTART_PODS:
+            return f"[MOCK] Restarted pods for deployment/{p.get('deployment', '')}."
+        elif t == ActionType.SCALE_DEPLOYMENT:
+            replicas = int(p.get("replicas", 2))
+            if replicas < 0 or replicas > 20:
+                return f"ERROR: replicas must be between 0 and 20, got {replicas}"
+            return f"[MOCK] Scaled deployment/{p.get('deployment', '')} to {replicas} replicas."
+        elif t == ActionType.APPLY_CONFIG_PATCH:
+            return f"[MOCK] Patched deployment/{p.get('deployment', '')}: set {p.get('env_var', '')}={p.get('value', '')}."
+        elif t == ActionType.DELETE_CHAOS_EXPERIMENT:
+            exp = p.get("experiment_name", "")
+            if self._task and self._task.chaos_experiment_name == exp:
+                self._mitigation_applied = True
+            return f"[MOCK] Deleted Chaos Mesh experiment '{exp}'."
+        elif t == ActionType.SUBMIT_POSTMORTEM:
+            return self._action_submit_postmortem(
+                root_cause=p.get("root_cause", ""),
+                timeline=p.get("timeline", ""),
+                mitigations=p.get("mitigations", ""),
+                affected_services=p.get("affected_services", []),
+                recommended_followups=p.get("recommended_followups", ""),
+            )
+        return f"Unknown action type: {t}"
 
     def state(self) -> dict[str, Any]:
         """Return current environment state."""
@@ -171,9 +277,12 @@ class IncidentCommanderEnv:
         if action.type not in ActionType:
             raise ValueError(f"Invalid action type: {action.type}")
 
-        # Log action
-        log_level = logging.WARNING if action.type in WRITE_ACTIONS else logging.DEBUG
-        logger.log(log_level, "Action step=%d type=%s params=%s", self._step_count, action.type, action.params)
+        # Log action (DEBUG in mock mode to avoid flooding during training)
+        if self._mock:
+            logger.debug("Action step=%d type=%s params=%s", self._step_count, action.type, action.params)
+        else:
+            log_level = logging.WARNING if action.type in WRITE_ACTIONS else logging.DEBUG
+            logger.log(log_level, "Action step=%d type=%s params=%s", self._step_count, action.type, action.params)
 
         # Execute action
         action_result = await self._execute_action(action)
@@ -583,13 +692,13 @@ class IncidentCommanderEnv:
             correct = CORRECT_SERVICES.get(self._task.task_id if self._task else "") 
             if deployment == correct:
                 self._mitigation_applied = True
-            logger.warning("[MOCK] Rollback deployment/%s -n %s", deployment, namespace)
+            logger.debug("[MOCK] Rollback deployment/%s -n %s", deployment, namespace)
             return f"[MOCK] Rolled back deployment/{deployment} in namespace {namespace} to previous revision."
         return await self._k8s_rollback(deployment, namespace)
 
     async def _action_restart(self, deployment: str, namespace: str) -> str:
         if self._mock:
-            logger.warning("[MOCK] Restart pods for deployment/%s -n %s", deployment, namespace)
+            logger.debug("[MOCK] Restart pods for deployment/%s -n %s", deployment, namespace)
             return f"[MOCK] Restarted pods for deployment/{deployment} in namespace {namespace}."
         return await self._k8s_restart(deployment, namespace)
 
@@ -597,13 +706,13 @@ class IncidentCommanderEnv:
         if replicas < 0 or replicas > 20:
             return f"ERROR: replicas must be between 0 and 20, got {replicas}"
         if self._mock:
-            logger.warning("[MOCK] Scale deployment/%s to %d replicas -n %s", deployment, replicas, namespace)
+            logger.debug("[MOCK] Scale deployment/%s to %d replicas -n %s", deployment, replicas, namespace)
             return f"[MOCK] Scaled deployment/{deployment} to {replicas} replicas in namespace {namespace}."
         return await self._k8s_scale(deployment, replicas, namespace)
 
     async def _action_config_patch(self, deployment: str, env_var: str, value: str, namespace: str) -> str:
         if self._mock:
-            logger.warning("[MOCK] Patch deployment/%s env %s=%s -n %s", deployment, env_var, value, namespace)
+            logger.debug("[MOCK] Patch deployment/%s env %s=%s -n %s", deployment, env_var, value, namespace)
             return f"[MOCK] Patched deployment/{deployment}: set {env_var}={value} in namespace {namespace}."
         return await self._k8s_config_patch(deployment, env_var, value, namespace)
 
@@ -611,7 +720,7 @@ class IncidentCommanderEnv:
         if self._mock:
             if self._task and self._task.chaos_experiment_name == experiment_name:
                 self._mitigation_applied = True
-            logger.warning("[MOCK] Delete Chaos Mesh experiment: %s", experiment_name)
+            logger.debug("[MOCK] Delete Chaos Mesh experiment: %s", experiment_name)
             return f"[MOCK] Deleted Chaos Mesh experiment '{experiment_name}'."
         try:
             await self._chaos.delete_experiment(experiment_name)

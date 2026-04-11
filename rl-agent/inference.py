@@ -1,7 +1,12 @@
 """IncidentCommander — Baseline Inference Script
 
-Runs a Claude-based agent against the IncidentCommanderEnv to demonstrate
+Runs an LLM agent against the IncidentCommanderEnv to demonstrate
 how the environment works and establish baseline scores for all 3 tasks.
+
+Uses OpenAI-compatible client with environment variables:
+  API_BASE_URL   — The API endpoint for the LLM
+  MODEL_NAME     — The model identifier to use for inference
+  HF_TOKEN       — Auth token (mapped to OPENAI_API_KEY for OpenAI client)
 
 Usage:
     python inference.py --task task1
@@ -20,34 +25,26 @@ from environment.env import IncidentCommanderEnv
 from environment.models import Action, ActionType, Observation
 
 # ---------------------------------------------------------------------------
-# LLM Client (supports both Anthropic and OpenAI-compatible APIs)
+# LLM Client (OpenAI-compatible — required by competition spec)
 # ---------------------------------------------------------------------------
 
 def _get_llm_client():
-    """Return an LLM client using available API keys."""
-    api_key = os.getenv("ANTHROPIC_API_KEY")
-    if api_key:
-        try:
-            import anthropic
-            return "anthropic", anthropic.Anthropic(api_key=api_key)
-        except ImportError:
-            pass
-
-    api_key = os.getenv("OPENAI_API_KEY")
+    """Return an OpenAI-compatible client using competition env vars."""
+    api_key = os.getenv("HF_TOKEN") or os.getenv("OPENAI_API_KEY")
     base_url = os.getenv("API_BASE_URL")
-    model = os.getenv("MODEL_NAME", "gpt-4o")
-    if api_key:
-        try:
-            from openai import OpenAI
-            kwargs = {"api_key": api_key}
-            if base_url:
-                kwargs["base_url"] = base_url
-            return "openai", OpenAI(**kwargs)
-        except ImportError:
-            pass
+    if not api_key:
+        print("ERROR: Set HF_TOKEN or OPENAI_API_KEY environment variable.")
+        sys.exit(1)
 
-    print("ERROR: No LLM API key found. Set ANTHROPIC_API_KEY or OPENAI_API_KEY.")
-    sys.exit(1)
+    try:
+        from openai import OpenAI
+        kwargs = {"api_key": api_key}
+        if base_url:
+            kwargs["base_url"] = base_url
+        return OpenAI(**kwargs)
+    except ImportError:
+        print("ERROR: openai package not installed. Run: pip install openai")
+        sys.exit(1)
 
 
 # ---------------------------------------------------------------------------
@@ -280,14 +277,6 @@ def build_tools_schema_openai() -> list[dict]:
 # Agent Runner
 # ---------------------------------------------------------------------------
 
-def parse_action_anthropic(response) -> Action | None:
-    """Extract Action from Anthropic tool_use response."""
-    for block in response.content:
-        if block.type == "tool_use":
-            return Action(type=ActionType(block.name), params=block.input or {})
-    return None
-
-
 def parse_action_openai(response) -> Action | None:
     """Extract Action from OpenAI function-call response."""
     msg = response.choices[0].message
@@ -300,8 +289,8 @@ def parse_action_openai(response) -> Action | None:
 
 def run_episode(task_id: str, verbose: bool = True) -> float:
     """Run one episode of the IncidentCommander environment with an LLM agent."""
-    provider, client = _get_llm_client()
-    model_name = os.getenv("MODEL_NAME", "claude-opus-4-5" if provider == "anthropic" else "gpt-4o")
+    client = _get_llm_client()
+    model_name = os.getenv("MODEL_NAME", "gpt-4o")
 
     env = IncidentCommanderEnv(use_mock=True)
     obs = env.reset(task_id)
@@ -322,36 +311,25 @@ def run_episode(task_id: str, verbose: bool = True) -> float:
 
         messages.append({"role": "user", "content": obs_text})
 
-        # Call LLM
+        # Call LLM via OpenAI-compatible client
         try:
-            if provider == "anthropic":
-                response = client.messages.create(
-                    model=model_name,
-                    max_tokens=1000,
-                    system=SYSTEM_PROMPT,
-                    messages=messages,
-                    tools=TOOLS_SCHEMA,
-                )
-                messages.append({"role": "assistant", "content": response.content})
-                action = parse_action_anthropic(response)
-            else:
-                response = client.chat.completions.create(
-                    model=model_name,
-                    messages=[{"role": "system", "content": SYSTEM_PROMPT}] + messages,
-                    tools=build_tools_schema_openai(),
-                    tool_choice="auto",
-                )
-                msg = response.choices[0].message
-                messages.append({"role": "assistant", "content": msg.content or "", "tool_calls": msg.tool_calls})
-                action = parse_action_openai(response)
+            response = client.chat.completions.create(
+                model=model_name,
+                messages=[{"role": "system", "content": SYSTEM_PROMPT}] + messages,
+                tools=build_tools_schema_openai(),
+                tool_choice="auto",
+            )
+            msg = response.choices[0].message
+            messages.append({"role": "assistant", "content": msg.content or "", "tool_calls": msg.tool_calls})
+            action = parse_action_openai(response)
 
-                # Handle tool call response format for OpenAI
-                if action and msg.tool_calls:
-                    messages.append({
-                        "role": "tool",
-                        "tool_call_id": msg.tool_calls[0].id,
-                        "content": "Action submitted to environment.",
-                    })
+            # Handle tool call response format
+            if action and msg.tool_calls:
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": msg.tool_calls[0].id,
+                    "content": "Action submitted to environment.",
+                })
         except Exception as e:
             print(f"LLM call failed: {e}")
             break
