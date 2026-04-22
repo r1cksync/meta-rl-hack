@@ -1,14 +1,17 @@
 name: incident-commander
-version: "1.0.0"
+version: "2.0.0"
 description: >
-  SRE incident response RL environment with real Kubernetes backend.
-  An AI agent plays an on-call Site Reliability Engineer at AcmeCorp,
-  diagnosing and mitigating production incidents on a live e-commerce
-  platform. Observations come from real Prometheus metrics, Loki logs,
-  and Alertmanager alerts. Actions execute real kubectl commands.
-  Features context-gated rewards that penalize agents for ignoring
-  evidence, red herring scenarios, and holistic per-episode grading
-  separate from per-step rewards.
+  SRE incident response RL environment with real Kubernetes backend,
+  self-escalating curriculum, LLM-designed adversarial scenarios, and
+  a 3-persona LLM judge. An AI agent plays an on-call Site Reliability
+  Engineer at AcmeCorp, diagnosing and mitigating production incidents
+  on a live e-commerce platform. Observations come from Prometheus
+  metrics, Loki logs, Alertmanager alerts, and distributed traces.
+  Write actions execute against a mock cluster by default and can be
+  routed to real kubectl commands via REAL_K8S=true. Features
+  context-gated rewards, phase-aware bonuses (triage/investigate/
+  fix/verify), repeat-command penalties, multi-fault scenarios on
+  advanced/expert tiers, and holistic per-episode grading.
 
 author: IncidentCommander Team
 license: MIT
@@ -98,6 +101,22 @@ endpoints:
   grader: POST /grader
   baseline: POST /baseline
   dashboard: GET /dashboard
+  curriculum: GET /curriculum
+  curriculum_reset: POST /curriculum/reset
+  adversarial_design: POST /adversarial/design
+  judge_config: POST /judge/config
+
+features:
+  curriculum_tiers: [warmup, beginner, intermediate, advanced, expert]
+  adversarial_designer: true
+  llm_judge_personas: [junior, senior, principal]
+  phase_aware_rewards: true
+  repeat_command_penalty: true
+  multi_fault_scenarios: true
+  real_k8s_backend: optional
+  grpo_training_script: rl-agent/training/train_grpo.py
+  eval_script: rl-agent/eval.py
+  colab_notebook: notebooks/incident_commander_colab.ipynb
 
 tags:
   - openenv
@@ -105,3 +124,7 @@ tags:
   - incident-response
   - kubernetes
   - reinforcement-learning
+  - curriculum
+  - adversarial
+  - llm-judge
+  - grpo

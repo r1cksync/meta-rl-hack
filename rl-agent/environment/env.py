@@ -17,9 +17,14 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
+import httpx  # used by _action_get_trace
+
+from .adversarial_designer import AdversarialDesigner, DesignRequest
 from .chaos_client import ChaosMeshClient
 from .graders.blast_radius_tracker import BlastRadiusTracker
 from .graders.postmortem_grader import grade_postmortem
+from .k8s_backend import K8sBackend
+from .llm_judge import LLMJudge, action_signature, phase_order_bonus
 from .loki_client import LokiClient
 from .models import (
     Action,
@@ -117,6 +122,19 @@ class IncidentCommanderEnv:
         self._last_action_correct: bool = False
         self._episode_scores: dict[str, float] = {}
 
+        # Phase tracking (triage / investigate / fix / verify) + repeat-cmd
+        self._current_phase: str | None = None
+        self._phase_history: list[str] = []
+        self._seen_action_signatures: dict[str, int] = {}
+        self._last_judge_result: dict[str, Any] | None = None
+
+        # Optional companions (k8s backend, LLM judge, adversarial designer)
+        self._k8s_backend = K8sBackend()
+        self._judge = LLMJudge()
+        self._designer = AdversarialDesigner(base_scenarios_dir=SCENARIOS_DIR)
+        self._judge_persona = os.getenv("JUDGE_PERSONA", "senior")
+        self._use_llm_judge = os.getenv("USE_LLM_JUDGE", "false").lower() in ("1", "true", "yes")
+
     # ------------------------------------------------------------------
     # OpenEnv API
     # ------------------------------------------------------------------
@@ -133,10 +151,14 @@ class IncidentCommanderEnv:
             asyncio.set_event_loop(loop)
             return loop.run_until_complete(coro)
 
-    def reset(self, task_id: str) -> Observation:
-        """Reset the environment for a new episode."""
+    def reset(self, task_id: str, scenario: TaskScenario | None = None) -> Observation:
+        """Reset the environment for a new episode.
+
+        If `scenario` is given it overrides the JSON-backed scenario — used for
+        adversarial/multi-fault tasks produced by the AdversarialDesigner.
+        """
         if self._mock:
-            return self._sync_reset(task_id)
+            return self._sync_reset(task_id, scenario=scenario)
         return self._run_async(self._async_reset(task_id))
 
     def step(self, action: Action) -> StepResult:
@@ -145,14 +167,17 @@ class IncidentCommanderEnv:
             return self._sync_step(action)
         return self._run_async(self._async_step(action))
 
-    def _sync_reset(self, task_id: str) -> Observation:
+    def _sync_reset(self, task_id: str, scenario: TaskScenario | None = None) -> Observation:
         """Fast synchronous reset for mock mode."""
-        filename = TASK_FILE_MAP.get(task_id)
-        if not filename:
-            raise ValueError(f"Unknown task_id: {task_id}. Must be one of {list(TASK_FILE_MAP.keys())}")
-        scenario_path = SCENARIOS_DIR / filename
-        with open(scenario_path) as f:
-            self._task = TaskScenario(**json.load(f))
+        if scenario is not None:
+            self._task = scenario
+        else:
+            filename = TASK_FILE_MAP.get(task_id)
+            if not filename:
+                raise ValueError(f"Unknown task_id: {task_id}. Must be one of {list(TASK_FILE_MAP.keys())}")
+            scenario_path = SCENARIOS_DIR / filename
+            with open(scenario_path) as f:
+                self._task = TaskScenario(**json.load(f))
         self._step_count = 0
         self._done = False
         self._blast_tracker.reset()
@@ -167,6 +192,10 @@ class IncidentCommanderEnv:
         self._last_reward_breakdown = {}
         self._last_action_correct = False
         self._episode_scores = {}
+        self._current_phase = None
+        self._phase_history = []
+        self._seen_action_signatures = {}
+        self._last_judge_result = None
         return self._build_mock_observation()
 
     def _sync_step(self, action: Action) -> StepResult:
@@ -178,16 +207,53 @@ class IncidentCommanderEnv:
         if action.type not in ActionType:
             raise ValueError(f"Invalid action type: {action.type}")
 
+        # Track repeat commands BEFORE executing (so penalty applies this step).
+        sig = action_signature(action)
+        repeat_count = self._seen_action_signatures.get(sig, 0)
+        self._seen_action_signatures[sig] = repeat_count + 1
+
         action_result = self._sync_execute_action(action)
         obs = self._build_mock_observation(action_result=action_result)
         self._blast_tracker.record(self._step_count, obs.blast_radius_pct, action.type.value)
-        reward = self._compute_reward(obs, action, action_result)
+
+        # LLM or heuristic judge (phase-aware).
+        judge = self._judge.judge(
+            action=action,
+            action_result=action_result,
+            step=self._step_count,
+            blast_radius=obs.blast_radius_pct,
+            cumulative_reward=self._cumulative_reward,
+            inspected_services=len(self._inspected_logs),
+            persona=self._judge_persona,  # type: ignore[arg-type]
+            use_llm=self._use_llm_judge,
+        )
+        prev_phase = self._current_phase
+        self._current_phase = judge.phase
+        self._phase_history.append(judge.phase)
+        self._last_judge_result = {
+            "persona": judge.persona,
+            "phase": judge.phase,
+            "score": judge.score,
+            "reason": judge.reason,
+            "used_llm": judge.used_llm,
+        }
+
+        reward = self._compute_reward(
+            obs, action, action_result,
+            repeat_count=repeat_count,
+            judge_score=judge.score,
+            prev_phase=prev_phase,  # type: ignore[arg-type]
+            next_phase=judge.phase,  # type: ignore[arg-type]
+        )
         self._cumulative_reward += reward
         self._action_history.append({
             "step": self._step_count,
             "action_type": action.type.value,
             "params": action.params,
             "reward": reward,
+            "phase": judge.phase,
+            "repeat_count": repeat_count,
+            "judge_score": judge.score,
         })
         self._step_count += 1
         done = action.type == ActionType.SUBMIT_POSTMORTEM or self._step_count >= 20
@@ -197,6 +263,9 @@ class IncidentCommanderEnv:
             "action_was_correct": self._last_action_correct,
             "current_blast_radius": obs.blast_radius_pct,
             "cumulative_reward": self._cumulative_reward,
+            "phase": judge.phase,
+            "judge": self._last_judge_result,
+            "repeat_count": repeat_count,
         }
         return StepResult(observation=obs, reward=reward, done=done, info=info)
 
@@ -223,16 +292,28 @@ class IncidentCommanderEnv:
             correct = CORRECT_SERVICES.get(self._task.task_id if self._task else "")
             if deploy == correct:
                 self._mitigation_applied = True
-            return f"[MOCK] Rolled back deployment/{deploy} to previous revision."
+            result = self._k8s_backend.rollback(deploy)
+            return result.message
         elif t == ActionType.RESTART_PODS:
-            return f"[MOCK] Restarted pods for deployment/{p.get('deployment', '')}."
+            deploy = p.get("deployment", "")
+            correct = CORRECT_SERVICES.get(self._task.task_id if self._task else "")
+            if deploy == correct and self._task and self._task.correct_mitigation_action == "restart_pods":
+                self._mitigation_applied = True
+            result = self._k8s_backend.restart(deploy)
+            return result.message
         elif t == ActionType.SCALE_DEPLOYMENT:
             replicas = int(p.get("replicas", 2))
-            if replicas < 0 or replicas > 20:
-                return f"ERROR: replicas must be between 0 and 20, got {replicas}"
-            return f"[MOCK] Scaled deployment/{p.get('deployment', '')} to {replicas} replicas."
+            result = self._k8s_backend.scale(p.get("deployment", ""), replicas)
+            return result.message
         elif t == ActionType.APPLY_CONFIG_PATCH:
-            return f"[MOCK] Patched deployment/{p.get('deployment', '')}: set {p.get('env_var', '')}={p.get('value', '')}."
+            deploy = p.get("deployment", "")
+            correct = CORRECT_SERVICES.get(self._task.task_id if self._task else "")
+            if deploy == correct and self._task and self._task.correct_mitigation_action == "apply_config_patch":
+                self._mitigation_applied = True
+            result = self._k8s_backend.apply_config_patch(
+                deploy, p.get("env_var", ""), p.get("value", "")
+            )
+            return result.message
         elif t == ActionType.DELETE_CHAOS_EXPERIMENT:
             exp = p.get("experiment_name", "")
             if self._task and self._task.chaos_experiment_name == exp:
@@ -266,6 +347,13 @@ class IncidentCommanderEnv:
                 "traces_inspected": self._inspected_traces,
             },
             "last_reward_breakdown": self._last_reward_breakdown,
+            "phase": self._current_phase,
+            "phase_history": list(self._phase_history),
+            "last_judge": self._last_judge_result,
+            "repeat_signatures": {
+                sig: c for sig, c in self._seen_action_signatures.items() if c > 1
+            },
+            "k8s_backend_real": self._k8s_backend.enabled,
         }
 
     # ------------------------------------------------------------------
@@ -926,7 +1014,17 @@ class IncidentCommanderEnv:
     # Reward Function
     # ------------------------------------------------------------------
 
-    def _compute_reward(self, obs: Observation, action: Action, action_result: str) -> float:
+    def _compute_reward(
+        self,
+        obs: Observation,
+        action: Action,
+        action_result: str,
+        *,
+        repeat_count: int = 0,
+        judge_score: float = 0.0,
+        prev_phase: str | None = None,
+        next_phase: str = "investigate",
+    ) -> float:
         """Deterministic shaped reward with context-gated penalties. Never uses random numbers."""
         if self._task is None:
             return 0.0
@@ -1023,6 +1121,26 @@ class IncidentCommanderEnv:
         # --- Blast radius increase after write action (-0.10) ---
         if self._blast_tracker.check_action_caused_increase(self._step_count):
             breakdown["blast_radius_increase"] = -0.10
+
+        # --- Repeat-command penalty (-0.15 per repeat, capped at -0.45) ---
+        # Mirrors kube-sre-gym: discourages the agent from spamming the same
+        # command when it fails. Read actions with a plausible params variation
+        # (different service / filter) are tracked separately via signature.
+        if repeat_count > 0:
+            breakdown["repeat_command_penalty"] = max(-0.45, -0.15 * repeat_count)
+
+        # --- Phase-order bonus/penalty ---
+        # +0.10 when phase progresses (triage -> investigate -> fix -> verify)
+        # -0.10 when the agent regresses phases.
+        po_bonus = phase_order_bonus(prev_phase, next_phase)  # type: ignore[arg-type]
+        if po_bonus != 0.0:
+            breakdown["phase_order"] = po_bonus
+
+        # --- LLM/heuristic judge contribution (scaled to [-0.1, +0.15]) ---
+        # We only take a small slice of the judge score to keep dense per-step
+        # rewards dominated by deterministic signals.
+        if judge_score != 0.0:
+            breakdown["judge"] = max(-0.1, min(0.15, judge_score * 0.15))
 
         total = sum(breakdown.values())
         self._last_reward_breakdown = breakdown

@@ -30,10 +30,37 @@ Every SRE has been there: PagerDuty goes off at 3 AM, dashboards are red, five s
 We turned that entire debugging experience into an RL environment. The agent sees what a real SRE sees: Prometheus metrics, Loki logs, Alertmanager alerts, service dependency graphs, and distributed traces. It takes real actions: rollback deployments, restart pods, scale services, delete chaos experiments, and submit postmortems. The reward signal comes from actual error-rate reduction and blast radius minimization — not synthetic labels.
 
 **What makes this different from toy environments:**
-- **Real infrastructure simulation.** Observations model actual Prometheus/Loki/Alertmanager data. Write actions have real consequences.
-- **Context-gated rewards.** Agents are penalized for acting without investigating first. If you rollback before reading logs, you lose points — just like in real SRE.
-- **Red herrings on hard tasks.** Tasks 3, 6, and 7 contain deliberate distractors that punish agents for jumping to conclusions.
-- **Holistic episode grading** separate from per-step rewards. The grader evaluates the full investigation: did the agent look at the right logs? Did it avoid unnecessary damage? Did it identify root cause correctly?
+- **Self-improving curriculum.** A controller tracks per-task mastery and escalates difficulty tiers automatically (warmup → beginner → intermediate → advanced → expert).
+- **Adversarial scenario designer.** At the expert tier, an LLM composes novel incidents that target the agent's tracked weaknesses — infinite non-repeating scenarios.
+- **3-persona LLM judge.** Every action is critiqued by a Junior / Senior / Principal SRE persona with progressively stricter evaluation (Snorkel-style experts-in-the-loop).
+- **Phase-aware rewards.** Actions are classified as `triage → investigate → fix → verify`; the agent earns a bonus for following the correct workflow order and loses reward for regressing phases.
+- **Context-gated rewards.** Penalised for acting without investigating, for repeating commands, and for targeting red-herring services that the task explicitly marks as distractors.
+- **Real infrastructure option.** Write actions normally hit a mock cluster but can be routed to a live Kubernetes cluster (`REAL_K8S=true`) — the code path is the same.
+- **Multi-fault scenarios** on hard tiers: 2-3 simultaneous faults composed from the base scenario pool.
+- **Holistic episode grading** separate from per-step rewards: investigation thoroughness + correct mitigation + root cause + efficiency + no unnecessary damage.
+- **GRPO-ready training pipeline** (TRL + vLLM colocate, LoRA on Qwen2.5-1.5B). Fully scripted and waiting on GPU credits.
+
+---
+
+## vs. prior OpenEnv winners (kube-sre-gym)
+
+| Capability | kube-sre-gym (prev $15K winner) | IncidentCommander |
+|-----------|-------------------------------|-------------------|
+| Live K8s cluster | ✅ (kind) | ✅ optional (`REAL_K8S=true`), mock by default |
+| Mock-only CI mode | ❌ | ✅ zero-dep mock mode |
+| Curriculum with auto-promotion | ✅ 5 tiers | ✅ 5 tiers (warmup→expert) |
+| Adversarial LLM-designed scenarios | ✅ expert tier only | ✅ expert tier + procedural fallback |
+| Multi-fault scenarios | ✅ | ✅ (advanced + expert tiers) |
+| LLM judge with multiple personas | ❌ (single judge) | ✅ 3 personas (junior/senior/principal) |
+| Phase-aware rewards (triage→verify) | ❌ | ✅ |
+| Repeat-command penalty | ✅ | ✅ |
+| Red-herring penalty | ❌ | ✅ on hard tasks |
+| Context-gated "acting blind" penalty | ❌ | ✅ |
+| Holistic per-episode grader | ❌ | ✅ 5-component rubric |
+| Live plotly dashboard | ❌ | ✅ with tier + phase indicators |
+| TRL GRPO training script | ✅ | ✅ |
+| Base-vs-trained `eval.py` | ✅ | ✅ |
+| Runs on HF Spaces Docker | ❌ (kind not available) | ✅ |
 
 ---
 
@@ -96,15 +123,72 @@ Easy tasks have one obvious signal. Medium tasks need cross-service investigatio
 | Correct mitigation (before step 10) | +0.20 | Right action on right target |
 | Root cause correct | +0.30 | Postmortem root cause matches ground truth |
 | Postmortem quality | +0.20 | NLP-scored: timeline, mitigations, writing |
+| **Phase-order bonus** | **+0.10** | Progressing triage → investigate → fix → verify |
+| **LLM judge contribution** | **up to +0.15** | Persona-scored (junior/senior/principal), scaled |
 | **Acting blind penalty** | **-0.20** | Write action without any prior investigation |
 | **Red herring penalty** | **-0.15** | Targeting a known distractor service |
+| **Repeat-command penalty** | **-0.15 / repeat** | Capped at -0.45; discourages spam |
+| **Phase regression** | **-0.10** | Went back to triage after already fixing |
 | Wrong service penalty | -0.15 | Write action targets wrong service |
 | Time penalty | -0.05/step | Per step beyond step 5 |
 | Blast radius increase | -0.10 | Write action worsens error rate |
 
-**Context-gated penalties** are the key differentiator. The "acting blind" penalty fires when an agent takes a write action without having inspected any logs or metrics first. The "red herring" penalty fires when an agent targets a service that the task explicitly marks as a distractor.
+**Context-gated penalties** are the key differentiator. The "acting blind" penalty fires when an agent takes a write action without having inspected any logs or metrics first. The "red herring" penalty fires when an agent targets a service that the task explicitly marks as a distractor. The "repeat-command" penalty — inspired by kube-sre-gym — fires when the agent re-sends an identical action signature, preventing reward-hacking through action spam.
 
 **Reward range**: [-2.0, 1.0]  |  **Score range**: [0.001, 0.999]
+
+---
+
+## Curriculum Controller
+
+Inspired by kube-sre-gym's curriculum. A stateful controller tracks per-task mastery across episodes and escalates the difficulty tier automatically. Enable by passing `use_curriculum: true` to `POST /reset`.
+
+| Tier | Task Pool | Multi-Fault | Adversarial |
+|------|----------|-------------|-------------|
+| `warmup` | task1, task4 (easy single-fault) | No | No |
+| `beginner` | task1, task2, task4, task5 | No | No |
+| `intermediate` | all 7 tasks | No | No |
+| `advanced` | all 7 tasks | 2 concurrent faults | No |
+| `expert` | all 7 tasks | 2-3 faults | LLM-designed novel scenarios |
+
+**Promotion rule:** after at least 6 episodes in the current tier, if the rolling success rate (score ≥ target_score) over the last 8 episodes is ≥ 0.65, the agent is auto-promoted. Sampling is weakness-biased — tasks with lower mastery are oversampled within the current tier.
+
+---
+
+## Adversarial Scenario Designer
+
+When the curriculum reaches `expert` (or when `adversarial: true` is passed explicitly to `/reset`), the designer produces a **novel** scenario instead of loading a hand-authored JSON.
+
+- **LLM path** (when `OPENAI_API_KEY` or `HF_TOKEN` is set): Claude/GPT-4o-mini receives the agent's mastery table and designs one hard scenario targeting the weakest tasks. Returns strict JSON matching our `TaskScenario` schema.
+- **Procedural fallback** (no API key or LLM error): composes a multi-fault scenario from two base scenarios — merged log keywords, union of red herrings, tighter target score.
+
+You can inspect a fresh adversarial scenario without starting an episode:
+
+```bash
+curl -X POST $BASE/adversarial/design -H 'Content-Type: application/json' \
+  -d '{"primary_task_id":"task3","companion_task_ids":["task6"],"use_llm":true}'
+```
+
+---
+
+## LLM Judge (3 Personas)
+
+Every action is scored by an LLM (or heuristic fallback) playing one of three SRE personas. This mirrors the Snorkel-AI "simulated experts-in-the-loop" theme.
+
+| Persona | Score Range | Style |
+|---------|-------------|-------|
+| `junior` | [-0.5, 1.0] | Lenient; partial credit; rewards any reasonable attempt |
+| `senior` | [-0.75, 1.0] | Standard SRE expectations; rewards systematic diagnosis |
+| `principal` | [-1.0, 1.0] | Strict; penalises repeat commands and wrong targets, rewards minimal fixes |
+
+Switch persona mid-training:
+
+```bash
+curl -X POST $BASE/judge/config -H 'Content-Type: application/json' \
+  -d '{"persona":"principal","use_llm":true}'
+```
+
+The judge also labels each action with an SRE *phase* (`triage / investigate / fix / verify`) which feeds the phase-order bonus in the reward function. When no API key is available, the judge falls back to a deterministic heuristic so training and CI keep working.
 
 ---
 
@@ -155,9 +239,71 @@ docker run -p 7860:7860 incident-commander
 # Run heuristic baseline (no API key needed)
 curl -X POST http://localhost:7860/baseline -H 'Content-Type: application/json' -d '{"task_id":"task1"}'
 
+# Reset with curriculum + adversarial
+curl -X POST http://localhost:7860/reset -H 'Content-Type: application/json' \
+  -d '{"use_curriculum":true,"persona":"senior"}'
+
+# Inspect current curriculum state
+curl http://localhost:7860/curriculum
+
+# Design a novel adversarial scenario (procedural, no API key needed)
+curl -X POST http://localhost:7860/adversarial/design -H 'Content-Type: application/json' \
+  -d '{"primary_task_id":"task3","companion_task_ids":["task6"]}'
+
 # Run LLM inference
 API_BASE_URL=https://api.openai.com/v1 MODEL_NAME=gpt-4o HF_TOKEN=sk-... python inference.py
 ```
+
+### Environment variables
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `MOCK_MODE` | `true` | When `true`, all write actions return `[MOCK]` results. |
+| `REAL_K8S` | `false` | When `true` and the `kubernetes` Python client is installed, write actions (rollback/restart/scale/apply_config_patch) go to a real cluster via the active kubeconfig. |
+| `USE_LLM_JUDGE` | `false` | Enable LLM-based per-step judging. Requires `OPENAI_API_KEY` or `HF_TOKEN`. |
+| `JUDGE_PERSONA` | `senior` | `junior` / `senior` / `principal`. |
+| `OPENAI_API_KEY` / `HF_TOKEN` | — | Auth for LLM judge + adversarial designer. |
+| `API_BASE_URL` | `https://api.openai.com/v1` | LLM endpoint (OpenAI-compatible). |
+| `MODEL_NAME` | `gpt-4o-mini` | Default LLM for judge/designer. |
+
+---
+
+## GRPO Training (requires GPU)
+
+We ship a full TRL + vLLM colocate training pipeline in `rl-agent/training/train_grpo.py`.
+
+```bash
+# Dry run — no GPU required, verifies rollouts & reward computation
+python -m training.train_grpo --dry-run --env-url http://localhost:7860
+
+# Full training (requires ≥A100 40GB)
+python -m training.train_grpo \
+    --model Qwen/Qwen2.5-1.5B-Instruct \
+    --env-url https://sagnik-mukherjee-incodent-commander.hf.space \
+    --num-generations 8 --max-steps 200 --grad-accum 8 \
+    --vllm-mode colocate --hub-repo <your-name>/incident-commander-grpo
+```
+
+Prefer a notebook? Use [notebooks/incident_commander_colab.ipynb](notebooks/incident_commander_colab.ipynb) — mirrors the kube-sre-gym winning notebook but points at our env.
+
+### Evaluation (base vs trained)
+
+```bash
+# Heuristic-only (zero GPU)
+python -m rl_agent.eval --env-url http://localhost:7860 --episodes-per-task 3
+
+# Compare base vs LoRA checkpoint (needs transformers+torch)
+python -m rl_agent.eval \
+    --base-model Qwen/Qwen2.5-1.5B-Instruct \
+    --trained-model <your-name>/incident-commander-grpo \
+    --episodes-per-task 5 --adversarial
+```
+
+### Training roadmap
+
+1. **Week 1 (zero GPU)** — heuristic baseline already solves easy tasks; we use this window to tune LLM-judge prompts, adversarial designer prompts, and the reward weights. All of this runs on CPU against the live Space.
+2. **Week 2 (once college HF GPU credits arrive, ~3 days out)** — launch GRPO on Qwen2.5-1.5B with LoRA r=16, 200 steps, 8 generations per prompt. Expected wall-clock: ~6h on A100 40GB.
+3. **Week 3** — compare against heuristic and against kube-sre-gym's reported numbers using `eval.py --adversarial`. Push best LoRA adapter to the Hub and cite it in the final submission.
 
 ---
 
@@ -167,12 +313,16 @@ API_BASE_URL=https://api.openai.com/v1 MODEL_NAME=gpt-4o HF_TOKEN=sk-... python 
 |----------|--------|-------------|
 | `/health` | GET | Health check |
 | `/tasks` | GET | Task list with action schema |
-| `/reset` | POST | Reset environment for a task |
+| `/reset` | POST | Reset environment (accepts `task_id`, `adversarial`, `use_curriculum`, `persona`, `use_llm_judge`) |
 | `/step` | POST | Execute an action |
-| `/state` | GET | Current episode state with investigation tracking |
-| `/grader` | POST | Holistic score for last completed episode |
+| `/state` | GET | Current episode state with investigation tracking, phase, judge result |
+| `/grader` | POST | Holistic score for last completed episode + curriculum block |
 | `/baseline` | POST | Run heuristic agent and return episode trace |
-| `/dashboard` | GET | **Live diagnostic dashboard** (Plotly.js) |
+| `/curriculum` | GET | Current tier, mastery map, episode counts |
+| `/curriculum/reset` | POST | Reset curriculum state (optional `tier` to pin) |
+| `/adversarial/design` | POST | Design a novel scenario (LLM or procedural) |
+| `/judge/config` | POST | Switch judge persona / toggle LLM judge |
+| `/dashboard` | GET | **Live diagnostic dashboard** with tier + phase indicators |
 | `/docs` | GET | Swagger UI |
 
 ---

@@ -235,6 +235,14 @@
             <div id="statScore" class="stat-value">—</div>
             <div class="stat-label">Episode Score</div>
         </div>
+        <div class="stat-card">
+            <div id="statPhase" class="stat-value">—</div>
+            <div class="stat-label">SRE Phase</div>
+        </div>
+        <div class="stat-card">
+            <div id="statTier" class="stat-value">warmup</div>
+            <div class="stat-label">Curriculum Tier</div>
+        </div>
     </div>
 
     <div class="grid">
@@ -573,6 +581,15 @@
                     scoreEl.textContent = data.score.toFixed(3);
                     scoreEl.className = 'stat-value ' + (data.score > 0.6 ? 'green' : data.score > 0.3 ? 'yellow' : 'red');
                 }
+
+                // Show phase (from last action in trace)
+                const phaseEl = document.getElementById('statPhase');
+                const lastStep = (data.steps || []).slice(-1)[0] || {};
+                const phase = (lastStep.info && lastStep.info.phase) || 'verify';
+                phaseEl.textContent = phase;
+
+                // Refresh curriculum tier
+                fetchCurriculum();
             } catch (e) {
                 console.error('Baseline failed:', e);
             } finally {
@@ -585,7 +602,7 @@
         async function checkHealth() {
             try {
                 const res = await fetch(`${BASE}/health`, { signal: AbortSignal.timeout(5000) });
-                const data = await res.json();
+                await res.json();
                 document.getElementById('connBadge').className = 'badge badge-connected';
                 document.getElementById('connBadge').textContent = 'Connected';
             } catch {
@@ -594,11 +611,24 @@
             }
         }
 
+        // Curriculum tier fetch
+        async function fetchCurriculum() {
+            try {
+                const res = await fetch(`${BASE}/curriculum`, { signal: AbortSignal.timeout(5000) });
+                const data = await res.json();
+                document.getElementById('statTier').textContent = data.tier || 'warmup';
+            } catch {
+                // leave as-is
+            }
+        }
+
         // Init
         initCharts();
         updateActionTags();
         checkHealth();
+        fetchCurriculum();
         setInterval(checkHealth, 15000);
+        setInterval(fetchCurriculum, 20000);
         // Auto-reset on load
         resetEnv();
     </script>

@@ -17,6 +17,13 @@ from typing import Optional
 
 from environment.env import IncidentCommanderEnv
 from environment.models import Action, ActionType, Observation, StepResult
+from environment.curriculum import (
+    CurriculumController,
+    EpisodeOutcome,
+    TIERS,
+    TIER_TASKS,
+)
+from environment.adversarial_designer import AdversarialDesigner, DesignRequest
 
 
 # ---------------------------------------------------------------------------
@@ -45,6 +52,9 @@ TASK_METADATA = [
 async def lifespan(app: FastAPI):
     mock_val = os.getenv("MOCK_MODE", os.getenv("INCIDENT_COMMANDER_MOCK", "true"))
     app.state.env = IncidentCommanderEnv(use_mock=mock_val.lower() == "true")
+    app.state.curriculum = CurriculumController(seed=42)
+    app.state.designer = AdversarialDesigner(base_scenarios_dir=SCENARIOS_DIR)
+    app.state.last_adversarial_scenario = None
     yield
 
 
@@ -58,6 +68,11 @@ app = FastAPI(
 
 class ResetRequest(BaseModel):
     task_id: str = "task1"
+    # New: advanced reset options
+    adversarial: bool = False               # ask designer for a novel scenario
+    use_curriculum: bool = False            # auto-pick task from curriculum tier
+    persona: Optional[str] = None           # junior | senior | principal
+    use_llm_judge: Optional[bool] = None    # override USE_LLM_JUDGE env var
 
 
 class StepRequest(BaseModel):
@@ -68,9 +83,47 @@ class StepRequest(BaseModel):
 @app.post("/reset")
 def reset(req: Optional[ResetRequest] = Body(default=None)) -> dict:
     env: IncidentCommanderEnv = app.state.env
-    task_id = req.task_id if req is not None else "task1"
+    curriculum: CurriculumController = app.state.curriculum
+    designer: AdversarialDesigner = app.state.designer
+    req = req or ResetRequest()
+
+    # Optionally override persona / judge mode for this episode.
+    if req.persona in ("junior", "senior", "principal"):
+        env._judge_persona = req.persona
+    if req.use_llm_judge is not None:
+        env._use_llm_judge = bool(req.use_llm_judge)
+
+    scenario_override = None
+    task_id = req.task_id
+
+    if req.use_curriculum:
+        pick = curriculum.sample_task()
+        task_id = pick["task_id"]
+        if pick["adversarial"] or req.adversarial:
+            scenario_override = designer.design(DesignRequest(
+                primary_task_id=task_id,
+                companion_task_ids=pick["companion_task_ids"],
+                mastery=curriculum.state.per_task_mastery,
+                use_llm=True,
+            ))
+        elif pick["multi_fault"] and pick["companion_task_ids"]:
+            scenario_override = designer.compose_multi_fault(
+                [task_id, *pick["companion_task_ids"]]
+            )
+    elif req.adversarial:
+        scenario_override = designer.design(DesignRequest(
+            primary_task_id=task_id,
+            companion_task_ids=[],
+            mastery=curriculum.state.per_task_mastery,
+            use_llm=True,
+        ))
+
+    app.state.last_adversarial_scenario = (
+        scenario_override.model_dump() if scenario_override is not None else None
+    )
+
     try:
-        obs = env.reset(task_id)
+        obs = env.reset(task_id, scenario=scenario_override)
         return obs.model_dump(mode="json")
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -107,9 +160,26 @@ def health() -> dict:
 def root() -> dict:
     return {
         "name": "incident-commander",
-        "version": "1.0.0",
+        "version": "2.0.0",
         "tasks": len(TASK_METADATA),
-        "endpoints": ["/reset", "/step", "/state", "/health", "/tasks", "/grader", "/baseline", "/dashboard", "/docs"],
+        "curriculum_tiers": TIERS,
+        "features": [
+            "7 hand-authored tasks + unlimited adversarial scenarios",
+            "Context-gated rewards (acting-blind, red-herring, repeat-cmd)",
+            "Phase-aware rewards (triage -> investigate -> fix -> verify)",
+            "3-persona LLM judge (junior / senior / principal)",
+            "Curriculum controller with per-fault mastery tracking",
+            "Adversarial scenario designer (LLM + procedural fallback)",
+            "Holistic episode grading",
+            "Live Plotly.js dashboard",
+            "Optional real Kubernetes backend (REAL_K8S=true)",
+            "GRPO training pipeline (TRL + vLLM)",
+        ],
+        "endpoints": [
+            "/reset", "/step", "/state", "/health", "/tasks", "/grader", "/baseline",
+            "/dashboard", "/curriculum", "/curriculum/reset", "/adversarial/design",
+            "/judge/config", "/docs",
+        ],
     }
 
 
@@ -137,9 +207,37 @@ class GraderRequest(BaseModel):
 
 @app.post("/grader")
 def grader(req: Optional[GraderRequest] = Body(default=None)) -> dict:
-    """Grade the last completed episode holistically. Returns scores in [0.001, 0.999]."""
+    """Grade the last completed episode holistically. Returns scores in [0.001, 0.999].
+
+    Also records the outcome to the curriculum controller so the next `/reset`
+    call with `use_curriculum=true` can pick a harder or easier task.
+    """
     env: IncidentCommanderEnv = app.state.env
+    curriculum: CurriculumController = app.state.curriculum
     scores = env.grade_episode()
+
+    # Record to curriculum if we have a finished episode with a task.
+    task = env._task
+    if task is not None and env._done and "total" in scores:
+        try:
+            outcome = EpisodeOutcome(
+                task_id=task.task_id,
+                score=float(scores["total"]),
+                target_score=float(task.target_score or 0.5),
+                steps=env._step_count,
+                mitigation_applied=env._mitigation_applied,
+                root_cause_correct=env._root_cause_identified,
+                tier=curriculum.state.tier,
+            )
+            promo = curriculum.record_episode(outcome)
+            scores["curriculum"] = {
+                "tier": promo["tier"],
+                "promoted": promo["promoted"],
+                "episodes_in_tier": promo["episodes_in_tier"],
+                "total_episodes": promo["total_episodes"],
+            }
+        except Exception:
+            pass
     return scores
 
 
@@ -310,3 +408,92 @@ def dashboard():
     if html_path.exists():
         return HTMLResponse(content=html_path.read_text(encoding="utf-8"), status_code=200)
     return HTMLResponse(content="<h1>Dashboard not found</h1>", status_code=404)
+
+
+# ---------------------------------------------------------------------------
+# Curriculum, adversarial, judge — new endpoints inspired by kube-sre-gym
+# ---------------------------------------------------------------------------
+
+
+@app.get("/curriculum")
+def curriculum_state() -> dict:
+    """Return the current curriculum snapshot.
+
+    Shows tier, mastery per task, rolling success rate, and whether the
+    next reset with `use_curriculum=true` will enable adversarial/multi-fault.
+    """
+    return app.state.curriculum.snapshot()
+
+
+class CurriculumResetRequest(BaseModel):
+    tier: Optional[str] = None
+
+
+@app.post("/curriculum/reset")
+def curriculum_reset(req: Optional[CurriculumResetRequest] = Body(default=None)) -> dict:
+    """Reset the curriculum (or jump to a specific tier)."""
+    curriculum: CurriculumController = app.state.curriculum
+    if req and req.tier:
+        try:
+            curriculum.force_tier(req.tier)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+    else:
+        curriculum.reset()
+    return curriculum.snapshot()
+
+
+class AdversarialRequest(BaseModel):
+    primary_task_id: str = "task1"
+    companion_task_ids: list[str] = []
+    use_llm: bool = True
+
+
+@app.post("/adversarial/design")
+def adversarial_design(req: Optional[AdversarialRequest] = Body(default=None)) -> dict:
+    """Design a novel adversarial scenario (LLM if key present, else procedural).
+
+    Useful for inspecting what the designer produces without starting an episode.
+    """
+    designer: AdversarialDesigner = app.state.designer
+    curriculum: CurriculumController = app.state.curriculum
+    req = req or AdversarialRequest()
+    try:
+        scenario = designer.design(DesignRequest(
+            primary_task_id=req.primary_task_id,
+            companion_task_ids=req.companion_task_ids,
+            mastery=curriculum.state.per_task_mastery,
+            use_llm=req.use_llm,
+        ))
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    return scenario.model_dump()
+
+
+class JudgeConfigRequest(BaseModel):
+    persona: Optional[str] = None            # junior | senior | principal
+    use_llm: Optional[bool] = None
+
+
+@app.post("/judge/config")
+def judge_config(req: Optional[JudgeConfigRequest] = Body(default=None)) -> dict:
+    """Configure the per-step judge for subsequent episodes.
+
+    Sets persona (junior/senior/principal) and whether to call the LLM or use
+    the heuristic fallback. State persists across resets until changed again.
+    """
+    env: IncidentCommanderEnv = app.state.env
+    req = req or JudgeConfigRequest()
+    if req.persona:
+        if req.persona not in ("junior", "senior", "principal"):
+            raise HTTPException(status_code=400, detail="persona must be junior|senior|principal")
+        env._judge_persona = req.persona
+    if req.use_llm is not None:
+        env._use_llm_judge = bool(req.use_llm)
+    return {
+        "persona": env._judge_persona,
+        "use_llm_judge": env._use_llm_judge,
+        "has_api_key": bool(
+            os.getenv("OPENAI_API_KEY") or os.getenv("HF_TOKEN")
+        ),
+    }
