@@ -1,0 +1,14 @@
+{
+  "task_id": "task10",
+  "difficulty": "medium",
+  "target_score": 0.45,
+  "fault_type": "resource_quota",
+  "chaos_experiment_name": "",
+  "ground_truth_root_cause": "namespace_resource_quota_blocking_scheduling",
+  "correct_mitigation_action": "apply_config_patch",
+  "correct_mitigation_target": "payments-worker",
+  "wrong_mitigation_penalty_services": ["payments-api"],
+  "useful_log_keywords": ["exceeded quota", "ResourceQuota", "pods", "FailedCreate", "forbidden"],
+  "red_herrings": ["auth-service"],
+  "reference_postmortem": "A tight ResourceQuota (pods=1, requests.memory=64Mi) applied to ic-payments is preventing payments-worker from scaling past one replica. Events show 'exceeded quota: ic-tight-quota'. Mitigation: remove or widen the ResourceQuota via apply_config_patch on payments-worker's namespace. Follow-up: move quotas to Gatekeeper policies with per-team budgets."
+}

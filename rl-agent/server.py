@@ -48,6 +48,14 @@ TASK_METADATA = [
      "description": "Expired mTLS certificate breaks payments-api to postgres connection. ECONNRESET and upstream timeouts are symptoms."},
     {"id": "task7", "name": "ConfigMap Hot-Reload Race Condition", "difficulty": "hard", "target_score": 0.20,
      "description": "ConfigMap update triggers race condition — some pods load new config, others retain stale values. Redis and GC alerts are red herrings."},
+    {"id": "task8", "name": "JWT Secret Rotation Cascade", "difficulty": "medium", "target_score": 0.45,
+     "description": "auth-service rotated JWT_SECRET without a dual-signing window. Downstream 401s look like an inventory-service outage."},
+    {"id": "task9", "name": "Invalid Image Tag Deploy", "difficulty": "easy", "target_score": 0.80,
+     "description": "checkout-frontend was deployed with a non-existent image tag. Pods stuck in ImagePullBackOff; rollback restores health."},
+    {"id": "task10", "name": "Namespace ResourceQuota Starvation", "difficulty": "medium", "target_score": 0.45,
+     "description": "A tight ResourceQuota blocks payments-worker from scheduling. Events show 'exceeded quota'."},
+    {"id": "task11", "name": "Liveness Probe Path Regression", "difficulty": "hard", "target_score": 0.20,
+     "description": "inventory-service's liveness probe path regressed to /nonexistent-probe, causing kubelet restart loops masked as ingress 502s."},
 ]
 
 

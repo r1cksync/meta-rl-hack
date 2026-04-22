@@ -1,0 +1,14 @@
+{
+  "task_id": "task9",
+  "difficulty": "easy",
+  "target_score": 0.80,
+  "fault_type": "image_pull",
+  "chaos_experiment_name": "",
+  "ground_truth_root_cause": "invalid_container_image_tag",
+  "correct_mitigation_action": "rollback_deployment",
+  "correct_mitigation_target": "checkout-frontend",
+  "wrong_mitigation_penalty_services": ["payments-api", "inventory-service"],
+  "useful_log_keywords": ["ImagePullBackOff", "ErrImagePull", "manifest", "not found", "pull"],
+  "red_herrings": [],
+  "reference_postmortem": "A recent deployment pushed checkout-frontend with image tag 'this-tag-definitely-does-not-exist-99999'. All new pods stuck in ImagePullBackOff; the old ReplicaSet still holds the healthy revision. Mitigation: rollback checkout-frontend to the previous revision. Follow-up: add an admission webhook that validates image tags exist in the registry before accepting the Deployment."
+}

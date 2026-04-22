@@ -1,13 +1,90 @@
-# RUNBOOK — Local end-to-end training on your own machine
+# RUNBOOK — End-to-end training
 
-This runbook takes you from a fresh clone to a GRPO training loop running
-against a **real Kubernetes cluster** on your laptop. No HF credits needed.
+Two paths: **AWS EKS** (recommended, real cloud cluster) or **local kind**
+(free, Docker-based). Both use identical agent code — only the backend swaps.
 
-Total setup time: ~15 min (most of it Docker pulling images).
+For detailed env-var wiring see [ENV.md](ENV.md).
+
+| Path | Cost | Pros | Cons |
+|---|---|---|---|
+| AWS EKS | ~$4-5/day while running | real cloud, CloudWatch logs, S3 checkpoints | needs AWS account |
+| Local kind | free | offline, fast iterate | no cloud services |
 
 ---
 
-## 0. Prerequisites
+## Path A — AWS EKS (recommended)
+
+### A.1 Provision
+
+```powershell
+aws configure                   # one-time
+.\scripts\setup_eks.ps1         # ~12 min
+.\scripts\load_env.ps1 .env.aws.local
+```
+
+### A.2 Install Python deps
+
+```powershell
+pip install -r rl-agent/requirements.txt
+pip install -r rl-agent/requirements-train.txt
+```
+
+### A.3 Start the env server
+
+```powershell
+cd rl-agent
+uvicorn server:app --host 127.0.0.1 --port 7860
+```
+
+Verify: `curl.exe http://localhost:7860/k8s/health` → `"enabled": true`.
+
+### A.4 Smoke-test real fault injection
+
+```powershell
+curl.exe -X POST http://localhost:7860/k8s/inject `
+  -H "Content-Type: application/json" `
+  -d '{\"fault_type\":\"oom_kill\"}'
+kubectl -n ic-payments get pods -w
+curl.exe -X POST http://localhost:7860/k8s/reset
+```
+
+All 9 fault types: `oom_kill`, `crashloop`, `image_pull`, `bad_config`,
+`scale_zero`, `liveness_probe`, `resource_quota`, `secret_mismatch`,
+`wrong_image_tag`.
+
+### A.5 Training
+
+```powershell
+# sanity-check the pipeline — no GPU needed, no model download
+cd rl-agent
+python -m training.train_grpo --local --dry-run
+
+# real GRPO against the live EKS cluster, 50 steps, ~8GB VRAM
+python -m training.train_grpo --local `
+    --env-url http://localhost:7860 `
+    --inject-fault oom_kill `
+    --max-steps 50
+```
+
+Checkpoints land in `rl-agent/checkpoints/grpo/` **and** are uploaded to
+`s3://$S3_CHECKPOINT_BUCKET/grpo/<timestamp>/final/` automatically.
+
+### A.6 Evaluate
+
+```powershell
+cd rl-agent
+python -m eval --env-url http://localhost:7860
+```
+
+### A.7 Teardown (important — EKS bills hourly)
+
+```powershell
+.\scripts\teardown_eks.ps1
+```
+
+---
+
+## Path B — Local kind (no cloud)
 
 | Tool | Where to get it | Windows quick-install |
 |---|---|---|

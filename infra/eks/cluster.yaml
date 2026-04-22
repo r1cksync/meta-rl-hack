@@ -1,0 +1,34 @@
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+
+metadata:
+  name: incident-commander
+  region: us-east-1
+  version: "1.30"
+
+# Very small, cheap cluster. 2 x t3.medium ($0.0416/hr each) => ~$2/day
+# plus $0.10/hr EKS control plane = ~$4.40/day total.
+# Scale nodes to 0 with `eksctl scale nodegroup ... --nodes=0` when idle.
+managedNodeGroups:
+  - name: ic-workers
+    instanceType: t3.medium
+    desiredCapacity: 2
+    minSize: 1
+    maxSize: 3
+    volumeSize: 30
+    labels:
+      role: app
+    tags:
+      Project: incident-commander
+    iam:
+      withAddonPolicies:
+        cloudWatch: true
+        ebs: true
+
+# CloudWatch Container Insights for real log/metric queries from the agent.
+cloudWatch:
+  clusterLogging:
+    enableTypes: ["api", "audit", "authenticator", "controllerManager", "scheduler"]
+
+iam:
+  withOIDC: true

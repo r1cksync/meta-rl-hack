@@ -55,6 +55,10 @@ TASK_FILE_MAP = {
     "task5": "medium_dns_resolution.json",
     "task6": "hard_tls_cert_expiry.json",
     "task7": "hard_config_race_condition.json",
+    "task8": "medium_jwt_secret_rotation.json",
+    "task9": "easy_image_pull_backoff.json",
+    "task10": "medium_resource_quota.json",
+    "task11": "hard_liveness_probe_regression.json",
 }
 
 # Ground truth for reward computation
@@ -66,6 +70,10 @@ CORRECT_SERVICES = {
     "task5": None,  # correct action is delete_chaos_experiment
     "task6": "payments-api",
     "task7": "inventory-service",
+    "task8": "auth-service",
+    "task9": "checkout-frontend",
+    "task10": "payments-worker",
+    "task11": "inventory-service",
 }
 
 ALL_AVAILABLE_ACTIONS = [a.value for a in ActionType]
@@ -135,6 +143,13 @@ class IncidentCommanderEnv:
         self._judge_persona = os.getenv("JUDGE_PERSONA", "senior")
         self._use_llm_judge = os.getenv("USE_LLM_JUDGE", "false").lower() in ("1", "true", "yes")
 
+        # Optional AWS — CloudWatch Logs reader. Disabled unless env vars set.
+        try:
+            from .aws_integrations import CloudWatchLogsReader
+            self._cw_logs = CloudWatchLogsReader()
+        except Exception:
+            self._cw_logs = None
+
     # ------------------------------------------------------------------
     # OpenEnv API
     # ------------------------------------------------------------------
@@ -196,6 +211,7 @@ class IncidentCommanderEnv:
         self._phase_history = []
         self._seen_action_signatures = {}
         self._last_judge_result = None
+        self._useful_log_query_count = 0
         return self._build_mock_observation()
 
     def _sync_step(self, action: Action) -> StepResult:
@@ -276,6 +292,12 @@ class IncidentCommanderEnv:
         if t == ActionType.QUERY_LOGS:
             svc = p.get("service", "")
             self._inspected_logs.add(svc)
+            # Prefer real CloudWatch logs when available.
+            cw = getattr(self, "_cw_logs", None)
+            if cw is not None and cw.enabled:
+                lines = cw.query(svc, last_minutes=int(p.get("last_minutes", 5)))
+                if lines:
+                    return "\n".join(lines[:50])
             return self._mock_query_logs(svc, p.get("filter_text"))
         elif t == ActionType.QUERY_METRICS:
             self._inspected_metrics = True
@@ -389,7 +411,7 @@ class IncidentCommanderEnv:
         self._root_cause_identified = False
         self._mitigation_applied = False
         self._cumulative_reward = 0.0
-
+        self._useful_log_query_count = 0
         if not self._mock:
             # 1. Clean up previous faults
             await self._reset_cluster()
@@ -1112,6 +1134,7 @@ class IncidentCommanderEnv:
             keywords = task.useful_log_keywords
             if any(kw.lower() in action_result.lower() for kw in keywords):
                 breakdown["useful_log_query"] = 0.1
+                self._useful_log_query_count = getattr(self, "_useful_log_query_count", 0) + 1
 
         # --- Postmortem quality (+0.2) ---
         if action.type == ActionType.SUBMIT_POSTMORTEM:
@@ -1175,6 +1198,55 @@ class IncidentCommanderEnv:
         # rewards dominated by deterministic signals.
         if judge_score != 0.0:
             breakdown["judge"] = max(-0.1, min(0.15, judge_score * 0.15))
+
+        # --- Evidence alignment (+0.10) ---
+        # The postmortem root-cause claim is supported by a log query whose
+        # result actually contained useful keywords (we track via useful_log_query).
+        if action.type == ActionType.SUBMIT_POSTMORTEM and self._root_cause_identified:
+            if getattr(self, "_useful_log_query_count", 0) > 0:
+                breakdown["evidence_alignment"] = 0.10
+
+        # --- Mitigation efficiency (+0.15 if fixed in <=3 write actions) ---
+        if action.type == ActionType.SUBMIT_POSTMORTEM and self._mitigation_applied:
+            write_count = sum(1 for a in self._action_history
+                              if a.get("action_type") in {w.value for w in WRITE_ACTIONS})
+            if write_count <= 3:
+                breakdown["mitigation_efficiency"] = 0.15
+            elif write_count > 6:
+                breakdown["mitigation_thrash_penalty"] = -0.10
+
+        # --- Recovery verified against real cluster (+0.20) ---
+        # If the backend is real AND, after the agent's mitigation, pods on
+        # the correct service reached the Running/Ready state, reward it.
+        if (action.type == ActionType.SUBMIT_POSTMORTEM
+                and self._mitigation_applied
+                and getattr(self._k8s_backend, "enabled", False)):
+            try:
+                correct = CORRECT_SERVICES.get(task_id)
+                if correct:
+                    health = self._k8s_backend.check_health_detailed()
+                    pods_ok = any(
+                        (p.get("phase") == "Running" and not p.get("waiting_reason"))
+                        for ns_pods in health.values()
+                        for name, p in ns_pods.items()
+                        if correct in name
+                    )
+                    if pods_ok:
+                        breakdown["recovery_verified"] = 0.20
+            except Exception:
+                pass
+
+        # --- Diverse-evidence bonus (+0.05) ---
+        # Reward the agent for consulting >=3 different evidence sources
+        # (logs, metrics, deps, traces, exec).
+        sources = 0
+        sources += int(bool(self._inspected_logs))
+        sources += int(self._inspected_metrics)
+        sources += int(bool(self._inspected_deps))
+        sources += int(self._inspected_traces)
+        sources += int(any(k.startswith("exec:") for k in self._inspected_logs))
+        if action.type == ActionType.SUBMIT_POSTMORTEM and sources >= 3:
+            breakdown["diverse_evidence"] = 0.05
 
         total = sum(breakdown.values())
         self._last_reward_breakdown = breakdown

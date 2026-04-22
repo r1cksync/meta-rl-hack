@@ -405,6 +405,17 @@ def main() -> None:
     if args.hub_repo:
         trainer.push_to_hub(args.hub_repo)
 
+    # Upload final checkpoint to S3 if configured.
+    try:
+        import sys
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+        from environment.aws_integrations import S3CheckpointUploader  # type: ignore
+        up = S3CheckpointUploader(prefix=f"grpo/{int(t0)}")
+        if up.enabled:
+            up.upload_dir(args.out_dir, "final")
+    except Exception as e:
+        log.warning("S3 upload skipped: %s", e)
+
 
 if __name__ == "__main__":
     main()

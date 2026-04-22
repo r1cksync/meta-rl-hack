@@ -1,0 +1,14 @@
+{
+  "task_id": "task11",
+  "difficulty": "hard",
+  "target_score": 0.20,
+  "fault_type": "liveness_probe",
+  "chaos_experiment_name": "",
+  "ground_truth_root_cause": "liveness_probe_path_regression_causes_restart_loop",
+  "correct_mitigation_action": "rollback_deployment",
+  "correct_mitigation_target": "inventory-service",
+  "wrong_mitigation_penalty_services": ["payments-api", "checkout-frontend", "auth-service"],
+  "useful_log_keywords": ["Liveness probe failed", "404", "nonexistent-probe", "Killing", "restart"],
+  "red_herrings": ["redis", "payments-worker"],
+  "reference_postmortem": "A recent inventory-service release changed the liveness probe path from /healthz to /nonexistent-probe. Kubelet restarts every pod after 3 failures, masking the real symptom as intermittent 502s at the ingress. The inventory service itself is healthy — only the probe is wrong. Mitigation: rollback inventory-service to the previous revision. Follow-up: gate probe-path changes behind a canary + synthetic health check."
+}
