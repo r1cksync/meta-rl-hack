@@ -84,6 +84,14 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--out-dir", default="./checkpoints/grpo")
     p.add_argument("--dry-run", action="store_true",
                    help="Skip training; just verify the pipeline end-to-end.")
+    p.add_argument("--local", action="store_true",
+                   help="Local preset: tiny model + LoRA + 4-bit, runs on consumer GPU.")
+    p.add_argument("--4bit", dest="four_bit", action="store_true",
+                   help="Load the base model in 4-bit via bitsandbytes.")
+    p.add_argument("--no-hub-push", action="store_true",
+                   help="Disable pushing LoRA adapters to the Hub.")
+    p.add_argument("--inject-fault", default=None,
+                   help="If set, call /k8s/inject with this fault_type each reset (requires REAL_K8S).")
     return p.parse_args()
 
 
@@ -247,9 +255,36 @@ def episode_reward(rollout: Rollout) -> float:
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     args = parse_args()
+
+    # --local preset: small model + LoRA + 4-bit so an 8GB consumer GPU works.
+    if args.local:
+        if args.model == "Qwen/Qwen2.5-1.5B-Instruct":
+            args.model = "Qwen/Qwen2.5-0.5B-Instruct"
+        args.num_generations = max(2, min(args.num_generations, 4))
+        args.grad_accum = max(args.grad_accum, 4)
+        args.max_steps = min(args.max_steps, 60)
+        args.vllm_mode = "server"  # plain HF generation — vLLM colocate needs >=40GB
+        args.four_bit = True
+        if args.no_hub_push or not args.hub_repo:
+            args.hub_repo = None
+        log.info("--local preset: model=%s steps=%d gens=%d 4bit=%s",
+                 args.model, args.max_steps, args.num_generations, args.four_bit)
+
     os.makedirs(args.out_dir, exist_ok=True)
 
     client = OpenEnvClient(args.env_url, persona=args.persona, use_llm_judge=False)
+
+    # Optional: inject a real fault before each reset if REAL_K8S is active.
+    if args.inject_fault:
+        def _inject():
+            try:
+                client._c.post(f"{client._base}/k8s/inject",
+                               json={"fault_type": args.inject_fault}, timeout=30.0)
+            except Exception as e:
+                log.warning("inject_failure failed: %s", e)
+        _inject_hook = _inject
+    else:
+        _inject_hook = None
 
     # Import heavy deps only when actually training.
     if args.dry_run:
@@ -290,6 +325,8 @@ def main() -> None:
         """Compute GRPO reward by actually playing out each completion."""
         rewards: list[float] = []
         for prompt, completion in zip(prompts, completions):
+            if _inject_hook is not None:
+                _inject_hook()
             # For real training, each `completion` is one action; we play a
             # short episode that uses the model's greedy completion as step 0
             # and then lets the curriculum roll the rest with a zero-shot stub.
@@ -318,21 +355,25 @@ def main() -> None:
         max_steps=args.max_steps,
         save_steps=args.save_steps,
         logging_steps=1,
-        bf16=True,
+        bf16=not args.four_bit,
+        fp16=args.four_bit and not torch.cuda.is_bf16_supported(),
         push_to_hub=bool(args.hub_repo),
         hub_model_id=args.hub_repo,
         use_vllm=(args.vllm_mode == "colocate"),
         vllm_mode="colocate" if args.vllm_mode == "colocate" else "server",
         report_to="none",
+        per_device_train_batch_size=1,
     )
 
     lora = LoraConfig(
-        r=16, lora_alpha=32, lora_dropout=0.05,
+        r=8 if args.local else 16,
+        lora_alpha=16 if args.local else 32,
+        lora_dropout=0.05,
         target_modules=["q_proj", "k_proj", "v_proj", "o_proj"],
         bias="none", task_type="CAUSAL_LM",
     )
 
-    trainer = GRPOTrainer(
+    trainer_kwargs: dict[str, Any] = dict(
         model=args.model,
         args=config,
         train_dataset=ds,
@@ -340,6 +381,21 @@ def main() -> None:
         peft_config=lora,
         processing_class=tokenizer,
     )
+
+    if args.four_bit:
+        # Preload the model 4-bit so trl picks it up instead of the id string.
+        try:
+            from transformers import AutoModelForCausalLM, BitsAndBytesConfig  # type: ignore
+        except ImportError as e:
+            raise RuntimeError("4-bit requires bitsandbytes + transformers") from e
+        bnb = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_compute_dtype=torch.float16,
+                                 bnb_4bit_quant_type="nf4")
+        log.info("loading %s in 4-bit", args.model)
+        model = AutoModelForCausalLM.from_pretrained(
+            args.model, quantization_config=bnb, device_map="auto")
+        trainer_kwargs["model"] = model
+
+    trainer = GRPOTrainer(**trainer_kwargs)
 
     log.info("starting GRPO training: model=%s steps=%d", args.model, args.max_steps)
     t0 = time.time()

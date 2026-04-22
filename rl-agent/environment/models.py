@@ -46,6 +46,7 @@ class ActionType(str, Enum):
     APPLY_CONFIG_PATCH = "apply_config_patch"
     DELETE_CHAOS_EXPERIMENT = "delete_chaos_experiment"
     SUBMIT_POSTMORTEM = "submit_postmortem"
+    EXEC_KUBECTL = "exec_kubectl"
 
 
 WRITE_ACTIONS = {

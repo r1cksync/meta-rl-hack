@@ -1,0 +1,48 @@
+# payments-api: HEALTHY baseline. Agent must restore this spec.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payments-api
+  namespace: ic-payments
+  labels: {app: payments-api, tier: api}
+spec:
+  replicas: 2
+  selector: {matchLabels: {app: payments-api}}
+  template:
+    metadata:
+      labels: {app: payments-api, tier: api}
+    spec:
+      containers:
+        - name: payments-api
+          image: python:3.11-slim
+          command: ["python", "-c"]
+          args:
+            - |
+              import http.server, os, json
+              port = int(os.environ.get('PORT', '8080'))
+              db = os.environ.get('DATABASE_URL', 'postgres://payments-db:5432/payments')
+              class H(http.server.BaseHTTPRequestHandler):
+                  def do_GET(self):
+                      self.send_response(200); self.end_headers()
+                      self.wfile.write(json.dumps({'ok': True, 'db': db}).encode())
+                  def log_message(self, *a, **k): pass
+              print(f'payments-api ready on :{port} db={db}', flush=True)
+              http.server.HTTPServer(('', port), H).serve_forever()
+          ports: [{containerPort: 8080}]
+          env:
+            - {name: PORT,         value: "8080"}
+            - {name: DATABASE_URL, value: "postgres://payments-db.ic-payments.svc.cluster.local:5432/payments"}
+          resources:
+            requests: {cpu: 50m,  memory: 64Mi}
+            limits:   {cpu: 200m, memory: 256Mi}
+          livenessProbe:
+            httpGet: {path: /, port: 8080}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata: {name: payments-api, namespace: ic-payments}
+spec:
+  selector: {app: payments-api}
+  ports: [{port: 8080, targetPort: 8080}]

@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payments-worker
+  namespace: ic-payments
+  labels: {app: payments-worker, tier: worker}
+spec:
+  replicas: 2
+  selector: {matchLabels: {app: payments-worker}}
+  template:
+    metadata:
+      labels: {app: payments-worker, tier: worker}
+    spec:
+      containers:
+        - name: payments-worker
+          image: python:3.11-slim
+          command: ["python", "-c"]
+          args:
+            - |
+              import os, time, sys
+              db = os.environ.get('DATABASE_URL', 'postgres://payments-db:5432/payments')
+              print(f'payments-worker ready db={db}', flush=True)
+              while True:
+                  time.sleep(5); print('processing job batch', flush=True)
+          env:
+            - {name: DATABASE_URL, value: "postgres://payments-db.ic-payments.svc.cluster.local:5432/payments"}
+          resources:
+            requests: {cpu: 50m,  memory: 64Mi}
+            limits:   {cpu: 200m, memory: 256Mi}

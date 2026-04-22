@@ -1,0 +1,12 @@
+# Local training extras — installed on the developer's machine, NOT inside
+# the HF Space docker image. Keeps the server deployable on a free-tier Space
+# while the trainer runs against a local kind cluster + a small GPU.
+-r requirements.txt
+torch>=2.3.0
+transformers>=4.45
+peft>=0.13
+accelerate>=1.0
+trl>=0.29.0
+datasets>=2.20
+bitsandbytes>=0.43  # 4-bit quant so Qwen2.5-0.5B fits on an 8GB GPU
+tabulate>=0.9       # optional; makes kubectl-style output nicer

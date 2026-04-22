@@ -6,6 +6,7 @@ This is the entry point for the Hugging Face Space deployment.
 from __future__ import annotations
 
 import json
+import logging
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -24,6 +25,8 @@ from environment.curriculum import (
     TIER_TASKS,
 )
 from environment.adversarial_designer import AdversarialDesigner, DesignRequest
+
+log = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -73,6 +76,7 @@ class ResetRequest(BaseModel):
     use_curriculum: bool = False            # auto-pick task from curriculum tier
     persona: Optional[str] = None           # junior | senior | principal
     use_llm_judge: Optional[bool] = None    # override USE_LLM_JUDGE env var
+    real_mode: bool = False                 # actually inject into the live cluster
 
 
 class StepRequest(BaseModel):
@@ -124,6 +128,19 @@ def reset(req: Optional[ResetRequest] = Body(default=None)) -> dict:
 
     try:
         obs = env.reset(task_id, scenario=scenario_override)
+        # Real-mode: restore cluster to healthy, then inject the task's fault.
+        if req.real_mode and env._k8s_backend.enabled:
+            try:
+                from environment.k8s_constants import FAULT_DEFAULT_TARGETS
+                env._k8s_backend.reset_to_healthy()
+                env._k8s_backend.wait_for_healthy(timeout_s=60)
+                fault_type = (scenario_override.fault_type if scenario_override
+                              else getattr(env._task, "fault_type", None))
+                if fault_type:
+                    ns, dep = FAULT_DEFAULT_TARGETS.get(fault_type, (None, None))
+                    env._k8s_backend.inject_failure(fault_type, ns, dep)
+            except Exception as e:
+                log.warning("real_mode inject failed: %s", e)
         return obs.model_dump(mode="json")
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -194,6 +211,7 @@ def tasks() -> list[dict]:
         "read_actions": ["query_logs", "query_metrics", "get_service_dependencies", "get_trace"],
         "write_actions": ["rollback_deployment", "restart_pods", "scale_deployment", "apply_config_patch", "delete_chaos_experiment"],
         "terminal_actions": ["submit_postmortem"],
+        "real_cluster_actions": ["exec_kubectl"],
     }
     return [
         {**t, "action_schema": action_schema}
@@ -497,3 +515,59 @@ def judge_config(req: Optional[JudgeConfigRequest] = Body(default=None)) -> dict
             os.getenv("OPENAI_API_KEY") or os.getenv("HF_TOKEN")
         ),
     }
+
+
+# ---------------------------------------------------------------------------
+# Real-cluster control (kind / GKE / any kubeconfig). No-op in mock mode.
+# ---------------------------------------------------------------------------
+
+class InjectRequest(BaseModel):
+    fault_type: str
+    namespace: Optional[str] = None
+    deployment: Optional[str] = None
+
+
+class ExecRequest(BaseModel):
+    command: str
+
+
+@app.get("/k8s/health")
+def k8s_health() -> dict:
+    """Return real-cluster pod health (or {} in mock mode)."""
+    env: IncidentCommanderEnv = app.state.env
+    be = env._k8s_backend
+    return {"enabled": be.enabled, "health": be.check_health_detailed()}
+
+
+@app.post("/k8s/inject")
+def k8s_inject(req: InjectRequest) -> dict:
+    """Inject a real fault into the running kind/GKE cluster.
+
+    Fault types: oom_kill, crashloop, image_pull, bad_config, scale_zero,
+    liveness_probe, resource_quota, secret_mismatch, wrong_image_tag.
+    """
+    env: IncidentCommanderEnv = app.state.env
+    if not env._k8s_backend.enabled:
+        raise HTTPException(status_code=409,
+                            detail="real K8s backend disabled (set REAL_K8S=true)")
+    return env._k8s_backend.inject_failure(req.fault_type, req.namespace, req.deployment)
+
+
+@app.post("/k8s/reset")
+def k8s_reset() -> dict:
+    """Restore all tracked deployments to their HEALTHY_STATE spec."""
+    env: IncidentCommanderEnv = app.state.env
+    if not env._k8s_backend.enabled:
+        raise HTTPException(status_code=409,
+                            detail="real K8s backend disabled (set REAL_K8S=true)")
+    logs = env._k8s_backend.reset_to_healthy()
+    healthy = env._k8s_backend.wait_for_healthy(timeout_s=60)
+    return {"ok": healthy, "logs": logs}
+
+
+@app.post("/k8s/exec")
+def k8s_exec(req: ExecRequest) -> dict:
+    """Run an arbitrary kubectl command through the backend (real or mock)."""
+    env: IncidentCommanderEnv = app.state.env
+    return {"output": env._k8s_backend.execute(req.command),
+            "real": env._k8s_backend.enabled}

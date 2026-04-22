@@ -1,0 +1,19 @@
+# Namespaces for the IncidentCommander sample_app.
+# Mirrors AcmeCorp's 3 tiers: payments (money), frontend (user-facing), auth (security).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ic-payments
+  labels: {app.kubernetes.io/part-of: incident-commander, tier: payments}
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ic-frontend
+  labels: {app.kubernetes.io/part-of: incident-commander, tier: frontend}
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ic-auth
+  labels: {app.kubernetes.io/part-of: incident-commander, tier: auth}

@@ -319,6 +319,18 @@ class IncidentCommanderEnv:
             if self._task and self._task.chaos_experiment_name == exp:
                 self._mitigation_applied = True
             return f"[MOCK] Deleted Chaos Mesh experiment '{exp}'."
+        elif t == ActionType.EXEC_KUBECTL:
+            cmd = p.get("command", "").strip()
+            if not cmd:
+                return "error: EXEC_KUBECTL requires params.command (kubectl-style string)"
+            # Track read vs write via simple verb parsing for reward shaping.
+            verb = cmd.replace("kubectl ", "", 1).strip().split(" ", 1)[0] if cmd else ""
+            if verb in ("set", "scale", "rollout", "patch", "delete", "apply"):
+                # Detect whether the agent hit the correct mitigation target.
+                if self._task and self._task.correct_mitigation_target \
+                        and self._task.correct_mitigation_target in cmd:
+                    self._mitigation_applied = True
+            return self._k8s_backend.execute(cmd)
         elif t == ActionType.SUBMIT_POSTMORTEM:
             return self._action_submit_postmortem(
                 root_cause=p.get("root_cause", ""),
@@ -797,6 +809,16 @@ class IncidentCommanderEnv:
             )
         elif t == ActionType.DELETE_CHAOS_EXPERIMENT:
             return await self._action_delete_chaos(experiment_name=p.get("experiment_name", ""))
+        elif t == ActionType.EXEC_KUBECTL:
+            cmd = p.get("command", "").strip()
+            if not cmd:
+                return "error: EXEC_KUBECTL requires params.command"
+            if self._task and self._task.correct_mitigation_target \
+                    and self._task.correct_mitigation_target in cmd:
+                verb = cmd.replace("kubectl ", "", 1).strip().split(" ", 1)[0]
+                if verb in ("set", "scale", "rollout", "patch", "delete", "apply"):
+                    self._mitigation_applied = True
+            return self._k8s_backend.execute(cmd)
         elif t == ActionType.SUBMIT_POSTMORTEM:
             return self._action_submit_postmortem(
                 root_cause=p.get("root_cause", ""),
@@ -1055,6 +1077,18 @@ class IncidentCommanderEnv:
         elif action.type == ActionType.GET_TRACE:
             if not any(a["action_type"] == "get_trace" for a in self._action_history):
                 breakdown["investigation_bonus"] = 0.05
+
+        # --- EXEC_KUBECTL: investigation bonus for read-verbs, no bonus for writes ---
+        elif action.type == ActionType.EXEC_KUBECTL:
+            cmd_str = str(action.params.get("command", "")).lower()
+            verb = cmd_str.replace("kubectl ", "", 1).strip().split(" ", 1)[0] if cmd_str else ""
+            read_verbs = {"get", "describe", "logs", "events", "top"}
+            if verb in read_verbs:
+                # one-time bonus per (verb, resource) pair
+                key = f"exec:{verb}:{(cmd_str.split(' ', 2)[1] if len(cmd_str.split(' ')) > 1 else '')}"
+                if key not in self._inspected_logs:
+                    self._inspected_logs.add(key)
+                    breakdown["investigation_bonus"] = 0.05
 
         # --- Root cause identification (+0.3) ---
         if action.type == ActionType.SUBMIT_POSTMORTEM:
