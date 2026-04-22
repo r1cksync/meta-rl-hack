@@ -22,7 +22,17 @@ aws configure                   # one-time
 .\scripts\load_env.ps1 .env.aws.local
 ```
 
-### A.2 Install Python deps
+### A.2 Install Python deps (isolated venv — recommended)
+
+The global Python install on most machines is polluted with transformers/torch
+from other projects and will cause version conflicts. Use the isolated venv:
+
+```powershell
+.\scripts\setup_venv.ps1 -Train   # creates .venv and installs server + train deps
+.\.venv\Scripts\Activate.ps1
+```
+
+Or install globally (only if you know your environment is clean):
 
 ```powershell
 pip install -r rl-agent/requirements.txt
@@ -32,11 +42,11 @@ pip install -r rl-agent/requirements-train.txt
 ### A.3 Start the env server
 
 ```powershell
-cd rl-agent
-uvicorn server:app --host 127.0.0.1 --port 7860
+python -m uvicorn server:app --host 127.0.0.1 --port 7860 --app-dir rl-agent
 ```
 
 Verify: `curl.exe http://localhost:7860/k8s/health` → `"enabled": true`.
+Open the multi-page dashboard: <http://localhost:7860/dashboard>.
 
 ### A.4 Smoke-test real fault injection
 
@@ -52,22 +62,36 @@ All 9 fault types: `oom_kill`, `crashloop`, `image_pull`, `bad_config`,
 `scale_zero`, `liveness_probe`, `resource_quota`, `secret_mismatch`,
 `wrong_image_tag`.
 
-### A.5 Training
+### A.5 Training — Actor-Critic PPO
+
+We moved off GRPO (needs a big GPU to batch N generations per prompt) to
+actor-critic PPO: one rollout per update, a small value head bootstraps
+V(s). Works on CPU for smoke tests, on 8 GB GPU for real training.
 
 ```powershell
-# sanity-check the pipeline — no GPU needed, no model download
-cd rl-agent
-python -m training.train_grpo --local --dry-run
-
-# real GRPO against the live EKS cluster, 50 steps, ~8GB VRAM
-python -m training.train_grpo --local `
+# Pipeline smoke test — scripted policy, no model load, CPU only
+python -m training.train_ppo --tiny `
+    --updates 20 --rollouts-per-update 3 `
     --env-url http://localhost:7860 `
-    --inject-fault oom_kill `
-    --max-steps 50
+    --out-dir rl-agent/checkpoints/ppo-tiny
+
+# Real PPO on CPU (slow — good for debugging)
+python -m training.train_ppo --cpu --local `
+    --updates 10 --rollouts-per-update 2 `
+    --env-url http://localhost:7860 `
+    --out-dir rl-agent/checkpoints/ppo-cpu
+
+# Real PPO on GPU (8 GB min, Qwen2.5-0.5B + LoRA r=8)
+python -m training.train_ppo --local `
+    --updates 200 --rollouts-per-update 4 `
+    --env-url http://localhost:7860 `
+    --out-dir rl-agent/checkpoints/ppo-local
 ```
 
-Checkpoints land in `rl-agent/checkpoints/grpo/` **and** are uploaded to
-`s3://$S3_CHECKPOINT_BUCKET/grpo/<timestamp>/final/` automatically.
+Every run writes `metrics.jsonl` + `summary.json` into its `--out-dir` and
+those files drive the Training page of the dashboard
+(<http://localhost:7860/dashboard/training>). Checkpoints are uploaded to
+`s3://$S3_CHECKPOINT_BUCKET/ppo/<timestamp>/final/` when AWS creds are set.
 
 ### A.6 Evaluate
 

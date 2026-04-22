@@ -1,12 +1,17 @@
-# Local training extras — installed on the developer's machine, NOT inside
-# the HF Space docker image. Keeps the server deployable on a free-tier Space
-# while the trainer runs against a local kind cluster + a small GPU.
+# Local training extras — installed into a dedicated venv, NOT the system Python.
+# Versions are pinned to a known-good combo that works on CPU and on an 8GB
+# consumer GPU. Do NOT loosen them — TRL / transformers break APIs often.
 -r requirements.txt
-torch>=2.3.0
-transformers>=4.45
-peft>=0.13
-accelerate>=1.0
-trl>=0.29.0
-datasets>=2.20
-bitsandbytes>=0.43  # 4-bit quant so Qwen2.5-0.5B fits on an 8GB GPU
-tabulate>=0.9       # optional; makes kubectl-style output nicer
+torch==2.5.1            ; platform_system != "Darwin"
+torch==2.5.1            ; platform_system == "Darwin"
+transformers==4.46.3    # 5.x removes LoraConfig shortcuts we depend on
+tokenizers>=0.20,<0.21
+peft==0.13.2
+accelerate==1.0.1
+datasets==3.0.2         # 4.x changed fsspec pinning
+bitsandbytes==0.43.3    ; platform_system == "Linux"
+bitsandbytes-windows==0.37.5 ; platform_system == "Windows"
+safetensors>=0.4.5
+huggingface-hub<1.0     # gradio/older transformers need this
+sentencepiece>=0.2.0
+tabulate>=0.9

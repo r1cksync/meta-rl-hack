@@ -65,7 +65,9 @@ async def lifespan(app: FastAPI):
     app.state.env = IncidentCommanderEnv(use_mock=mock_val.lower() == "true")
     app.state.curriculum = CurriculumController(seed=42)
     app.state.designer = AdversarialDesigner(base_scenarios_dir=SCENARIOS_DIR)
+    app.state.adversarial = app.state.designer  # alias expected by dashboard_pages
     app.state.last_adversarial_scenario = None
+    app.state.task_metadata = TASK_METADATA
     yield
 
 
@@ -428,12 +430,27 @@ def _run_heuristic_episode(env: IncidentCommanderEnv, task_id: str) -> dict:
 
 
 @app.get("/dashboard", response_class=HTMLResponse)
-def dashboard():
-    """Serve the live diagnostic dashboard."""
+def dashboard(run: str | None = None):
+    """Serve the multi-page analytics dashboard (overview page)."""
+    from dashboard_pages import _render_overview  # local import: avoid circular
+    return HTMLResponse(_render_overview(app, run))
+
+
+@app.get("/dashboard/legacy", response_class=HTMLResponse)
+def dashboard_legacy():
+    """Original single-page Plotly dashboard, kept for backwards compatibility."""
     html_path = Path(__file__).resolve().parent / "dashboard.html"
     if html_path.exists():
         return HTMLResponse(content=html_path.read_text(encoding="utf-8"), status_code=200)
-    return HTMLResponse(content="<h1>Dashboard not found</h1>", status_code=404)
+    return HTMLResponse(content="<h1>Legacy dashboard not found</h1>", status_code=404)
+
+
+# Register the extra /dashboard/* pages.
+try:
+    from dashboard_pages import register as _register_dashboard_pages
+    _register_dashboard_pages(app)
+except Exception as _e:  # pragma: no cover
+    log.warning("Multi-page dashboard registration failed: %s", _e)
 
 
 # ---------------------------------------------------------------------------
