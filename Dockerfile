@@ -26,7 +26,7 @@ COPY rl-agent/scenarios /app/scenarios
 COPY rl-agent/server.py /app/server.py
 COPY rl-agent/dashboard_pages.py /app/dashboard_pages.py
 COPY rl-agent/dashboard.html /app/dashboard.html
-COPY rl-agent/checkpoints/ppo-tiny /app/checkpoints/ppo-tiny
+COPY rl-agent/checkpoints /app/checkpoints
 COPY openenv.yaml /app/openenv.yaml
 COPY inference.py /app/inference.py
 

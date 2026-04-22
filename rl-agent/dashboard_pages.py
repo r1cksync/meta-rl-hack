@@ -431,13 +431,16 @@ def _render_cluster(app: FastAPI) -> str:
         pass
 
     rows_html = ""
+    _ok_badge  = '<span class="badge ok">Running</span>'
+    _bad_badge = '<span class="badge err">Degraded</span>'
     for ns in ns_info:
+        status_badge = _ok_badge if ns.get('ready', 0) >= ns.get('replicas', 0) else _bad_badge
         rows_html += (
             f"<tr><td>{ns.get('namespace','?')}</td>"
             f"<td>{ns.get('deployment','?')}</td>"
             f"<td>{ns.get('replicas',0)}</td>"
             f"<td>{ns.get('ready',0)}</td>"
-            f"<td>{'<span class=\"badge ok\">Running</span>' if ns.get('ready',0) >= ns.get('replicas',0) else '<span class=\"badge err\">Degraded</span>'}</td></tr>"
+            f"<td>{status_badge}</td></tr>"
         )
     badge = ('<span class="badge ok">Real EKS/kind</span>' if real_enabled
              else '<span class="badge warn">Mock (REAL_K8S not set)</span>')
