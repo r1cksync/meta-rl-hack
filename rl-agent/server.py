@@ -183,6 +183,20 @@ def health() -> dict:
     return {"status": "ok"}
 
 
+@app.get("/aws/status")
+def aws_status_endpoint() -> dict:
+    """Report which AWS services this process can reach.
+
+    All integrations are gated on env vars + boto3 credentials — if nothing
+    is configured this endpoint still returns 200 with services.*.enabled=false.
+    """
+    try:
+        from environment.aws_integrations import aws_status
+        return aws_status()
+    except Exception as e:  # pragma: no cover
+        return {"error": str(e), "region": None, "services": {}}
+
+
 @app.get("/")
 def root() -> dict:
     return {

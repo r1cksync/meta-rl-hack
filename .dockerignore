@@ -9,8 +9,5 @@ dist
 build
 .venv
 venv
-/checkpoints
-!rl-agent/checkpoints/
-!rl-agent/checkpoints/ppo-tiny/
-!rl-agent/checkpoints/ppo-tiny/**
+checkpoints
 *.zip

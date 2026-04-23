@@ -36,6 +36,7 @@ _PAGES = [
     ("/dashboard/tasks",        "Tasks"),
     ("/dashboard/training",     "Training"),
     ("/dashboard/cluster",      "Cluster"),
+    ("/dashboard/aws",          "AWS"),
     ("/dashboard/adversarial",  "Adversarial"),
     ("/dashboard/curriculum",   "Curriculum"),
     ("/dashboard/judge",        "Judge"),
@@ -473,6 +474,91 @@ def _render_cluster(app: FastAPI) -> str:
     return _page("Cluster", "/dashboard/cluster", body)
 
 
+def _render_aws() -> str:
+    try:
+        from environment.aws_integrations import aws_status
+        status = aws_status()
+    except Exception as e:
+        status = {"error": str(e), "region": None, "services": {}}
+
+    svcs = status.get("services", {})
+    region = status.get("region") or "(unset)"
+    account = status.get("account_id") or "(no credentials)"
+
+    rows_html = ""
+    n_on = 0
+    for name, info in svcs.items():
+        on = bool(info.get("enabled"))
+        n_on += int(on)
+        badge = ('<span class="badge ok">connected</span>' if on
+                 else '<span class="badge warn">not configured</span>')
+        detail_bits = []
+        for k, v in info.items():
+            if k == "enabled" or v is None:
+                continue
+            detail_bits.append(f"<code>{k}</code>: {v}")
+        rows_html += (
+            f"<tr><td><b>{name}</b></td>"
+            f"<td>{badge}</td>"
+            f"<td>{' · '.join(detail_bits) or '—'}</td></tr>"
+        )
+
+    services_defined = [
+        ("VPC + subnets + NAT", "Dedicated 10.20.0.0/16 network across 2 AZs."),
+        ("EKS",                 "Managed Kubernetes where AcmeCorp microservices + Chaos Mesh run."),
+        ("ECR",                 "Private registry for the env server + trainer images."),
+        ("S3",                  "Versioned bucket for LoRA adapters + metrics.jsonl archive."),
+        ("DynamoDB",            "PITR-enabled table holding per-run / per-task mastery."),
+        ("CloudWatch Logs",     "Two log groups: /aws/eks/.../application + /aws/incident-commander/agent."),
+        ("CloudWatch Metrics",  "Custom IncidentCommander namespace + ErrorRate > 5% alarm."),
+        ("SNS",                 "Alert topic the agent publishes to when a mitigation is applied."),
+        ("Secrets Manager",     "Stores OPENAI_API_KEY so no secrets are baked into the image."),
+        ("IAM (IRSA)",          "Least-privilege pod role — S3/Dynamo/Logs/CW/SNS/Secrets/Bedrock."),
+        ("Lambda",              "Subscribed to the SNS topic; POSTs /reset to trigger new episodes."),
+        ("Bedrock",             "Runtime permission for the LLM judge (Claude / Titan)."),
+    ]
+    arch_rows = "".join(
+        f"<tr><td><b>{n}</b></td><td>{d}</td></tr>" for n, d in services_defined
+    )
+
+    body = f"""
+<h1>AWS wiring</h1>
+<div class="subtitle">
+  Account <b>{account}</b> · Region <b>{region}</b> · Reachable services:
+  <span class="badge info">{n_on}/{len(svcs) or 12}</span>
+</div>
+
+<h2>Live service status</h2>
+<div class="subtitle">Each integration in <code>environment/aws_integrations.py</code>
+is gated on env vars + boto3 credentials; unconfigured rows are safe no-ops.</div>
+<table>
+  <thead><tr><th>Service</th><th>State</th><th>Detail</th></tr></thead>
+  <tbody>{rows_html or '<tr><td colspan="3" class="empty">No AWS services configured — set AWS_REGION and the service-specific env vars.</td></tr>'}</tbody>
+</table>
+
+<h2>Architecture (provisioned by <code>infra/aws/main.tf</code>)</h2>
+<table>
+  <thead><tr><th>Service</th><th>Role in IncidentCommander</th></tr></thead>
+  <tbody>{arch_rows}</tbody>
+</table>
+
+<h2>Apply</h2>
+<pre>cd incident-commander/infra/aws
+terraform init
+terraform apply -var='project=incident-commander' -var='region=us-east-1'
+terraform output env_file &gt; ../../.env.aws.local</pre>
+
+<h2>IAM policy highlights</h2>
+<pre>S3         PutObject / GetObject / ListBucket   (checkpoints bucket only)
+DynamoDB   GetItem / PutItem / Query            (curriculum table only)
+CloudWatch PutMetricData + FilterLogEvents
+SNS        Publish                              (alerts topic only)
+Secrets    GetSecretValue                       (openai secret only)
+Bedrock    InvokeModel / InvokeModelWithResponseStream</pre>
+"""
+    return _page("AWS", "/dashboard/aws", body)
+
+
 def _render_adversarial(app: FastAPI) -> str:
     designer = getattr(app.state, "adversarial", None)
     history = []
@@ -664,6 +750,10 @@ def register(app: FastAPI) -> None:
     @app.get("/dashboard/cluster", response_class=HTMLResponse)
     def d_cluster():
         return HTMLResponse(_render_cluster(app))
+
+    @app.get("/dashboard/aws", response_class=HTMLResponse)
+    def d_aws():
+        return HTMLResponse(_render_aws())
 
     @app.get("/dashboard/adversarial", response_class=HTMLResponse)
     def d_adversarial():

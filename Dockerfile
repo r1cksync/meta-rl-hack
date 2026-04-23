@@ -18,7 +18,8 @@ RUN pip install --no-cache-dir \
     httpx>=0.25.0 \
     structlog>=23.2.0 \
     numpy>=1.26.0 \
-    openai>=1.3.0
+    openai>=1.3.0 \
+    boto3>=1.34.0
 
 # Copy environment code
 COPY rl-agent/environment /app/environment
