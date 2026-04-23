@@ -1,0 +1,5 @@
+{"task_id": "task3", "faults": ["decimal_corruption", "redis_pool_exhaustion"], "difficulty": "hard", "red_herrings": ["postgres-vacuum", "redis-primary"], "ts": 1776905649}
+{"task_id": "task6", "faults": ["tls_expiry", "dns_resolution"], "difficulty": "hard", "red_herrings": ["service-mesh", "coredns"], "ts": 1776905709}
+{"task_id": "task7", "faults": ["configmap_race", "cache_poisoning"], "difficulty": "hard", "red_herrings": ["redis-cache", "gc-pause"], "ts": 1776905769}
+{"task_id": "task11", "faults": ["liveness_regression", "image_pull_backoff"], "difficulty": "hard", "red_herrings": ["scheduler", "kubelet"], "ts": 1776905829}
+{"task_id": "task2", "faults": ["payments_oom", "kafka_lag"], "difficulty": "medium", "red_herrings": ["broker-2", "zookeeper"], "ts": 1776905889}

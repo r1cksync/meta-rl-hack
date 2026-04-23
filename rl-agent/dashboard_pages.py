@@ -159,6 +159,27 @@ def _load_metrics(run: str | None) -> tuple[str, list[dict], dict]:
     return active, rows, summary
 
 
+def _load_snapshot(run: str | None, name: str) -> Any:
+    """Load a JSON snapshot file from the checkpoint dir. Returns None if missing."""
+    runs = _list_runs()
+    if not runs:
+        return None
+    active = run if run in runs else runs[-1]
+    p = CHECKPOINT_ROOT / active / name
+    if not p.exists():
+        return None
+    try:
+        if name.endswith(".jsonl"):
+            out = []
+            for line in p.read_text(encoding="utf-8").splitlines():
+                if line.strip():
+                    out.append(json.loads(line))
+            return out
+        return json.loads(p.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+
 # ---------------------------------------------------------------------------
 # Page bodies
 # ---------------------------------------------------------------------------
@@ -236,12 +257,32 @@ new Chart(document.getElementById('c4'), {{
 
 def _render_rewards(app: FastAPI) -> str:
     env = getattr(app.state, "env", None)
-    breakdown = {}
+    breakdown: dict = {}
+    source = "live env (awaiting first /reset)"
     if env is not None:
         try:
             breakdown = dict(getattr(env, "_last_reward_breakdown", {}) or {})
         except Exception:
             breakdown = {}
+    # Fall back to the last episode recorded during training.
+    history = _load_snapshot(None, "reward_breakdown_history.jsonl") or []
+    if not breakdown and history:
+        last = history[-1]
+        breakdown = dict(last.get("reward_breakdown") or {})
+        source = f"training snapshot · last episode ({last.get('task_id','?')})"
+    elif breakdown:
+        source = "live env (last /step)"
+
+    # Aggregate across the whole history for the "mean across episodes" chart.
+    keys_seen = set()
+    for row in history:
+        for k in (row.get("reward_breakdown") or {}).keys():
+            keys_seen.add(k)
+    means: dict[str, float] = {}
+    for k in keys_seen:
+        vals = [float((r.get("reward_breakdown") or {}).get(k, 0.0)) for r in history]
+        if vals:
+            means[k] = sum(vals) / len(vals)
     signals = [
         ("triage_reward",            "Triage: correct first instinct"),
         ("investigation_bonus",      "Evidence gathering"),
@@ -260,33 +301,40 @@ def _render_rewards(app: FastAPI) -> str:
         ("correct_postmortem",       "Correct root cause"),
     ]
     rows_html = "".join(
-        f"<tr><td><b>{k}</b></td><td>{desc}</td><td>{breakdown.get(k, 0.0):+.3f}</td></tr>"
+        f"<tr><td><b>{k}</b></td><td>{desc}</td>"
+        f"<td>{breakdown.get(k, 0.0):+.3f}</td>"
+        f"<td>{means.get(k, 0.0):+.3f}</td></tr>"
         for k, desc in signals
     )
     body = f"""
 <h1>Reward signals</h1>
-<div class="subtitle">15 shaped reward components gate the learning signal. Values shown are from the LAST episode.</div>
+<div class="subtitle">15 shaped reward components. Data source: <b>{source}</b> ·
+  history covers <b>{len(history)}</b> episodes.</div>
 
 <div class="chart-grid">
   <div class="chart"><h3>Last-episode breakdown</h3><canvas id="rb" height="200"></canvas></div>
-  <div class="chart"><h3>Signal catalogue</h3>
-    <table><thead><tr><th>Signal</th><th>Meaning</th><th>Last</th></tr></thead>
-    <tbody>{rows_html}</tbody></table>
-  </div>
+  <div class="chart"><h3>Mean over training history</h3><canvas id="rm" height="200"></canvas></div>
 </div>
 
+<h2>Signal catalogue</h2>
+<table><thead><tr><th>Signal</th><th>Meaning</th><th>Last episode</th><th>Mean (n={len(history)})</th></tr></thead>
+<tbody>{rows_html}</tbody></table>
+
 <script>
-const bd = {json.dumps(breakdown)};
-const keys = Object.keys(bd);
-const vals = keys.map(k => bd[k]);
-const colors = vals.map(v => v >= 0 ? '#4ade80' : '#f87171');
-new Chart(document.getElementById('rb'), {{
-  type: 'bar',
-  data: {{ labels: keys, datasets: [{{data: vals, backgroundColor: colors}}]}},
-  options: {{ indexAxis: 'y', plugins: {{ legend: {{ display:false }} }},
-             scales: {{ x: {{ ticks: {{ color:'#8aa0c7' }} }},
-                        y: {{ ticks: {{ color:'#e6ecff' }} }} }} }}
-}});
+function barChart(id, data, labelSuffix) {{
+  const keys = Object.keys(data);
+  const vals = keys.map(k => data[k]);
+  const colors = vals.map(v => v >= 0 ? '#4ade80' : '#f87171');
+  new Chart(document.getElementById(id), {{
+    type: 'bar',
+    data: {{ labels: keys, datasets: [{{data: vals, backgroundColor: colors, label: labelSuffix}}]}},
+    options: {{ indexAxis: 'y', plugins: {{ legend: {{ display:false }} }},
+               scales: {{ x: {{ ticks: {{ color:'#8aa0c7' }} }},
+                          y: {{ ticks: {{ color:'#e6ecff' }} }} }} }}
+  }});
+}}
+barChart('rb', {json.dumps(breakdown)}, 'last episode');
+barChart('rm', {json.dumps(means)}, 'mean');
 </script>
 """
     return _page("Rewards", "/dashboard/rewards", body)
@@ -422,14 +470,26 @@ def _render_cluster(app: FastAPI) -> str:
     env = getattr(app.state, "env", None)
     real_enabled = False
     ns_info: list[dict] = []
+    backend_label = "mock"
     try:
         k8s = getattr(env, "_k8s_backend", None)
         if k8s and getattr(k8s, "enabled", False):
             real_enabled = True
-            status = k8s.cluster_status()  # expected dict with namespaces
+            status = k8s.cluster_status()
             ns_info = status.get("namespaces", []) if isinstance(status, dict) else []
+            backend_label = "Real EKS/kind"
     except Exception:
         pass
+
+    # Fall back to the snapshot written by the trainer.
+    if not ns_info:
+        snap = _load_snapshot(None, "cluster_snapshot.json") or {}
+        ns_info = snap.get("namespaces", []) or []
+        if ns_info:
+            backend_label = snap.get("backend", "snapshot")
+
+    # Probe live observability endpoints if env vars are set.
+    obs_probes = _probe_observability()
 
     rows_html = ""
     _ok_badge  = '<span class="badge ok">Running</span>'
@@ -444,7 +504,16 @@ def _render_cluster(app: FastAPI) -> str:
             f"<td>{status_badge}</td></tr>"
         )
     badge = ('<span class="badge ok">Real EKS/kind</span>' if real_enabled
-             else '<span class="badge warn">Mock (REAL_K8S not set)</span>')
+             else f'<span class="badge info">{backend_label}</span>')
+
+    obs_rows = "".join(
+        f"<tr><td><b>{name}</b></td>"
+        f"<td>{p['url'] or '<span class=\"empty\">not set</span>'}</td>"
+        f"<td>{'<span class=\"badge ok\">reachable</span>' if p['ok'] else ('<span class=\"badge warn\">unreachable</span>' if p['url'] else '<span class=\"badge warn\">unset</span>')}</td>"
+        f"<td>{p.get('detail','') or ''}</td></tr>"
+        for name, p in obs_probes.items()
+    )
+
     body = f"""
 <h1>Cluster health</h1>
 <div class="subtitle">Backend status {badge}</div>
@@ -452,7 +521,15 @@ def _render_cluster(app: FastAPI) -> str:
 <h2>Namespaces & deployments</h2>
 <table>
   <thead><tr><th>Namespace</th><th>Deployment</th><th>Replicas</th><th>Ready</th><th>Status</th></tr></thead>
-  <tbody>{rows_html or '<tr><td colspan="5" class="empty">No real cluster attached. Set <code>REAL_K8S=true</code> and point <code>KUBECONFIG</code> at your EKS cluster.</td></tr>'}</tbody>
+  <tbody>{rows_html or '<tr><td colspan="5" class="empty">No cluster attached and no snapshot on disk.</td></tr>'}</tbody>
+</table>
+
+<h2>Observability stack (live probes)</h2>
+<div class="subtitle">Each integration probes the configured URL (env vars <code>PROMETHEUS_URL</code>,
+  <code>LOKI_URL</code>, <code>GRAFANA_URL</code>, <code>ALERTMANAGER_URL</code>).</div>
+<table>
+  <thead><tr><th>Service</th><th>URL</th><th>Status</th><th>Detail</th></tr></thead>
+  <tbody>{obs_rows}</tbody>
 </table>
 
 <h2>Fault injectors available</h2>
@@ -472,6 +549,30 @@ def _render_cluster(app: FastAPI) -> str:
 </table>
 """
     return _page("Cluster", "/dashboard/cluster", body)
+
+
+def _probe_observability() -> dict[str, dict]:
+    """Quickly probe Prometheus / Loki / Grafana / Alertmanager if URLs set."""
+    import os
+    import httpx
+    targets = {
+        "Prometheus":   (os.getenv("PROMETHEUS_URL"),   "/-/ready"),
+        "Loki":         (os.getenv("LOKI_URL"),         "/ready"),
+        "Grafana":      (os.getenv("GRAFANA_URL"),      "/api/health"),
+        "Alertmanager": (os.getenv("ALERTMANAGER_URL"), "/-/ready"),
+    }
+    out: dict[str, dict] = {}
+    for name, (base, path) in targets.items():
+        if not base:
+            out[name] = {"url": None, "ok": False, "detail": ""}
+            continue
+        try:
+            r = httpx.get(base.rstrip("/") + path, timeout=2.0)
+            out[name] = {"url": base, "ok": r.status_code < 400,
+                         "detail": f"HTTP {r.status_code}"}
+        except Exception as e:
+            out[name] = {"url": base, "ok": False, "detail": str(e)[:60]}
+    return out
 
 
 def _render_aws() -> str:
@@ -561,13 +662,22 @@ Bedrock    InvokeModel / InvokeModelWithResponseStream</pre>
 
 def _render_adversarial(app: FastAPI) -> str:
     designer = getattr(app.state, "adversarial", None)
-    history = []
+    history: list[dict] = []
     enabled = False
+    source = "live designer (no scenarios designed yet)"
     try:
         history = list(getattr(designer, "history", []) or [])[-20:]
         enabled = bool(getattr(designer, "_llm_enabled", False))
     except Exception:
         pass
+    if not history:
+        snap = _load_snapshot(None, "adversarial_history.jsonl") or []
+        if snap:
+            history = snap[-20:]
+            source = f"training snapshot ({len(snap)} scenarios)"
+    else:
+        source = "live designer"
+
     rows_html = "".join(
         f"<tr><td>{h.get('task_id','?')}</td>"
         f"<td>{', '.join(h.get('faults', []))}</td>"
@@ -578,7 +688,8 @@ def _render_adversarial(app: FastAPI) -> str:
 
     body = f"""
 <h1>Adversarial scenario designer</h1>
-<div class="subtitle">Designer is <b>{'LLM-backed' if enabled else 'procedural fallback'}</b>. History: last {len(history)} scenarios.</div>
+<div class="subtitle">Designer is <b>{'LLM-backed' if enabled else 'procedural fallback'}</b>.
+  Source: <b>{source}</b>. Showing last {len(history)} scenarios.</div>
 <h2>Generated scenarios</h2>
 <table>
   <thead><tr><th>Base task</th><th>Faults</th><th>Difficulty</th><th>Red herrings</th></tr></thead>
@@ -600,13 +711,23 @@ def _render_adversarial(app: FastAPI) -> str:
 def _render_curriculum(app: FastAPI) -> str:
     c = getattr(app.state, "curriculum", None)
     tier = getattr(getattr(c, "state", None), "tier", "warmup")
-    mastery = {}
-    recent = []
+    mastery: dict[str, float] = {}
+    recent: list[dict] = []
+    source = "live curriculum (no episodes yet)"
     try:
         mastery = dict(getattr(c.state, "mastery", {}) or {})
         recent = list(getattr(c.state, "recent_episodes", []) or [])[-20:]
     except Exception:
         pass
+    if not mastery and not recent:
+        snap = _load_snapshot(None, "curriculum_snapshot.json") or {}
+        if snap:
+            mastery = snap.get("mastery", {}) or {}
+            recent  = (snap.get("recent_episodes") or [])[-20:]
+            tier    = snap.get("tier", tier)
+            source  = f"training snapshot ({snap.get('total_episodes', 0)} episodes)"
+    elif mastery or recent:
+        source = "live curriculum"
 
     mastery_rows = "".join(
         f"<tr><td>{tid}</td><td>{v:.2f}</td><td>"
@@ -625,7 +746,7 @@ def _render_curriculum(app: FastAPI) -> str:
 
     body = f"""
 <h1>Curriculum controller</h1>
-<div class="subtitle">Current tier: <span class="badge info">{tier}</span></div>
+<div class="subtitle">Current tier: <span class="badge info">{tier}</span> · Source: <b>{source}</b></div>
 
 <h2>Tier composition</h2>
 <table>

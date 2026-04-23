@@ -197,6 +197,19 @@ def aws_status_endpoint() -> dict:
         return {"error": str(e), "region": None, "services": {}}
 
 
+@app.get("/observability/status")
+def observability_status() -> dict:
+    """Probe Prometheus / Loki / Grafana / Alertmanager if URLs are set.
+
+    Returns 200 with per-service reachability. Used by /dashboard/cluster.
+    """
+    try:
+        from dashboard_pages import _probe_observability
+        return {"services": _probe_observability()}
+    except Exception as e:
+        return {"error": str(e), "services": {}}
+
+
 @app.get("/")
 def root() -> dict:
     return {

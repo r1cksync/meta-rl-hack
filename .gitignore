@@ -52,3 +52,6 @@ htmlcov/
 # Misc
 *.bak
 *.tmp
+rl-agent/.srv.err
+rl-agent/.srv.out
+.env.aws.local

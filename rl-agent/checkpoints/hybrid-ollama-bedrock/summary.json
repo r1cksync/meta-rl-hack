@@ -1,0 +1,108 @@
+{
+  "mode": "hybrid-ollama-bedrock",
+  "actor": "ollama:qwen2.5:0.5b",
+  "critic": "heuristic-fallback",
+  "total_episodes": 36,
+  "mean_reward": 1.3220833333333333,
+  "reward_std": 0.2899418045056628,
+  "min_reward": 0.885,
+  "max_reward": 1.9675000000000002,
+  "mean_grade": 0.6305555555555555,
+  "mitigation_rate": 0.6944444444444444,
+  "root_cause_rate": 0.3611111111111111,
+  "per_task": {
+    "task1": {
+      "n": 4,
+      "mean_reward": 1.248125,
+      "reward_std": 0.13514459848621396,
+      "mean_grade": 0.625,
+      "mitigation_rate": 0.25,
+      "root_cause_rate": 1.0
+    },
+    "task2": {
+      "n": 4,
+      "mean_reward": 1.26125,
+      "reward_std": 0.21129067655720168,
+      "mean_grade": 0.625,
+      "mitigation_rate": 1.0,
+      "root_cause_rate": 0.0
+    },
+    "task3": {
+      "n": 4,
+      "mean_reward": 1.229375,
+      "reward_std": 0.22156051656375964,
+      "mean_grade": 0.5625,
+      "mitigation_rate": 0.75,
+      "root_cause_rate": 0.0
+    },
+    "task4": {
+      "n": 3,
+      "mean_reward": 1.5691666666666666,
+      "reward_std": 0.3636304213529631,
+      "mean_grade": 0.7833333333333333,
+      "mitigation_rate": 0.6666666666666666,
+      "root_cause_rate": 1.0
+    },
+    "task5": {
+      "n": 3,
+      "mean_reward": 1.2141666666666666,
+      "reward_std": 0.3692588297296808,
+      "mean_grade": 0.5333333333333333,
+      "mitigation_rate": 0.6666666666666666,
+      "root_cause_rate": 0.0
+    },
+    "task6": {
+      "n": 3,
+      "mean_reward": 1.2991666666666666,
+      "reward_std": 0.2715273159984706,
+      "mean_grade": 0.5499999999999999,
+      "mitigation_rate": 0.6666666666666666,
+      "root_cause_rate": 0.0
+    },
+    "task7": {
+      "n": 3,
+      "mean_reward": 1.0558333333333334,
+      "reward_std": 0.19449185929836074,
+      "mean_grade": 0.4833333333333334,
+      "mitigation_rate": 0.3333333333333333,
+      "root_cause_rate": 0.0
+    },
+    "task8": {
+      "n": 3,
+      "mean_reward": 1.1391666666666669,
+      "reward_std": 0.1782963357260417,
+      "mean_grade": 0.5499999999999999,
+      "mitigation_rate": 0.6666666666666666,
+      "root_cause_rate": 0.0
+    },
+    "task9": {
+      "n": 3,
+      "mean_reward": 1.7066666666666668,
+      "reward_std": 0.10536642412710676,
+      "mean_grade": 0.8833333333333333,
+      "mitigation_rate": 1.0,
+      "root_cause_rate": 1.0
+    },
+    "task10": {
+      "n": 3,
+      "mean_reward": 1.719166666666667,
+      "reward_std": 0.1919689645055506,
+      "mean_grade": 0.7666666666666666,
+      "mitigation_rate": 0.6666666666666666,
+      "root_cause_rate": 1.0
+    },
+    "task11": {
+      "n": 3,
+      "mean_reward": 1.1766666666666665,
+      "reward_std": 0.2265272242652818,
+      "mean_grade": 0.6,
+      "mitigation_rate": 1.0,
+      "root_cause_rate": 0.0
+    }
+  },
+  "tiers": [
+    "advanced",
+    "expert"
+  ],
+  "timestamp": 1776905949.061191
+}

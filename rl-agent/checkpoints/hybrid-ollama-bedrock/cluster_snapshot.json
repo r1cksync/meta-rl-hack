@@ -1,0 +1,66 @@
+{
+  "backend": "snapshot (simulated EKS state)",
+  "namespaces": [
+    {
+      "namespace": "acmecorp",
+      "deployment": "payments-api",
+      "replicas": 3,
+      "ready": 3
+    },
+    {
+      "namespace": "acmecorp",
+      "deployment": "inventory-service",
+      "replicas": 2,
+      "ready": 2
+    },
+    {
+      "namespace": "acmecorp",
+      "deployment": "checkout-frontend",
+      "replicas": 2,
+      "ready": 2
+    },
+    {
+      "namespace": "acmecorp",
+      "deployment": "auth-service",
+      "replicas": 2,
+      "ready": 1
+    },
+    {
+      "namespace": "acmecorp",
+      "deployment": "order-worker",
+      "replicas": 3,
+      "ready": 3
+    },
+    {
+      "namespace": "acmecorp",
+      "deployment": "notification-service",
+      "replicas": 2,
+      "ready": 2
+    },
+    {
+      "namespace": "chaos-mesh",
+      "deployment": "chaos-controller-manager",
+      "replicas": 1,
+      "ready": 1
+    },
+    {
+      "namespace": "observability",
+      "deployment": "prometheus-server",
+      "replicas": 1,
+      "ready": 1
+    },
+    {
+      "namespace": "observability",
+      "deployment": "loki",
+      "replicas": 1,
+      "ready": 1
+    },
+    {
+      "namespace": "observability",
+      "deployment": "grafana",
+      "replicas": 1,
+      "ready": 1
+    }
+  ],
+  "ts": 1776905949
+}
