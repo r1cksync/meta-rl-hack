@@ -506,13 +506,21 @@ def _render_cluster(app: FastAPI) -> str:
     badge = ('<span class="badge ok">Real EKS/kind</span>' if real_enabled
              else f'<span class="badge info">{backend_label}</span>')
 
-    obs_rows = "".join(
-        f"<tr><td><b>{name}</b></td>"
-        f"<td>{p['url'] or '<span class=\"empty\">not set</span>'}</td>"
-        f"<td>{'<span class=\"badge ok\">reachable</span>' if p['ok'] else ('<span class=\"badge warn\">unreachable</span>' if p['url'] else '<span class=\"badge warn\">unset</span>')}</td>"
-        f"<td>{p.get('detail','') or ''}</td></tr>"
-        for name, p in obs_probes.items()
-    )
+    _obs_fragments = []
+    for name, p in obs_probes.items():
+        url_cell = p['url'] if p['url'] else '<span class="empty">not set</span>'
+        if p['ok']:
+            status_cell = '<span class="badge ok">reachable</span>'
+        elif p['url']:
+            status_cell = '<span class="badge warn">unreachable</span>'
+        else:
+            status_cell = '<span class="badge warn">unset</span>'
+        detail_cell = p.get('detail', '') or ''
+        _obs_fragments.append(
+            f"<tr><td><b>{name}</b></td><td>{url_cell}</td>"
+            f"<td>{status_cell}</td><td>{detail_cell}</td></tr>"
+        )
+    obs_rows = "".join(_obs_fragments)
 
     body = f"""
 <h1>Cluster health</h1>
