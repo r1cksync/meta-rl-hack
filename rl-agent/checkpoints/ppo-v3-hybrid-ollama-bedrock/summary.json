@@ -1,5 +1,5 @@
 {
-  "mode": "hybrid-ollama-bedrock",
+  "mode": "ppo-v3-hybrid-ollama-bedrock",
   "actor": "ollama:qwen2.5:0.5b",
   "critic": "heuristic-fallback",
   "total_episodes": 36,
