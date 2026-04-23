@@ -796,10 +796,13 @@ def _render_aws() -> str:
             if k == "enabled" or v is None:
                 continue
             detail_bits.append(f"<code>{k}</code>: {v}")
+        sep = " \u00b7 "
+        em_dash = "\u2014"
+        detail_str = sep.join(detail_bits) or em_dash
         rows_html += (
             f"<tr><td><b>{name}</b></td>"
             f"<td>{badge}</td>"
-            f"<td>{' \u00b7 '.join(detail_bits) or '\u2014'}</td></tr>"
+            f"<td>{detail_str}</td></tr>"
         )
 
     # ---- Evidence: real S3 objects, CW datapoints, Dynamo writes from last run.
