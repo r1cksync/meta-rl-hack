@@ -42,27 +42,6 @@ We turned that entire debugging experience into an RL environment. The agent see
 
 ---
 
-## vs. prior OpenEnv winners (kube-sre-gym)
-
-| Capability | kube-sre-gym (prev $15K winner) | IncidentCommander |
-|-----------|-------------------------------|-------------------|
-| Live K8s cluster | ✅ (kind) | ✅ optional (`REAL_K8S=true`), mock by default |
-| Mock-only CI mode | ❌ | ✅ zero-dep mock mode |
-| Curriculum with auto-promotion | ✅ 5 tiers | ✅ 5 tiers (warmup→expert) |
-| Adversarial LLM-designed scenarios | ✅ expert tier only | ✅ expert tier + procedural fallback |
-| Multi-fault scenarios | ✅ | ✅ (advanced + expert tiers) |
-| LLM judge with multiple personas | ❌ (single judge) | ✅ 3 personas (junior/senior/principal) |
-| Phase-aware rewards (triage→verify) | ❌ | ✅ |
-| Repeat-command penalty | ✅ | ✅ |
-| Red-herring penalty | ❌ | ✅ on hard tasks |
-| Context-gated "acting blind" penalty | ❌ | ✅ |
-| Holistic per-episode grader | ❌ | ✅ 5-component rubric |
-| Live plotly dashboard | ❌ | ✅ with tier + phase indicators |
-| TRL GRPO training script | ✅ | ✅ |
-| Base-vs-trained `eval.py` | ✅ | ✅ |
-| Runs on HF Spaces Docker | ❌ (kind not available) | ✅ |
-
----
 
 ## How It Works
 
