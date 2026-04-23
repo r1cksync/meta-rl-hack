@@ -232,7 +232,7 @@ class CloudWatchMetricsPublisher:
         if _have_aws_credentials():
             try:
                 self._client = _client("cloudwatch", self.region)
-                self._client.list_metrics(Namespace=self.namespace, MaxRecords=1)
+                self._client.list_metrics(Namespace=self.namespace)
                 self.enabled = True
                 log.info("CloudWatch metrics: namespace=%s", self.namespace)
             except Exception as e:

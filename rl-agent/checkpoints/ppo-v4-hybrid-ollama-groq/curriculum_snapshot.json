@@ -1,0 +1,140 @@
+{
+  "tier": "expert",
+  "mastery": {
+    "task1": 0.845,
+    "task2": 0.34,
+    "task3": 0.25,
+    "task4": 0.68,
+    "task5": 0.147,
+    "task6": 0.287,
+    "task7": 0.133,
+    "task8": 0.28,
+    "task9": 0.953,
+    "task10": 0.94,
+    "task11": 0.287
+  },
+  "recent_episodes": [
+    {
+      "task_id": "task6",
+      "score": 0.35,
+      "target_score": 0.45,
+      "ts": 1776917881
+    },
+    {
+      "task_id": "task7",
+      "score": 0.3,
+      "target_score": 0.45,
+      "ts": 1776917881
+    },
+    {
+      "task_id": "task8",
+      "score": 0.35,
+      "target_score": 0.45,
+      "ts": 1776917881
+    },
+    {
+      "task_id": "task9",
+      "score": 0.85,
+      "target_score": 0.7,
+      "ts": 1776917881
+    },
+    {
+      "task_id": "task10",
+      "score": 0.85,
+      "target_score": 0.45,
+      "ts": 1776917881
+    },
+    {
+      "task_id": "task11",
+      "score": 0.6,
+      "target_score": 0.45,
+      "ts": 1776917881
+    },
+    {
+      "task_id": "task1",
+      "score": 0.85,
+      "target_score": 0.7,
+      "ts": 1776917881
+    },
+    {
+      "task_id": "task2",
+      "score": 0.45,
+      "target_score": 0.45,
+      "ts": 1776917881
+    },
+    {
+      "task_id": "task3",
+      "score": 0.4,
+      "target_score": 0.45,
+      "ts": 1776917881
+    },
+    {
+      "task_id": "task4",
+      "score": 0.6,
+      "target_score": 0.7,
+      "ts": 1776917881
+    },
+    {
+      "task_id": "task5",
+      "score": 0.35,
+      "target_score": 0.45,
+      "ts": 1776917881
+    },
+    {
+      "task_id": "task6",
+      "score": 0.45,
+      "target_score": 0.45,
+      "ts": 1776917881
+    },
+    {
+      "task_id": "task7",
+      "score": 0.4,
+      "target_score": 0.45,
+      "ts": 1776917881
+    },
+    {
+      "task_id": "task8",
+      "score": 0.6,
+      "target_score": 0.45,
+      "ts": 1776917881
+    },
+    {
+      "task_id": "task9",
+      "score": 0.9,
+      "target_score": 0.7,
+      "ts": 1776917881
+    },
+    {
+      "task_id": "task10",
+      "score": 0.85,
+      "target_score": 0.45,
+      "ts": 1776917881
+    },
+    {
+      "task_id": "task11",
+      "score": 0.4,
+      "target_score": 0.45,
+      "ts": 1776917881
+    },
+    {
+      "task_id": "task1",
+      "score": 0.9,
+      "target_score": 0.7,
+      "ts": 1776917881
+    },
+    {
+      "task_id": "task2",
+      "score": 0.35,
+      "target_score": 0.45,
+      "ts": 1776917881
+    },
+    {
+      "task_id": "task3",
+      "score": 0.4,
+      "target_score": 0.45,
+      "ts": 1776917881
+    }
+  ],
+  "total_episodes": 36,
+  "ts": 1776917881
+}

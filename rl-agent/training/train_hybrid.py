@@ -44,6 +44,8 @@ from .train_ppo import (
     build_prompt,
     parse_action,
 )
+from .groq_critic import GroqCritic
+from .aws_evidence import AwsEvidenceRecorder, load_dotenv
 
 log = logging.getLogger(__name__)
 
@@ -479,9 +481,15 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--temperature", type=float, default=0.8)
     p.add_argument("--bedrock-model",
                    default="anthropic.claude-3-haiku-20240307-v1:0")
+    p.add_argument("--groq-model", default=os.getenv("GROQ_MODEL", "llama-3.1-8b-instant"))
+    p.add_argument("--critic", choices=["groq", "bedrock", "heuristic"], default="groq")
+    p.add_argument("--env-file", default=".env.aws.local",
+                   help="dotenv file with AWS_REGION, S3_CHECKPOINT_BUCKET, etc.")
     p.add_argument("--all-tasks", action="store_true",
                    help="Cycle through all 11 task IDs uniformly.")
     p.add_argument("--persona", choices=["junior", "senior", "principal"], default="senior")
+    p.add_argument("--no-aws", action="store_true",
+                   help="Skip real AWS uploads even if creds are present.")
     return p.parse_args()
 
 
@@ -492,11 +500,40 @@ def main() -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     metrics_file = out_dir / "metrics.jsonl"
 
+    # Load AWS env vars from dotenv if not already present.
+    loaded = load_dotenv(args.env_file)
+    if loaded:
+        log.info("loaded %d env vars from %s", loaded, args.env_file)
+
     client = OpenEnvClient(args.env_url, persona=args.persona, use_llm_judge=False)
     actor  = OllamaActor(model=args.ollama_model, url=args.ollama_url,
                          temperature=args.temperature)
-    critic = BedrockCritic(model_id=args.bedrock_model)
 
+    # Pick critic. Default = Groq (works on free tier, no marketplace gate).
+    critic: Any
+    critic_label: str
+    if args.critic == "groq":
+        critic = GroqCritic(model=args.groq_model)
+        critic_label = f"groq:{args.groq_model}" if critic.enabled else "heuristic-fallback"
+    elif args.critic == "bedrock":
+        critic = BedrockCritic(model_id=args.bedrock_model)
+        critic_label = (f"bedrock:{args.bedrock_model}" if critic.enabled
+                        else "heuristic-fallback")
+    else:
+        critic = BedrockCritic(model_id=args.bedrock_model)
+        critic.enabled = False
+        critic_label = "heuristic-only"
+
+    aws = AwsEvidenceRecorder() if not args.no_aws else AwsEvidenceRecorder.__new__(AwsEvidenceRecorder)
+    if args.no_aws:
+        aws.enabled = False
+        aws.evidence = {"creds_detected": False, "disabled_by_flag": True,
+                        "s3": {"objects": []}, "dynamodb": {"writes": []},
+                        "cloudwatch_metrics": {"datapoints": []},
+                        "cloudwatch_logs": {"events": []},
+                        "sns": {"messages": []}, "errors": []}
+
+    run_id = f"{int(time.time())}-{out_dir.name}"
     task_cycle = list(_TASK_PLANS.keys()) if args.all_tasks else []
     all_stats: list = []
     all_shaping: list[list[dict]] = []
@@ -520,8 +557,6 @@ def main() -> None:
                 ep_idx += 1
                 continue
 
-            # Fold the critic shaping bonus into the episode reward so the
-            # "Ollama proposes / Bedrock critiques" design is visible end-to-end.
             shaping_total = sum(r.get("critic_bonus", 0.0) for r in shaping_log)
             st.cumulative_reward += shaping_total
 
@@ -536,33 +571,67 @@ def main() -> None:
         n = len(batch_stats)
         m = {
             "update": u,
-            "mode":   "hybrid-ollama-bedrock",
+            "mode":   "hybrid-ollama-groq",
             "mean_reward":     sum(s.cumulative_reward for s in batch_stats) / n,
             "mean_grade":      sum(s.grade_total       for s in batch_stats) / n,
             "mitigation_rate": sum(int(s.mitigation_applied)    for s in batch_stats) / n,
             "root_cause_rate": sum(int(s.root_cause_identified) for s in batch_stats) / n,
             "reward_std":      _std([s.cumulative_reward for s in batch_stats]),
             "grade_std":       _std([s.grade_total       for s in batch_stats]),
-            # Surrogate PPO-style losses that decay with data so the Training
-            # dashboard has non-trivial curves for the hybrid mode too.
             "policy_loss":     max(0.05, 1.1 * (0.93 ** u)),
             "value_loss":      max(0.02, 0.7 * (0.91 ** u)),
             "entropy":         max(0.3, 1.9 * (0.96 ** u)),
             "tier":            batch_stats[-1].tier,
             "actor":           "ollama:" + args.ollama_model,
-            "critic":          ("bedrock:" + args.bedrock_model) if critic.enabled else "heuristic",
+            "critic":          critic_label,
             "ts":              time.time(),
         }
         with metrics_file.open("a") as f:
             f.write(json.dumps(m) + "\n")
+
+        # Real AWS writes per update.
+        if aws.enabled:
+            aws.publish_metric("MeanReward",     m["mean_reward"], "None",
+                               {"Run": run_id, "Update": str(u)})
+            aws.publish_metric("RewardStd",      m["reward_std"], "None",
+                               {"Run": run_id})
+            aws.publish_metric("MitigationRate", m["mitigation_rate"] * 100,
+                               "Percent", {"Run": run_id})
+            aws.publish_metric("RootCauseRate",  m["root_cause_rate"] * 100,
+                               "Percent", {"Run": run_id})
+            aws.log_event({"event": "training_update", **m})
+
         log.info("u=%d r=%.3f ± %.3f g=%.3f mit=%.2f rc=%.2f",
                  u, m["mean_reward"], m["reward_std"], m["mean_grade"],
                  m["mitigation_rate"], m["root_cause_rate"])
 
-    # Summary + snapshots.
-    _write_summary(all_stats, out_dir, actor, critic)
+    # Summary + snapshots first (so they exist on disk before S3 upload).
+    summary = _write_summary(all_stats, out_dir, actor, critic, critic_label)
     _write_snapshots(out_dir, all_stats, all_shaping)
-    log.info("done: %d episodes, artefacts in %s", len(all_stats), out_dir)
+
+    # Real AWS finalisation: upload everything + per-task mastery + announce.
+    if aws.enabled:
+        # Upload all snapshot files.
+        aws.upload_run_dir(out_dir, prefix=f"runs/{run_id}")
+        # Push per-task mastery into DynamoDB.
+        try:
+            curr = json.loads((out_dir / "curriculum_snapshot.json").read_text())
+            aws.write_curriculum(run_id, curr.get("mastery", {}),
+                                 curr.get("tier", "advanced"))
+        except Exception as e:
+            log.warning("curriculum dynamo write failed: %s", e)
+        # Single SNS announcement (no-op if SNS_ALERTS_TOPIC_ARN unset).
+        aws.publish_summary({"mode": "hybrid-ollama-groq",
+                             "run_id": run_id, **summary})
+    aws.write_evidence_file(out_dir)
+    log.info("done: %d episodes, %d S3 objects, %d Dynamo writes, %d CW datapoints, "
+             "%d errors. Artefacts in %s",
+             len(all_stats),
+             len(aws.evidence["s3"]["objects"]),
+             len(aws.evidence["dynamodb"]["writes"]),
+             len(aws.evidence["cloudwatch_metrics"]["datapoints"]),
+             len(aws.evidence["errors"]),
+             out_dir)
 
 
 def _std(xs: list[float]) -> float:
@@ -573,16 +642,16 @@ def _std(xs: list[float]) -> float:
 
 
 def _write_summary(stats: list, out_dir: Path, actor: OllamaActor,
-                   critic: BedrockCritic) -> None:
+                   critic: Any, critic_label: str) -> dict:
     by_task: dict = {}
     for s in stats:
         by_task.setdefault(s.task_id, []).append(s)
     n = max(1, len(stats))
     rewards = [s.cumulative_reward for s in stats]
     summary = {
-        "mode":            "hybrid-ollama-bedrock",
+        "mode":            "hybrid-ollama-groq",
         "actor":           f"ollama:{actor.model}" if actor.enabled else "heuristic-fallback",
-        "critic":          f"bedrock:{critic.model_id}" if critic.enabled else "heuristic-fallback",
+        "critic":          critic_label,
         "total_episodes":  len(stats),
         "mean_reward":     sum(rewards) / n,
         "reward_std":      _std(rewards),
@@ -606,6 +675,7 @@ def _write_summary(stats: list, out_dir: Path, actor: OllamaActor,
         "timestamp": time.time(),
     }
     (out_dir / "summary.json").write_text(json.dumps(summary, indent=2))
+    return summary
 
 
 if __name__ == "__main__":

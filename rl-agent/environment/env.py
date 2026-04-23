@@ -1248,6 +1248,124 @@ class IncidentCommanderEnv:
         if action.type == ActionType.SUBMIT_POSTMORTEM and sources >= 3:
             breakdown["diverse_evidence"] = 0.05
 
+        # =============================================================
+        # Extended reward signals (added for richer credit assignment).
+        # All deterministic; values are small so they don't dominate.
+        # =============================================================
+
+        # --- early_triage_bonus: first 2 steps are read actions (+0.08) ---
+        if self._step_count == 2 and len(self._action_history) >= 2:
+            first_two = self._action_history[:2]
+            if all(a.get("action_type") in {"query_logs", "query_metrics",
+                                            "get_service_dependencies", "get_trace"}
+                   for a in first_two):
+                breakdown["early_triage_bonus"] = 0.08
+
+        # --- dependency_first_bonus: get_service_dependencies before any write ---
+        if action.type == ActionType.GET_SERVICE_DEPENDENCIES:
+            wrote_already = any(a.get("action_type") in {w.value for w in WRITE_ACTIONS}
+                                for a in self._action_history)
+            if not wrote_already and "dependency_first_bonus" not in breakdown:
+                breakdown["dependency_first_bonus"] = 0.05
+
+        # --- metric_correlation_bonus: same service queried in both logs & metrics ---
+        if action.type == ActionType.QUERY_METRICS:
+            promql = str(action.params.get("promql", ""))
+            services_in_logs = {a.get("params", {}).get("service", "")
+                                for a in self._action_history
+                                if a.get("action_type") == "query_logs"}
+            for svc in services_in_logs:
+                if svc and svc in promql:
+                    breakdown["metric_correlation_bonus"] = 0.05
+                    break
+
+        # --- trace_used_bonus: at least one trace lookup over the episode ---
+        if action.type == ActionType.GET_TRACE and not self._inspected_traces:
+            breakdown["trace_used_bonus"] = 0.04
+
+        # --- exec_diagnostic_bonus: kubectl describe/get used (read-verb exec) ---
+        if action.type == ActionType.EXEC_KUBECTL:
+            cmd = str(action.params.get("command", "")).lower()
+            if any(v in cmd for v in (" describe ", " get ", " events", " top ")):
+                breakdown["exec_diagnostic_bonus"] = 0.05
+
+        # --- cross_service_evidence: investigated >=2 distinct services ---
+        if action.type in {ActionType.QUERY_LOGS, ActionType.GET_SERVICE_DEPENDENCIES}:
+            inspected_services = {a.get("params", {}).get("service", "")
+                                  for a in self._action_history
+                                  if a.get("action_type") in
+                                  {"query_logs", "get_service_dependencies"}}
+            inspected_services.discard("")
+            if len(inspected_services) >= 2 and "cross_service_evidence" not in breakdown:
+                breakdown["cross_service_evidence"] = 0.04
+
+        # --- parameter_specificity_bonus: query_logs with a filter_text ---
+        if action.type == ActionType.QUERY_LOGS and action.params.get("filter_text"):
+            breakdown["parameter_specificity_bonus"] = 0.03
+
+        # --- quick_root_cause_bonus: identified root cause within 4 steps ---
+        if (action.type == ActionType.SUBMIT_POSTMORTEM
+                and self._root_cause_identified
+                and self._step_count <= 4):
+            breakdown["quick_root_cause_bonus"] = 0.10
+
+        # --- verification_after_fix: read action AFTER a mitigation ---
+        if (action.type in {ActionType.QUERY_LOGS, ActionType.QUERY_METRICS,
+                            ActionType.EXEC_KUBECTL}
+                and self._mitigation_applied):
+            breakdown["verification_after_fix"] = 0.06
+
+        # --- runbook_match_bonus: postmortem lists correct affected service ---
+        if action.type == ActionType.SUBMIT_POSTMORTEM:
+            correct = CORRECT_SERVICES.get(task_id, "")
+            affected = action.params.get("affected_services", []) or []
+            if correct and any(correct.lower() in str(s).lower() for s in affected):
+                breakdown["runbook_match_bonus"] = 0.05
+
+        # --- low_thrash_bonus: <=2 write actions in the entire episode ---
+        if action.type == ActionType.SUBMIT_POSTMORTEM:
+            writes = sum(1 for a in self._action_history
+                         if a.get("action_type") in {w.value for w in WRITE_ACTIONS})
+            if writes <= 2:
+                breakdown["low_thrash_bonus"] = 0.05
+
+        # --- fast_resolution_bonus: mitigation in <=6 total steps ---
+        if (action.type == ActionType.SUBMIT_POSTMORTEM
+                and self._mitigation_applied
+                and self._step_count <= 6):
+            breakdown["fast_resolution_bonus"] = 0.08
+
+        # --- exploration_diversity: unique action types used (cap 0.08) ---
+        if action.type == ActionType.SUBMIT_POSTMORTEM:
+            uniq = len({a.get("action_type") for a in self._action_history})
+            breakdown["exploration_diversity"] = min(0.08, 0.015 * uniq)
+
+        # --- consistent_postmortem_bonus: required postmortem fields present ---
+        if action.type == ActionType.SUBMIT_POSTMORTEM:
+            required = ("root_cause", "summary", "mitigation",
+                        "blast_radius", "timeline", "prevention")
+            present = sum(1 for k in required
+                          if isinstance(action.params.get(k), str)
+                          and len(action.params.get(k, "")) > 6)
+            breakdown["consistent_postmortem_bonus"] = round(0.01 * present, 3)
+
+        # --- log_keyword_match_strength: cumulative useful log queries (cap +0.10) ---
+        ulqc = getattr(self, "_useful_log_query_count", 0)
+        if ulqc > 0 and action.type == ActionType.QUERY_LOGS:
+            breakdown["log_keyword_match_strength"] = min(0.10, 0.025 * ulqc)
+
+        # --- followup_quality_bonus: postmortem proposes >=3 followups ---
+        if action.type == ActionType.SUBMIT_POSTMORTEM:
+            fu = action.params.get("recommended_followups", []) or []
+            if isinstance(fu, list) and len(fu) >= 3:
+                breakdown["followup_quality_bonus"] = 0.03
+
+        # --- safe_action_bonus: avoided destructive verbs (delete/drop) ---
+        if action.type == ActionType.EXEC_KUBECTL:
+            cmd = str(action.params.get("command", "")).lower()
+            if not any(d in cmd for d in (" delete ", " drop ", " --force ")):
+                breakdown["safe_action_bonus"] = 0.02
+
         total = sum(breakdown.values())
         self._last_reward_breakdown = breakdown
         self._last_action_correct = breakdown.get("correct_mitigation", 0) > 0

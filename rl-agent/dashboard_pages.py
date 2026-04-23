@@ -55,57 +55,169 @@ def _nav(active: str) -> str:
 _CSS = """
 <style>
   :root {
-    --bg: #0b1021;
-    --panel: #141b35;
+    --bg: #07091a;
+    --bg-grad: radial-gradient(ellipse at top, #1b2544 0%, #07091a 60%);
+    --panel: rgba(20, 27, 53, 0.72);
+    --panel-solid: #141b35;
     --panel2: #1b2544;
+    --border: rgba(122, 167, 255, 0.18);
+    --border-strong: rgba(122, 167, 255, 0.4);
     --accent: #7aa7ff;
+    --accent-grad: linear-gradient(135deg, #7aa7ff 0%, #a78bfa 100%);
     --accent2: #ff9f7a;
     --good: #4ade80;
     --bad: #f87171;
+    --warn: #fbbf24;
     --text: #e6ecff;
     --muted: #8aa0c7;
+    --shadow: 0 8px 24px rgba(0,0,0,0.35), 0 0 1px rgba(122,167,255,0.15);
   }
   * { box-sizing: border-box; }
-  body { margin: 0; font-family: system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
-         background: var(--bg); color: var(--text); }
-  .navbar { display: flex; flex-wrap: wrap; gap: 2px; background: #0a0f22;
-            padding: 8px 16px; position: sticky; top: 0; z-index: 10;
-            border-bottom: 1px solid #27345e; }
-  .nav-item { color: var(--muted); padding: 8px 14px; text-decoration: none;
-              border-radius: 6px; font-size: 14px; font-weight: 500; }
-  .nav-item:hover { background: #1b2544; color: var(--text); }
-  .nav-item.active { background: var(--accent); color: #0b1021; }
-  .page { max-width: 1400px; margin: 0 auto; padding: 20px; }
-  h1 { margin: 0 0 4px; }
-  h2 { margin-top: 28px; color: var(--accent); font-size: 20px; }
-  .subtitle { color: var(--muted); margin-bottom: 22px; }
-  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px,1fr));
-              gap: 14px; margin-bottom: 22px; }
-  .kpi { background: var(--panel); padding: 18px; border-radius: 10px;
-         border: 1px solid #27345e; }
-  .kpi .label { color: var(--muted); font-size: 12px; text-transform: uppercase;
-                letter-spacing: 0.08em; }
-  .kpi .value { font-size: 28px; font-weight: 700; margin-top: 6px; }
-  .kpi .delta { font-size: 12px; margin-top: 4px; }
+  html, body { margin: 0; }
+  body {
+    font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    background: var(--bg-grad);
+    background-attachment: fixed;
+    color: var(--text);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+  .navbar {
+    display: flex; flex-wrap: wrap; gap: 4px;
+    padding: 10px 24px;
+    background: rgba(7, 9, 26, 0.85);
+    backdrop-filter: saturate(160%) blur(14px);
+    -webkit-backdrop-filter: saturate(160%) blur(14px);
+    position: sticky; top: 0; z-index: 50;
+    border-bottom: 1px solid var(--border);
+  }
+  .navbar::before {
+    content: "\26A1 IncidentCommander";
+    font-weight: 700; font-size: 14px; letter-spacing: 0.04em;
+    color: var(--text); padding: 8px 14px 8px 0; margin-right: 8px;
+    border-right: 1px solid var(--border); margin-right: 14px;
+  }
+  .nav-item {
+    color: var(--muted); padding: 8px 14px; text-decoration: none;
+    border-radius: 8px; font-size: 13px; font-weight: 500;
+    transition: all 0.18s ease;
+  }
+  .nav-item:hover {
+    background: rgba(122, 167, 255, 0.12);
+    color: var(--text); transform: translateY(-1px);
+  }
+  .nav-item.active {
+    background: var(--accent-grad);
+    color: #07091a; box-shadow: 0 4px 12px rgba(122,167,255,0.35);
+  }
+  .page { max-width: 1400px; margin: 0 auto; padding: 28px 24px; }
+  h1 {
+    margin: 0 0 6px; font-size: 28px; font-weight: 700;
+    background: var(--accent-grad); -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  h2 {
+    margin-top: 36px; color: var(--text); font-size: 18px;
+    font-weight: 600; letter-spacing: 0.01em;
+    padding-bottom: 8px; border-bottom: 1px solid var(--border);
+  }
+  .subtitle { color: var(--muted); margin-bottom: 24px; font-size: 14px; }
+  .kpi-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr));
+    gap: 14px; margin-bottom: 24px;
+  }
+  .kpi {
+    background: var(--panel); padding: 18px 20px; border-radius: 14px;
+    border: 1px solid var(--border); box-shadow: var(--shadow);
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    transition: transform 0.18s ease, border-color 0.18s ease;
+  }
+  .kpi:hover { transform: translateY(-2px); border-color: var(--border-strong); }
+  .kpi .label {
+    color: var(--muted); font-size: 11px; text-transform: uppercase;
+    letter-spacing: 0.1em; font-weight: 600;
+  }
+  .kpi .value {
+    font-size: 30px; font-weight: 700; margin-top: 8px;
+    background: var(--accent-grad); -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent; background-clip: text;
+    line-height: 1.1;
+  }
+  .kpi .delta { font-size: 12px; margin-top: 4px; color: var(--muted); }
   .delta.up { color: var(--good); } .delta.down { color: var(--bad); }
-  .chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px,1fr));
-                gap: 16px; }
-  .chart { background: var(--panel); padding: 16px; border-radius: 10px;
-           border: 1px solid #27345e; }
-  .chart h3 { margin: 0 0 8px; font-size: 15px; color: var(--accent2); }
-  table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
-  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #27345e; }
-  th { color: var(--muted); font-weight: 600; text-transform: uppercase; font-size: 11px;
-       letter-spacing: 0.06em; }
-  .badge { display:inline-block; padding: 2px 8px; border-radius: 12px;
-           font-size: 11px; font-weight: 600; }
-  .badge.ok { background: #134f2d; color: var(--good); }
-  .badge.warn { background: #553d12; color: #fbbf24; }
-  .badge.err { background: #551c1c; color: var(--bad); }
-  .badge.info { background: #1d3557; color: var(--accent); }
-  pre { background: #07091a; padding: 12px; border-radius: 8px; overflow-x: auto;
-        font-size: 12px; border: 1px solid #27345e; }
-  .empty { color: var(--muted); font-style: italic; padding: 10px; }
+  .chart-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(420px,1fr));
+    gap: 16px; margin-bottom: 16px;
+  }
+  .chart {
+    background: var(--panel); padding: 18px; border-radius: 14px;
+    border: 1px solid var(--border); box-shadow: var(--shadow);
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  }
+  .chart h3 {
+    margin: 0 0 12px; font-size: 13px; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600;
+  }
+  table {
+    width: 100%; border-collapse: separate; border-spacing: 0;
+    margin-top: 12px; font-size: 13px;
+    background: var(--panel); border-radius: 12px; overflow: hidden;
+    border: 1px solid var(--border); box-shadow: var(--shadow);
+  }
+  th, td { text-align: left; padding: 10px 14px;
+           border-bottom: 1px solid var(--border); }
+  th {
+    color: var(--muted); font-weight: 600; text-transform: uppercase;
+    font-size: 10px; letter-spacing: 0.08em;
+    background: rgba(7,9,26,0.4);
+  }
+  tbody tr { transition: background 0.12s ease; }
+  tbody tr:hover { background: rgba(122,167,255,0.05); }
+  tbody tr:last-child td { border-bottom: none; }
+  .badge {
+    display: inline-block; padding: 3px 10px; border-radius: 14px;
+    font-size: 10px; font-weight: 700; letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .badge.ok   { background: rgba(74,222,128,0.18); color: var(--good);
+                box-shadow: inset 0 0 0 1px rgba(74,222,128,0.32); }
+  .badge.warn { background: rgba(251,191,36,0.18); color: var(--warn);
+                box-shadow: inset 0 0 0 1px rgba(251,191,36,0.32); }
+  .badge.err  { background: rgba(248,113,113,0.18); color: var(--bad);
+                box-shadow: inset 0 0 0 1px rgba(248,113,113,0.32); }
+  .badge.info { background: rgba(122,167,255,0.18); color: var(--accent);
+                box-shadow: inset 0 0 0 1px rgba(122,167,255,0.32); }
+  pre {
+    background: rgba(7,9,26,0.7); padding: 14px; border-radius: 10px;
+    overflow-x: auto; font-size: 12px;
+    border: 1px solid var(--border);
+    font-family: 'JetBrains Mono', 'Consolas', monospace;
+  }
+  code {
+    background: rgba(122,167,255,0.12); color: var(--accent);
+    padding: 1px 6px; border-radius: 4px; font-size: 0.92em;
+    font-family: 'JetBrains Mono', 'Consolas', monospace;
+  }
+  .empty { color: var(--muted); font-style: italic; padding: 14px; text-align: center; }
+  .pulse {
+    display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+    background: var(--good); box-shadow: 0 0 0 0 rgba(74,222,128,0.6);
+    animation: pulse 1.8s infinite; margin-right: 6px;
+    vertical-align: middle;
+  }
+  @keyframes pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(74,222,128,0.55); }
+    70%  { box-shadow: 0 0 0 12px rgba(74,222,128,0); }
+    100% { box-shadow: 0 0 0 0 rgba(74,222,128,0); }
+  }
+  .fade-in { animation: fadeIn 0.5s ease; }
+  @keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: rgba(7,9,26,0.4); }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(122,167,255,0.25); border-radius: 6px;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(122,167,255,0.45); }
 </style>
 """
 
@@ -113,11 +225,24 @@ _CSS = """
 def _page(title: str, active: str, body: str) -> str:
     return f"""<!doctype html>
 <html><head><meta charset="utf-8"><title>{title} — IncidentCommander</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 {_CSS}
 </head><body>
 {_nav(active)}
-<div class="page">{body}</div>
+<div class="page fade-in">{body}</div>
+<script>
+  if (window.Chart) {{
+    Chart.defaults.color = '#8aa0c7';
+    Chart.defaults.borderColor = 'rgba(122,167,255,0.12)';
+    Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
+    Chart.defaults.plugins.legend.labels.usePointStyle = true;
+    Chart.defaults.plugins.legend.labels.boxWidth = 8;
+  }}
+</script>
 </body></html>"""
 
 
@@ -264,73 +389,134 @@ def _render_rewards(app: FastAPI) -> str:
             breakdown = dict(getattr(env, "_last_reward_breakdown", {}) or {})
         except Exception:
             breakdown = {}
-    # Fall back to the last episode recorded during training.
     history = _load_snapshot(None, "reward_breakdown_history.jsonl") or []
     if not breakdown and history:
         last = history[-1]
         breakdown = dict(last.get("reward_breakdown") or {})
-        source = f"training snapshot · last episode ({last.get('task_id','?')})"
+        source = f"training snapshot \u00b7 last episode ({last.get('task_id','?')})"
     elif breakdown:
         source = "live env (last /step)"
 
-    # Aggregate across the whole history for the "mean across episodes" chart.
-    keys_seen = set()
+    # Auto-discover ALL signal keys ever seen across the training history.
+    keys_seen: dict[str, int] = {}
+    pos_count: dict[str, int] = {}
+    neg_count: dict[str, int] = {}
+    sums: dict[str, float] = {}
     for row in history:
-        for k in (row.get("reward_breakdown") or {}).keys():
-            keys_seen.add(k)
-    means: dict[str, float] = {}
-    for k in keys_seen:
-        vals = [float((r.get("reward_breakdown") or {}).get(k, 0.0)) for r in history]
-        if vals:
-            means[k] = sum(vals) / len(vals)
-    signals = [
-        ("triage_reward",            "Triage: correct first instinct"),
-        ("investigation_bonus",      "Evidence gathering"),
-        ("tool_proficiency",         "Proper use of tools"),
-        ("red_herring_penalty",      "Chased a red herring"),
-        ("acting_blind_penalty",     "Wrote without investigating"),
-        ("repeat_command_penalty",   "Duplicate command"),
-        ("phase_bonus",              "Phase-aware progression"),
-        ("mitigation_efficiency",    "Fixed in ≤3 writes"),
-        ("mitigation_thrash_penalty","Thrashing (>6 writes)"),
-        ("evidence_alignment",       "Postmortem cites evidence"),
-        ("diverse_evidence",         "≥3 evidence sources"),
-        ("recovery_verified",        "Pods actually Running"),
-        ("judge_total",              "LLM judge holistic score"),
-        ("correct_rollback",         "Rolled back right service"),
-        ("correct_postmortem",       "Correct root cause"),
-    ]
-    rows_html = "".join(
-        f"<tr><td><b>{k}</b></td><td>{desc}</td>"
-        f"<td>{breakdown.get(k, 0.0):+.3f}</td>"
-        f"<td>{means.get(k, 0.0):+.3f}</td></tr>"
-        for k, desc in signals
-    )
+        for k, v in (row.get("reward_breakdown") or {}).items():
+            keys_seen[k] = keys_seen.get(k, 0) + 1
+            sums[k] = sums.get(k, 0.0) + float(v)
+            if v > 0: pos_count[k] = pos_count.get(k, 0) + 1
+            if v < 0: neg_count[k] = neg_count.get(k, 0) + 1
+    means: dict[str, float] = {k: sums[k] / max(1, keys_seen[k]) for k in keys_seen}
+
+    # Friendly descriptions; unknown keys auto-show with humanised name.
+    DESCS = {
+        "step_cost":                    "-0.01 per step (efficiency pressure)",
+        "investigation_bonus":          "First-time read action on a new service",
+        "root_cause_correct":           "+0.30 for correct postmortem root cause",
+        "correct_mitigation":           "+0.20 for the right write action on the right service",
+        "useful_log_query":             "+0.10 when log query returns task-relevant keywords",
+        "postmortem_quality":           "+0..0.20 from postmortem grader",
+        "acting_blind_penalty":         "-0.20 for write action with no prior investigation",
+        "red_herring_penalty":          "-0.15 for targeting a known red-herring service",
+        "wrong_service_penalty":        "-0.15 for writing to the wrong deployment",
+        "time_penalty":                 "-0.05 \u00d7 max(0, step-5)",
+        "blast_radius_increase":        "-0.10 when a write made things worse",
+        "repeat_command_penalty":       "-0.15 per duplicate command (cap -0.45)",
+        "phase_order":                  "\u00b1 Phase progression (triage \u2192 investigate \u2192 fix \u2192 verify)",
+        "judge":                        "LLM judge slice [-0.10, +0.15]",
+        "evidence_alignment":           "Postmortem cites evidence found via logs",
+        "mitigation_efficiency":        "Mitigation in \u22643 writes",
+        "mitigation_thrash_penalty":    "Thrashing (>6 writes)",
+        "recovery_verified":            "Real cluster confirms pods Running after fix",
+        "diverse_evidence":             "\u22653 distinct evidence sources",
+        # New extended signals.
+        "early_triage_bonus":           "First two steps were read actions",
+        "dependency_first_bonus":       "Mapped dependencies before any write",
+        "metric_correlation_bonus":     "Same service queried in both logs and metrics",
+        "trace_used_bonus":             "Used distributed tracing at least once",
+        "exec_diagnostic_bonus":        "Used kubectl describe/get/events (read-verb)",
+        "cross_service_evidence":       "Investigated \u22652 distinct services",
+        "parameter_specificity_bonus":  "query_logs with a filter_text",
+        "quick_root_cause_bonus":       "Identified root cause within 4 steps",
+        "verification_after_fix":       "Read action AFTER mitigation (verify)",
+        "runbook_match_bonus":          "Postmortem lists correct affected service",
+        "low_thrash_bonus":             "\u22642 write actions in entire episode",
+        "fast_resolution_bonus":        "Mitigation in \u22646 total steps",
+        "exploration_diversity":        "Bonus per unique action type used (cap 0.08)",
+        "consistent_postmortem_bonus":  "Required postmortem fields present",
+        "log_keyword_match_strength":   "Cumulative useful log queries (cap +0.10)",
+        "followup_quality_bonus":       "Postmortem proposes \u22653 followups",
+        "safe_action_bonus":            "Avoided destructive verbs (delete/drop/--force)",
+    }
+    # Order: known first, then any newly-discovered signals.
+    ordered = [k for k in DESCS if k in keys_seen]
+    ordered += sorted(k for k in keys_seen if k not in DESCS)
+
+    rows_html = ""
+    for k in ordered:
+        last_v = breakdown.get(k, 0.0)
+        mean_v = means.get(k, 0.0)
+        n_pos = pos_count.get(k, 0)
+        n_neg = neg_count.get(k, 0)
+        n_total = keys_seen.get(k, 0)
+        if mean_v > 0: badge = '<span class="badge ok">positive</span>'
+        elif mean_v < 0: badge = '<span class="badge err">penalty</span>'
+        else: badge = '<span class="badge info">neutral</span>'
+        last_cell = f'{last_v:+.3f}' if k in breakdown else '\u2014'
+        rows_html += (
+            f'<tr><td><b>{k}</b> {badge}</td>'
+            f'<td>{DESCS.get(k, k.replace("_", " ").title())}</td>'
+            f'<td>{last_cell}</td>'
+            f'<td>{mean_v:+.3f}</td>'
+            f'<td>{n_total} <span class="empty" style="padding:0">'
+            f'(\u2191{n_pos} \u2193{n_neg})</span></td></tr>'
+        )
+
+    n_signals = len(ordered)
+    n_episodes = len(history)
     body = f"""
 <h1>Reward signals</h1>
-<div class="subtitle">15 shaped reward components. Data source: <b>{source}</b> ·
-  history covers <b>{len(history)}</b> episodes.</div>
+<div class="subtitle"><span class="pulse"></span> {n_signals} reward components observed across <b>{n_episodes}</b> training episodes.
+  Source: <b>{source}</b>.</div>
+
+<div class="kpi-grid">
+  <div class="kpi"><div class="label">Signal count</div><div class="value">{n_signals}</div></div>
+  <div class="kpi"><div class="label">Episodes</div><div class="value">{n_episodes}</div></div>
+  <div class="kpi"><div class="label">Positive signals fired</div><div class="value">{sum(pos_count.values())}</div></div>
+  <div class="kpi"><div class="label">Penalties fired</div><div class="value">{sum(neg_count.values())}</div></div>
+</div>
 
 <div class="chart-grid">
-  <div class="chart"><h3>Last-episode breakdown</h3><canvas id="rb" height="200"></canvas></div>
-  <div class="chart"><h3>Mean over training history</h3><canvas id="rm" height="200"></canvas></div>
+  <div class="chart"><h3>Last-episode breakdown</h3><canvas id="rb" height="240"></canvas></div>
+  <div class="chart"><h3>Mean across all episodes</h3><canvas id="rm" height="240"></canvas></div>
 </div>
 
 <h2>Signal catalogue</h2>
-<table><thead><tr><th>Signal</th><th>Meaning</th><th>Last episode</th><th>Mean (n={len(history)})</th></tr></thead>
-<tbody>{rows_html}</tbody></table>
+<table><thead><tr><th>Signal</th><th>Meaning</th><th>Last episode</th><th>Mean (n={n_episodes})</th><th>Fire count</th></tr></thead>
+<tbody>{rows_html or '<tr><td colspan="5" class="empty">No reward breakdown recorded yet.</td></tr>'}</tbody></table>
 
 <script>
-function barChart(id, data, labelSuffix) {{
+function barChart(id, data, label) {{
   const keys = Object.keys(data);
   const vals = keys.map(k => data[k]);
-  const colors = vals.map(v => v >= 0 ? '#4ade80' : '#f87171');
+  const colors = vals.map(v => v >= 0 ? 'rgba(74,222,128,0.78)' : 'rgba(248,113,113,0.78)');
+  const borders = vals.map(v => v >= 0 ? '#4ade80' : '#f87171');
   new Chart(document.getElementById(id), {{
     type: 'bar',
-    data: {{ labels: keys, datasets: [{{data: vals, backgroundColor: colors, label: labelSuffix}}]}},
-    options: {{ indexAxis: 'y', plugins: {{ legend: {{ display:false }} }},
-               scales: {{ x: {{ ticks: {{ color:'#8aa0c7' }} }},
-                          y: {{ ticks: {{ color:'#e6ecff' }} }} }} }}
+    data: {{ labels: keys, datasets: [{{ data: vals, backgroundColor: colors,
+                                      borderColor: borders, borderWidth: 1,
+                                      borderRadius: 4, label }}]}},
+    options: {{
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      plugins: {{ legend: {{ display: false }},
+                  tooltip: {{ backgroundColor: 'rgba(20,27,53,0.96)',
+                              borderColor: 'rgba(122,167,255,0.4)', borderWidth: 1 }}
+      }},
+      scales: {{ x: {{ grid: {{ color: 'rgba(122,167,255,0.08)' }} }},
+                 y: {{ grid: {{ display: false }}, ticks: {{ font: {{ size: 11 }} }} }} }}
+    }}
   }});
 }}
 barChart('rb', {json.dumps(breakdown)}, 'last episode');
@@ -584,15 +770,19 @@ def _probe_observability() -> dict[str, dict]:
 
 
 def _render_aws() -> str:
+    # 1) Live status from this process (HF Space typically has no AWS creds).
     try:
         from environment.aws_integrations import aws_status
         status = aws_status()
     except Exception as e:
         status = {"error": str(e), "region": None, "services": {}}
 
+    # 2) Evidence from the most recent training run (committed to the repo).
+    evidence = _load_snapshot(None, "aws_evidence.json") or {}
+
     svcs = status.get("services", {})
-    region = status.get("region") or "(unset)"
-    account = status.get("account_id") or "(no credentials)"
+    region = status.get("region") or evidence.get("region") or "(unset)"
+    account = status.get("account_id") or evidence.get("account_id") or "(no live creds)"
 
     rows_html = ""
     n_on = 0
@@ -600,7 +790,7 @@ def _render_aws() -> str:
         on = bool(info.get("enabled"))
         n_on += int(on)
         badge = ('<span class="badge ok">connected</span>' if on
-                 else '<span class="badge warn">not configured</span>')
+                 else '<span class="badge warn">not configured here</span>')
         detail_bits = []
         for k, v in info.items():
             if k == "enabled" or v is None:
@@ -609,40 +799,118 @@ def _render_aws() -> str:
         rows_html += (
             f"<tr><td><b>{name}</b></td>"
             f"<td>{badge}</td>"
-            f"<td>{' · '.join(detail_bits) or '—'}</td></tr>"
+            f"<td>{' \u00b7 '.join(detail_bits) or '\u2014'}</td></tr>"
         )
+
+    # ---- Evidence: real S3 objects, CW datapoints, Dynamo writes from last run.
+    ev_summary = evidence.get("summary", {}) if evidence else {}
+    s3_objs   = (evidence.get("s3", {}) or {}).get("objects", [])[-12:]
+    cw_dps    = (evidence.get("cloudwatch_metrics", {}) or {}).get("datapoints", [])
+    cw_logs   = (evidence.get("cloudwatch_logs", {}) or {}).get("events", [])
+    ddb_writes= (evidence.get("dynamodb", {}) or {}).get("writes", [])
+    sns_msgs  = (evidence.get("sns", {}) or {}).get("messages", [])
+    errors    = evidence.get("errors", [])
+
+    bucket = (evidence.get("s3", {}) or {}).get("bucket", "(not configured)")
+    last_prefix = (evidence.get("s3", {}) or {}).get("last_prefix", "")
+
+    s3_rows = "".join(
+        f'<tr><td><code>s3://{bucket}/{o.get("key","")}</code></td>'
+        f'<td>{o.get("bytes",0):,} bytes</td></tr>'
+        for o in s3_objs
+    ) or '<tr><td colspan="2" class="empty">No S3 uploads yet.</td></tr>'
+
+    cw_metric_table = ""
+    if cw_dps:
+        # Aggregate by metric name.
+        agg: dict[str, list] = {}
+        for d in cw_dps:
+            agg.setdefault(d.get("metric", "?"), []).append(float(d.get("value", 0.0)))
+        cw_metric_table = "".join(
+            f'<tr><td><b>{name}</b></td><td>{len(vs)}</td>'
+            f'<td>{sum(vs)/len(vs):.3f}</td><td>{min(vs):.3f}</td>'
+            f'<td>{max(vs):.3f}</td></tr>'
+            for name, vs in sorted(agg.items())
+        )
+    cw_metric_table = cw_metric_table or '<tr><td colspan="5" class="empty">No CloudWatch metrics published yet.</td></tr>'
+
+    ddb_rows = "".join(
+        f'<tr><td>{w.get("task_id","?")}</td><td>{w.get("mastery",0):.3f}</td>'
+        f'<td>{w.get("tier","?")}</td></tr>'
+        for w in ddb_writes
+    ) or '<tr><td colspan="3" class="empty">DynamoDB table not configured (set DYNAMODB_CURRICULUM_TABLE).</td></tr>'
+
+    err_rows = "".join(
+        f'<tr><td><code>{e.get("op","?")}</code></td><td>{e.get("error","?")[:200]}</td></tr>'
+        for e in errors[-10:]
+    ) or '<tr><td colspan="2" class="empty">No errors recorded.</td></tr>'
 
     services_defined = [
         ("VPC + subnets + NAT", "Dedicated 10.20.0.0/16 network across 2 AZs."),
         ("EKS",                 "Managed Kubernetes where AcmeCorp microservices + Chaos Mesh run."),
         ("ECR",                 "Private registry for the env server + trainer images."),
-        ("S3",                  "Versioned bucket for LoRA adapters + metrics.jsonl archive."),
+        ("S3",                  "Versioned bucket for training snapshots, metrics & critic shaping logs."),
         ("DynamoDB",            "PITR-enabled table holding per-run / per-task mastery."),
         ("CloudWatch Logs",     "Two log groups: /aws/eks/.../application + /aws/incident-commander/agent."),
         ("CloudWatch Metrics",  "Custom IncidentCommander namespace + ErrorRate > 5% alarm."),
         ("SNS",                 "Alert topic the agent publishes to when a mitigation is applied."),
         ("Secrets Manager",     "Stores OPENAI_API_KEY so no secrets are baked into the image."),
-        ("IAM (IRSA)",          "Least-privilege pod role — S3/Dynamo/Logs/CW/SNS/Secrets/Bedrock."),
+        ("IAM (IRSA)",          "Least-privilege pod role \u2014 S3/Dynamo/Logs/CW/SNS/Secrets/Bedrock."),
         ("Lambda",              "Subscribed to the SNS topic; POSTs /reset to trigger new episodes."),
-        ("Bedrock",             "Runtime permission for the LLM judge (Claude / Titan)."),
+        ("Bedrock",             "Optional second critic backend (Claude / Titan via InvokeModel)."),
     ]
     arch_rows = "".join(
         f"<tr><td><b>{n}</b></td><td>{d}</td></tr>" for n, d in services_defined
     )
 
+    has_evidence = bool(evidence)
+    last_run_ts = evidence.get("finished_at") or evidence.get("started_at") or 0
+    import datetime as _dt
+    last_run_str = (_dt.datetime.utcfromtimestamp(last_run_ts).strftime("%Y-%m-%d %H:%M UTC")
+                    if last_run_ts else "n/a")
+
     body = f"""
-<h1>AWS wiring</h1>
+<h1>AWS wiring & training evidence</h1>
 <div class="subtitle">
-  Account <b>{account}</b> · Region <b>{region}</b> · Reachable services:
-  <span class="badge info">{n_on}/{len(svcs) or 12}</span>
+  Account <b>{account}</b> \u00b7 Region <b>{region}</b> \u00b7
+  Live services reachable here: <span class="badge info">{n_on}/{len(svcs) or 12}</span> \u00b7
+  Last training run: <b>{last_run_str}</b>
 </div>
 
-<h2>Live service status</h2>
+<div class="kpi-grid">
+  <div class="kpi"><div class="label">S3 objects uploaded</div><div class="value">{ev_summary.get('s3_objects', 0)}</div><div class="delta">bucket: {bucket}</div></div>
+  <div class="kpi"><div class="label">CloudWatch datapoints</div><div class="value">{ev_summary.get('cloudwatch_datapoints', 0)}</div><div class="delta">namespace: IncidentCommander</div></div>
+  <div class="kpi"><div class="label">CloudWatch log events</div><div class="value">{ev_summary.get('cloudwatch_log_events', 0)}</div></div>
+  <div class="kpi"><div class="label">DynamoDB writes</div><div class="value">{ev_summary.get('dynamodb_writes', 0)}</div></div>
+  <div class="kpi"><div class="label">SNS messages</div><div class="value">{ev_summary.get('sns_messages', 0)}</div></div>
+  <div class="kpi"><div class="label">Errors</div><div class="value">{ev_summary.get('errors', 0)}</div></div>
+</div>
+
+<h2>S3 uploads (last run \u2014 prefix <code>{last_prefix or 'n/a'}</code>)</h2>
+<table>
+  <thead><tr><th>Object key</th><th>Size</th></tr></thead>
+  <tbody>{s3_rows}</tbody>
+</table>
+
+<h2>CloudWatch custom metrics published</h2>
+<table>
+  <thead><tr><th>Metric</th><th>N</th><th>Mean</th><th>Min</th><th>Max</th></tr></thead>
+  <tbody>{cw_metric_table}</tbody>
+</table>
+
+<h2>DynamoDB curriculum writes</h2>
+<table>
+  <thead><tr><th>Task</th><th>Mastery</th><th>Tier</th></tr></thead>
+  <tbody>{ddb_rows}</tbody>
+</table>
+
+<h2>Live AWS service reachability (this process)</h2>
 <div class="subtitle">Each integration in <code>environment/aws_integrations.py</code>
-is gated on env vars + boto3 credentials; unconfigured rows are safe no-ops.</div>
+is gated on env vars + boto3 credentials. The HF Space typically has no creds,
+so the trainer-side evidence above is the source of truth.</div>
 <table>
   <thead><tr><th>Service</th><th>State</th><th>Detail</th></tr></thead>
-  <tbody>{rows_html or '<tr><td colspan="3" class="empty">No AWS services configured — set AWS_REGION and the service-specific env vars.</td></tr>'}</tbody>
+  <tbody>{rows_html or '<tr><td colspan="3" class="empty">No AWS services configured here.</td></tr>'}</tbody>
 </table>
 
 <h2>Architecture (provisioned by <code>infra/aws/main.tf</code>)</h2>
@@ -651,19 +919,22 @@ is gated on env vars + boto3 credentials; unconfigured rows are safe no-ops.</di
   <tbody>{arch_rows}</tbody>
 </table>
 
-<h2>Apply</h2>
-<pre>cd incident-commander/infra/aws
-terraform init
-terraform apply -var='project=incident-commander' -var='region=us-east-1'
-terraform output env_file &gt; ../../.env.aws.local</pre>
+<h2>Recorder errors (last run)</h2>
+<table>
+  <thead><tr><th>Operation</th><th>Error</th></tr></thead>
+  <tbody>{err_rows}</tbody>
+</table>
 
-<h2>IAM policy highlights</h2>
-<pre>S3         PutObject / GetObject / ListBucket   (checkpoints bucket only)
-DynamoDB   GetItem / PutItem / Query            (curriculum table only)
-CloudWatch PutMetricData + FilterLogEvents
-SNS        Publish                              (alerts topic only)
-Secrets    GetSecretValue                       (openai secret only)
-Bedrock    InvokeModel / InvokeModelWithResponseStream</pre>
+<h2>How the bucket gets data</h2>
+<pre>python -m training.train_hybrid --critic groq --updates 12 \\
+    --rollouts-per-update 3 --episode-limit 8 --all-tasks \\
+    --out-dir checkpoints/ppo-v4-hybrid-ollama-groq \\
+    --env-file ../.env.aws.local
+
+# Trainer uploads the run dir to s3://$S3_CHECKPOINT_BUCKET/runs/&lt;ts&gt;-&lt;name&gt;/
+# Publishes per-update CloudWatch metrics under namespace IncidentCommander
+# Writes per-task mastery to DynamoDB ($DYNAMODB_CURRICULUM_TABLE if set)
+# Saves aws_evidence.json so this dashboard can render real ARNs/keys.</pre>
 """
     return _page("AWS", "/dashboard/aws", body)
 
