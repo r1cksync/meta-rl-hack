@@ -300,8 +300,11 @@ class QwenActor:
                  lora_r: int, lora_alpha: int, lora_dropout: float,
                  init_adapter_path: str | None = None):
         # Prefer unsloth (2x faster). Fall back to plain HF transformers if
-        # the runtime image's torch is incompatible (HF Jobs hits this).
+        # the runtime image's torch is incompatible (HF Jobs hits this) or if
+        # IC_DISABLE_UNSLOTH=1 is set (escape hatch for unsloth/peft API breakage).
         try:
+            if os.environ.get("IC_DISABLE_UNSLOTH", "").strip() in ("1", "true", "yes"):
+                raise RuntimeError("IC_DISABLE_UNSLOTH set; using HF transformers")
             from unsloth import FastLanguageModel
             self.model, self.tokenizer = FastLanguageModel.from_pretrained(
                 model_name=model_name,
@@ -320,7 +323,15 @@ class QwenActor:
                 use_gradient_checkpointing="unsloth",
                 random_state=3407,
             )
-            FastLanguageModel.for_inference(self.model)
+            try:
+                FastLanguageModel.for_inference(self.model)
+            except (AttributeError, KeyError) as _e:
+                # Unsloth's mode toggle is buggy with some peft versions
+                # (it deletes attrs that may not exist). Falling back to
+                # eval() is correct, just slightly slower for inference.
+                print(f"[actor] unsloth.for_inference failed ({_e!r}); using model.eval()",
+                      file=sys.stderr)
+                self.model.eval()
             self._unsloth = True
             print("[actor] using unsloth backend")
         except Exception as exc:                                # noqa: BLE001
@@ -479,7 +490,10 @@ class QwenActor:
         for the PPO ratio. Differentiable."""
         if self._unsloth:
             from unsloth import FastLanguageModel
-            FastLanguageModel.for_training(self.model)
+            try:
+                FastLanguageModel.for_training(self.model)
+            except (AttributeError, KeyError):
+                self.model.train()
         else:
             self.model.train()
         text = prompt + response
@@ -626,7 +640,10 @@ class PPOTrainer:
                *, ppo_epochs: int, minibatch_size: int) -> dict:
         if self.actor._unsloth:
             from unsloth import FastLanguageModel
-            FastLanguageModel.for_training(self.actor.model)
+            try:
+                FastLanguageModel.for_training(self.actor.model)
+            except (AttributeError, KeyError):
+                self.actor.model.train()
         else:
             self.actor.model.train()
         device = self.actor.model.device
