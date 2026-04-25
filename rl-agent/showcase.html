@@ -1,0 +1,1075 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>IncidentCommander · Showcase</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+  <style>
+    /* ───────── Design tokens ─────────────────────────────────────────── */
+    :root{
+      --bg-0:#05060d;
+      --bg-1:#0a0d1c;
+      --bg-2:#11162b;
+      --panel:rgba(20,27,53,.55);
+      --panel-strong:rgba(20,27,53,.82);
+      --border:rgba(122,167,255,.14);
+      --border-strong:rgba(122,167,255,.32);
+      --text:#e9eeff;
+      --muted:#8aa0c7;
+      --dim:#5e6a89;
+      --accent:#7aa7ff;
+      --accent-2:#a78bfa;
+      --accent-3:#ff9f7a;
+      --good:#4ade80;
+      --bad:#f87171;
+      --warn:#fbbf24;
+      --grad-1:linear-gradient(135deg,#7aa7ff 0%,#a78bfa 50%,#ff9f7a 100%);
+      --grad-2:linear-gradient(135deg,#7aa7ff 0%,#a78bfa 100%);
+      --grad-soft:linear-gradient(180deg,rgba(122,167,255,.08) 0%,rgba(167,139,250,.04) 100%);
+      --shadow-1:0 10px 40px -10px rgba(0,0,0,.5),0 0 0 1px rgba(122,167,255,.08);
+      --shadow-2:0 25px 80px -20px rgba(122,167,255,.25),0 0 0 1px rgba(122,167,255,.18);
+      --radius:18px;
+      --radius-sm:10px;
+    }
+    *{box-sizing:border-box;-webkit-font-smoothing:antialiased}
+    html{scroll-behavior:smooth}
+    html,body{margin:0;padding:0}
+    body{
+      font-family:'Inter',system-ui,sans-serif;
+      background:var(--bg-0);
+      color:var(--text);
+      line-height:1.55;
+      overflow-x:hidden;
+    }
+    /* Animated nebula backdrop */
+    body::before{
+      content:'';
+      position:fixed;inset:0;z-index:-2;
+      background:
+        radial-gradient(1200px 800px at 15% -10%, rgba(122,167,255,.18), transparent 60%),
+        radial-gradient(1000px 700px at 90% 10%, rgba(167,139,250,.16), transparent 60%),
+        radial-gradient(1400px 900px at 50% 110%, rgba(255,159,122,.10), transparent 60%),
+        var(--bg-0);
+      animation:nebula 30s ease-in-out infinite alternate;
+    }
+    body::after{
+      content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;
+      background-image:
+        linear-gradient(rgba(122,167,255,.025) 1px,transparent 1px),
+        linear-gradient(90deg,rgba(122,167,255,.025) 1px,transparent 1px);
+      background-size:48px 48px;
+      mask-image:radial-gradient(ellipse 80% 60% at 50% 30%,black,transparent);
+    }
+    @keyframes nebula{
+      0%{filter:hue-rotate(0deg)}
+      100%{filter:hue-rotate(20deg)}
+    }
+    code,pre,.mono{font-family:'JetBrains Mono',monospace}
+
+    /* ───────── Top bar ───────────────────────────────────────────────── */
+    .topbar{
+      position:fixed;top:0;left:0;right:0;z-index:50;
+      backdrop-filter:saturate(160%) blur(18px);
+      -webkit-backdrop-filter:saturate(160%) blur(18px);
+      background:rgba(5,6,13,.55);
+      border-bottom:1px solid var(--border);
+      transition:background .3s,border-color .3s;
+    }
+    .topbar-inner{
+      max-width:1280px;margin:0 auto;
+      padding:14px 28px;
+      display:flex;align-items:center;gap:24px;
+    }
+    .brand{
+      display:flex;align-items:center;gap:10px;
+      font-weight:700;font-size:15px;letter-spacing:.2px;
+    }
+    .brand-dot{
+      width:10px;height:10px;border-radius:50%;
+      background:var(--grad-1);
+      box-shadow:0 0 12px rgba(122,167,255,.7);
+      animation:pulse 2.4s ease-in-out infinite;
+    }
+    @keyframes pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.15);opacity:.7}}
+    .nav{display:flex;gap:6px;flex:1;flex-wrap:wrap;justify-content:center}
+    .nav a{
+      color:var(--muted);text-decoration:none;
+      padding:8px 14px;border-radius:999px;
+      font-size:13.5px;font-weight:500;letter-spacing:.1px;
+      transition:color .15s,background .15s;
+    }
+    .nav a:hover{color:var(--text);background:rgba(122,167,255,.08)}
+    .nav a.live{color:var(--text);background:rgba(122,167,255,.14)}
+    .topbar-cta{display:flex;gap:8px}
+    .btn{
+      display:inline-flex;align-items:center;gap:8px;
+      padding:9px 16px;border-radius:999px;
+      font-size:13px;font-weight:600;text-decoration:none;
+      transition:transform .15s,box-shadow .2s,background .2s;
+      cursor:pointer;border:none;color:var(--text);
+    }
+    .btn-primary{background:var(--grad-2);color:#0b1024}
+    .btn-primary:hover{transform:translateY(-1px);box-shadow:0 10px 24px -8px rgba(122,167,255,.6)}
+    .btn-ghost{background:rgba(122,167,255,.08);border:1px solid var(--border)}
+    .btn-ghost:hover{background:rgba(122,167,255,.14);border-color:var(--border-strong)}
+
+    /* ───────── Reusable layout ───────────────────────────────────────── */
+    section{padding:120px 28px;position:relative}
+    .container{max-width:1280px;margin:0 auto}
+    .eyebrow{
+      display:inline-block;font-size:12px;letter-spacing:2.6px;font-weight:600;
+      text-transform:uppercase;color:var(--accent);margin-bottom:14px;
+    }
+    h1,h2,h3,h4{margin:0;font-weight:700;letter-spacing:-.02em;line-height:1.1}
+    h1{font-size:clamp(46px,7vw,96px);font-weight:800}
+    h2{font-size:clamp(32px,4.6vw,56px);margin-bottom:18px}
+    h3{font-size:clamp(20px,2vw,26px);margin-bottom:10px}
+    p{color:var(--muted);font-size:17px;max-width:780px;line-height:1.65}
+    .lead{font-size:21px;color:#cad3eb;line-height:1.55;max-width:820px}
+
+    /* Reveal animations */
+    .reveal{opacity:0;transform:translateY(30px);transition:opacity .9s cubic-bezier(.2,.6,.2,1),transform .9s cubic-bezier(.2,.6,.2,1)}
+    .reveal.in{opacity:1;transform:none}
+    .stagger > *{opacity:0;transform:translateY(20px);transition:opacity .8s cubic-bezier(.2,.6,.2,1),transform .8s cubic-bezier(.2,.6,.2,1)}
+    .stagger.in > *{opacity:1;transform:none}
+    .stagger.in > *:nth-child(1){transition-delay:.05s}
+    .stagger.in > *:nth-child(2){transition-delay:.15s}
+    .stagger.in > *:nth-child(3){transition-delay:.25s}
+    .stagger.in > *:nth-child(4){transition-delay:.35s}
+    .stagger.in > *:nth-child(5){transition-delay:.45s}
+    .stagger.in > *:nth-child(6){transition-delay:.55s}
+
+    /* ───────── HERO ───────────────────────────────────────────────────── */
+    .hero{
+      min-height:100vh;display:flex;align-items:center;justify-content:center;
+      text-align:center;padding-top:120px;
+    }
+    .hero h1{
+      background:var(--grad-1);
+      -webkit-background-clip:text;background-clip:text;
+      -webkit-text-fill-color:transparent;
+      filter:drop-shadow(0 0 30px rgba(122,167,255,.25));
+    }
+    .hero .lead{margin:24px auto 36px;color:#aeb9d8}
+    .hero-meta{
+      display:flex;flex-wrap:wrap;gap:18px;justify-content:center;
+      margin-top:44px;
+    }
+    .pill{
+      display:inline-flex;align-items:center;gap:8px;
+      padding:8px 16px;border-radius:999px;
+      background:rgba(20,27,53,.55);border:1px solid var(--border);
+      font-size:13px;color:var(--muted);
+      backdrop-filter:blur(10px);
+    }
+    .pill .dot{width:6px;height:6px;border-radius:50%;background:var(--good);box-shadow:0 0 8px var(--good)}
+    .scroll-hint{
+      position:absolute;bottom:40px;left:50%;transform:translateX(-50%);
+      color:var(--dim);font-size:11.5px;letter-spacing:3px;text-transform:uppercase;
+      animation:floaty 2.4s ease-in-out infinite;
+    }
+    @keyframes floaty{0%,100%{transform:translate(-50%,0)}50%{transform:translate(-50%,8px)}}
+
+    /* ───────── KPI strip ──────────────────────────────────────────────── */
+    .kpi-strip{
+      display:grid;grid-template-columns:repeat(4,1fr);gap:16px;
+      margin-top:64px;
+    }
+    @media(max-width:760px){.kpi-strip{grid-template-columns:repeat(2,1fr)}}
+    .kpi{
+      background:var(--panel);border:1px solid var(--border);
+      backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+      border-radius:var(--radius);padding:24px;
+      transition:transform .3s,border-color .3s,box-shadow .3s;
+    }
+    .kpi:hover{transform:translateY(-3px);border-color:var(--border-strong);box-shadow:var(--shadow-2)}
+    .kpi .label{font-size:12px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;margin-bottom:8px}
+    .kpi .value{font-size:34px;font-weight:700;background:var(--grad-1);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+    .kpi .sub{font-size:12.5px;color:var(--dim);margin-top:6px}
+
+    /* ───────── Cards ──────────────────────────────────────────────────── */
+    .card{
+      background:var(--panel);border:1px solid var(--border);
+      border-radius:var(--radius);padding:28px;
+      backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+      transition:transform .35s,border-color .35s,box-shadow .35s;
+    }
+    .card:hover{transform:translateY(-2px);border-color:var(--border-strong)}
+    .card h3{margin-bottom:8px}
+    .card p{font-size:15px;line-height:1.65}
+
+    .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:28px}
+    .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+    .grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:20px}
+    @media(max-width:900px){.grid-2,.grid-3,.grid-4{grid-template-columns:1fr}}
+
+    /* ───────── Plot panels ────────────────────────────────────────────── */
+    .plot-card{
+      background:var(--panel-strong);border:1px solid var(--border);
+      border-radius:var(--radius);padding:18px;
+      backdrop-filter:blur(20px);
+    }
+    .plot-card .plot-title{
+      display:flex;align-items:center;justify-content:space-between;
+      padding:0 8px 14px 8px;font-weight:600;color:var(--text);font-size:14px;
+      border-bottom:1px solid var(--border);margin-bottom:10px;
+    }
+    .legend-chip{display:inline-block;padding:4px 10px;border-radius:999px;background:rgba(122,167,255,.1);color:var(--muted);font-size:11px;font-weight:600;margin-left:6px}
+
+    /* ───────── Mermaid diagrams ───────────────────────────────────────── */
+    .mermaid-frame{
+      background:var(--panel-strong);border:1px solid var(--border);
+      border-radius:var(--radius);padding:32px;text-align:center;
+      backdrop-filter:blur(18px);overflow-x:auto;
+    }
+    .mermaid-frame svg{max-width:100%;height:auto}
+
+    /* ───────── Difficulty chips ───────────────────────────────────────── */
+    .chip{
+      display:inline-block;padding:3px 10px;border-radius:999px;
+      font-size:11px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;
+    }
+    .chip-easy{background:rgba(74,222,128,.12);color:var(--good);border:1px solid rgba(74,222,128,.3)}
+    .chip-medium{background:rgba(251,191,36,.12);color:var(--warn);border:1px solid rgba(251,191,36,.3)}
+    .chip-hard{background:rgba(248,113,113,.14);color:var(--bad);border:1px solid rgba(248,113,113,.32)}
+    .chip-shard{background:rgba(122,167,255,.12);color:var(--accent);border:1px solid rgba(122,167,255,.3)}
+
+    /* ───────── Task explorer ─────────────────────────────────────────── */
+    .filters{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:24px}
+    .filter-input{
+      flex:1;min-width:240px;
+      background:var(--panel-strong);border:1px solid var(--border);
+      color:var(--text);padding:11px 16px;border-radius:var(--radius-sm);
+      font-size:14px;font-family:inherit;outline:none;
+      transition:border-color .2s;
+    }
+    .filter-input:focus{border-color:var(--accent)}
+    .filter-btn{
+      padding:10px 16px;background:rgba(122,167,255,.08);border:1px solid var(--border);
+      color:var(--muted);border-radius:var(--radius-sm);
+      font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;font-family:inherit;
+    }
+    .filter-btn:hover{color:var(--text);border-color:var(--border-strong)}
+    .filter-btn.active{background:var(--grad-2);color:#0b1024;border-color:transparent}
+
+    .task-stats-bar{
+      display:flex;gap:20px;flex-wrap:wrap;
+      padding:14px 18px;background:var(--panel);
+      border:1px solid var(--border);border-radius:var(--radius-sm);
+      font-size:13px;color:var(--muted);margin-bottom:18px;
+    }
+    .task-stats-bar strong{color:var(--text);font-weight:600}
+
+    .task-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:18px}
+    .task-card{
+      background:var(--panel);border:1px solid var(--border);
+      border-radius:var(--radius-sm);padding:18px;
+      cursor:pointer;transition:all .2s;
+      backdrop-filter:blur(14px);
+    }
+    .task-card:hover{border-color:var(--border-strong);transform:translateY(-2px);box-shadow:var(--shadow-1)}
+    .task-card .id{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--accent);word-break:break-all;margin-bottom:6px}
+    .task-card .title{font-size:14.5px;font-weight:600;margin-bottom:10px;line-height:1.4}
+    .task-card .meta{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+    .task-card .row{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:4px}
+    .task-card .row strong{color:var(--text);font-weight:500}
+    .empty{padding:48px;text-align:center;color:var(--muted);grid-column:1/-1}
+
+    /* ───────── Modal ──────────────────────────────────────────────────── */
+    .modal-back{
+      position:fixed;inset:0;z-index:100;display:none;
+      background:rgba(5,6,13,.7);backdrop-filter:blur(8px);
+      align-items:center;justify-content:center;padding:20px;
+    }
+    .modal-back.show{display:flex;animation:fadeIn .2s ease}
+    @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+    .modal{
+      background:var(--bg-2);border:1px solid var(--border-strong);
+      border-radius:var(--radius);max-width:760px;width:100%;
+      max-height:88vh;overflow-y:auto;box-shadow:var(--shadow-2);
+      animation:scaleIn .25s cubic-bezier(.2,.7,.2,1);
+    }
+    @keyframes scaleIn{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:none}}
+    .modal-head{padding:24px 28px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg-2);z-index:1}
+    .modal-head .id{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent);margin-bottom:6px}
+    .modal-head h3{font-size:22px;margin-bottom:8px}
+    .modal-body{padding:24px 28px}
+    .modal-body h4{font-size:13px;letter-spacing:1.5px;color:var(--accent);text-transform:uppercase;margin:18px 0 8px}
+    .modal-body p{font-size:14.5px;line-height:1.6;color:#c8d2eb}
+    .modal-body pre{background:rgba(0,0,0,.35);border:1px solid var(--border);border-radius:8px;padding:14px;font-size:12.5px;overflow-x:auto;color:var(--text)}
+    .action-step{
+      background:rgba(122,167,255,.05);border-left:2px solid var(--accent);
+      padding:10px 14px;margin:6px 0;border-radius:0 8px 8px 0;
+      font-family:'JetBrains Mono',monospace;font-size:12.5px;color:#cad3eb;
+    }
+    .modal-close{
+      position:absolute;top:16px;right:16px;
+      background:rgba(122,167,255,.1);color:var(--text);
+      border:1px solid var(--border);border-radius:8px;
+      width:32px;height:32px;cursor:pointer;font-size:18px;
+    }
+    .modal-close:hover{background:rgba(122,167,255,.2)}
+
+    /* ───────── Code blocks ────────────────────────────────────────────── */
+    .codeblock{
+      background:#06080f;border:1px solid var(--border);
+      border-radius:var(--radius-sm);padding:18px 20px;
+      font-family:'JetBrains Mono',monospace;font-size:13px;
+      color:#cad3eb;overflow-x:auto;line-height:1.65;
+      margin:14px 0;
+    }
+    .codeblock .c-com{color:#5e6a89}
+    .codeblock .c-key{color:#a78bfa}
+    .codeblock .c-str{color:#7aa7ff}
+    .codeblock .c-num{color:#ff9f7a}
+
+    /* ───────── File index table ───────────────────────────────────────── */
+    .file-table{width:100%;border-collapse:collapse}
+    .file-table th{
+      text-align:left;padding:14px 18px;font-size:12px;letter-spacing:1.4px;
+      color:var(--accent);text-transform:uppercase;border-bottom:1px solid var(--border);
+    }
+    .file-table td{padding:14px 18px;border-bottom:1px solid var(--border);font-size:14px;vertical-align:top}
+    .file-table tr:hover{background:rgba(122,167,255,.04)}
+    .file-table .path{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--accent)}
+    .file-table .desc{color:var(--muted);font-size:13.5px;line-height:1.55}
+
+    /* ───────── Footer ─────────────────────────────────────────────────── */
+    footer{
+      padding:60px 28px;border-top:1px solid var(--border);
+      text-align:center;color:var(--dim);font-size:13px;
+    }
+    footer a{color:var(--muted);text-decoration:none;margin:0 10px}
+    footer a:hover{color:var(--accent)}
+
+    /* ───────── Pipeline visual ────────────────────────────────────────── */
+    .pipeline{
+      display:grid;grid-template-columns:repeat(5,1fr);gap:14px;align-items:stretch;
+      margin-top:32px;
+    }
+    @media(max-width:1000px){.pipeline{grid-template-columns:1fr 1fr}}
+    .stage{
+      background:var(--panel-strong);border:1px solid var(--border);
+      border-radius:var(--radius);padding:22px 20px;text-align:center;
+      position:relative;backdrop-filter:blur(18px);
+      transition:transform .3s,border-color .3s;
+    }
+    .stage:hover{transform:translateY(-3px);border-color:var(--border-strong)}
+    .stage .num{
+      width:34px;height:34px;border-radius:50%;background:var(--grad-2);
+      color:#0b1024;font-weight:700;font-size:14px;
+      display:flex;align-items:center;justify-content:center;
+      margin:0 auto 12px;box-shadow:0 4px 14px rgba(122,167,255,.4);
+    }
+    .stage h4{font-size:14.5px;margin-bottom:6px;color:var(--text)}
+    .stage p{font-size:12.5px;color:var(--muted);margin:0}
+
+    /* ───────── Section divider ─────────────────────────────────────── */
+    .divider{
+      height:1px;width:100%;
+      background:linear-gradient(90deg,transparent,rgba(122,167,255,.4),transparent);
+      margin:0 auto;max-width:600px;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar{width:10px;height:10px}
+    ::-webkit-scrollbar-track{background:transparent}
+    ::-webkit-scrollbar-thumb{background:rgba(122,167,255,.18);border-radius:8px}
+    ::-webkit-scrollbar-thumb:hover{background:rgba(122,167,255,.32)}
+
+    /* ───────── Loading skeleton ───────────────────────────────────── */
+    .loading{
+      padding:40px;text-align:center;color:var(--muted);font-size:14px;
+    }
+    .loading::after{
+      content:'';display:inline-block;width:14px;height:14px;
+      border:2px solid var(--border);border-top-color:var(--accent);
+      border-radius:50%;margin-left:10px;vertical-align:middle;
+      animation:spin .8s linear infinite;
+    }
+    @keyframes spin{to{transform:rotate(360deg)}}
+  </style>
+</head>
+<body>
+
+<!-- ═════════════════════════ TOP BAR ═════════════════════════ -->
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand"><span class="brand-dot"></span> IncidentCommander</div>
+    <nav class="nav">
+      <a href="#overview">Overview</a>
+      <a href="#training">Training</a>
+      <a href="#tasks">Tasks</a>
+      <a href="#methodology">Methodology</a>
+      <a href="#pipeline">Pipeline</a>
+      <a href="#infra">Infra</a>
+      <a href="#files">Files</a>
+    </nav>
+    <div class="topbar-cta">
+      <a class="btn btn-ghost" href="https://github.com/r1cksync/meta-rl-hack" target="_blank" rel="noopener">GitHub</a>
+      <a class="btn btn-primary" href="/dashboard">Live Dashboard</a>
+    </div>
+  </div>
+</header>
+
+<!-- ═════════════════════════ HERO ═════════════════════════ -->
+<section class="hero">
+  <div class="container">
+    <span class="eyebrow reveal">RL · OpenEnv · Hackathon 2026</span>
+    <h1 class="reveal">Teaching an AI<br/>to be on-call.</h1>
+    <p class="lead reveal">
+      <strong style="color:#e9eeff">381 production-grade incident scenarios.</strong>
+      A 4-bit Phi-3.5-mini actor, an 8-bit DeepSeek-R1 critic,
+      PPO with phase-aware rewards, sharded across three free Kaggle T4 GPUs.
+      A complete pipeline — from procedurally-generated chaos to a live Hetzner
+      Kubernetes cluster — for an autonomous SRE that learns to triage, investigate,
+      fix, and verify.
+    </p>
+    <div class="hero-meta reveal">
+      <div class="pill"><span class="dot"></span> Live HF Space · <code class="mono">sagnik-mukherjee/incodent-commander</code></div>
+      <div class="pill">381 scenarios · 3 shards · 180 PPO updates total</div>
+    </div>
+    <div class="kpi-strip reveal stagger">
+      <div class="kpi"><div class="label">Scenarios</div><div class="value" id="kpi-scenarios">—</div><div class="sub">curated + procedurally generated</div></div>
+      <div class="kpi"><div class="label">Tasks Trained</div><div class="value" id="kpi-trained">—</div><div class="sub">100% coverage across 3 shards</div></div>
+      <div class="kpi"><div class="label">PPO Updates</div><div class="value" id="kpi-updates">—</div><div class="sub">per shard · 60 × 3 = 180 total</div></div>
+      <div class="kpi"><div class="label">Wall Time</div><div class="value" id="kpi-wall">—</div><div class="sub">aggregate across all shards</div></div>
+    </div>
+  </div>
+  <div class="scroll-hint">Scroll</div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ═════════════════════════ OVERVIEW ═════════════════════════ -->
+<section id="overview">
+  <div class="container">
+    <span class="eyebrow reveal">What it is</span>
+    <h2 class="reveal">An RL environment that puts the agent at 3 AM PagerDuty.</h2>
+    <p class="lead reveal">
+      Most RL benchmarks for LLMs use synthetic puzzles. We don't — every scenario
+      simulates a real incident pattern (DynamoDB throttling, IAM permission chains,
+      memory leaks hidden behind cascading 504s, runbook traps, adversarial saboteurs).
+      The agent must investigate before acting, follow the correct triage → investigate
+      → fix → verify phase order, and survive multi-fault scenarios where one fix is
+      not enough.
+    </p>
+    <div class="grid-3 reveal stagger" style="margin-top:48px">
+      <div class="card">
+        <h3>Self-improving curriculum</h3>
+        <p>A controller tracks per-task mastery and escalates difficulty tiers automatically. Warmup → beginner → intermediate → advanced → expert.</p>
+      </div>
+      <div class="card">
+        <h3>Adversarial scenario designer</h3>
+        <p>At expert tier, an LLM composes novel incidents that target the agent's tracked weaknesses — infinite, non-repeating scenarios.</p>
+      </div>
+      <div class="card">
+        <h3>3-persona LLM judge</h3>
+        <p>Every action is critiqued by a Junior / Senior / Principal SRE persona with progressively stricter evaluation. Snorkel-style experts-in-the-loop.</p>
+      </div>
+      <div class="card">
+        <h3>Phase-aware rewards</h3>
+        <p>Actions classified as triage → investigate → fix → verify; agent earns bonuses for correct workflow order and loses reward for regressing phases.</p>
+      </div>
+      <div class="card">
+        <h3>Context-gated penalties</h3>
+        <p>Acting blind, repeating commands, targeting red-herring services — all penalised. Prevents reward-hacking through action spam.</p>
+      </div>
+      <div class="card">
+        <h3>Live infrastructure option</h3>
+        <p>Write actions normally hit a mock cluster but can be routed to a live Kubernetes cluster (<code class="mono">REAL_K8S=true</code>) — same code path.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═════════════════════════ TRAINING ═════════════════════════ -->
+<section id="training">
+  <div class="container">
+    <span class="eyebrow reveal">How it learned</span>
+    <h2 class="reveal">PPO with LoRA, sharded across 3 free T4s.</h2>
+    <p class="lead reveal">
+      Each Kaggle shard owns 127 of 381 tasks. The collector round-robins through
+      the shard's task list across 60 PPO updates × 3 rollouts × 12 steps each —
+      every task is visited at least once. The three shards' adapters are merged
+      offline into a single LoRA. Below is every metric for every update of every shard.
+    </p>
+
+    <div class="grid-2 reveal" style="margin-top:48px">
+      <div class="plot-card"><div class="plot-title">Mean Reward · per update <span class="legend-chip">3 shards</span></div><div id="plot-reward" style="height:340px"></div></div>
+      <div class="plot-card"><div class="plot-title">PPO Loss <span class="legend-chip">policy + value</span></div><div id="plot-loss" style="height:340px"></div></div>
+      <div class="plot-card"><div class="plot-title">KL Divergence <span class="legend-chip">vs. ref policy</span></div><div id="plot-kl" style="height:340px"></div></div>
+      <div class="plot-card"><div class="plot-title">Wall-clock per update <span class="legend-chip">seconds</span></div><div id="plot-elapsed" style="height:340px"></div></div>
+    </div>
+
+    <div class="grid-3 reveal stagger" style="margin-top:48px">
+      <div class="card">
+        <h3>Actor</h3>
+        <p id="cfg-actor" class="mono" style="font-size:12.5px;word-break:break-all">—</p>
+        <p style="margin-top:10px">Phi-3.5-mini-instruct loaded in 4-bit NF4 with LoRA adapters on q/k/v/o + gate/up/down projections (fused-qkv detection adapts target_modules per architecture).</p>
+      </div>
+      <div class="card">
+        <h3>Critic</h3>
+        <p id="cfg-critic" class="mono" style="font-size:12.5px;word-break:break-all">—</p>
+        <p style="margin-top:10px">DeepSeek-R1-0528-Qwen3-8B in 4-bit, prompt-only critic that scores each (obs, action) on a 0–10 rubric (cached). Requires transformers ≥ 4.51 for Qwen3.</p>
+      </div>
+      <div class="card">
+        <h3>PPO hyper-parameters</h3>
+        <pre id="cfg-ppo" class="mono" style="font-size:12px;white-space:pre-wrap;color:#cad3eb;margin:0">—</pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═════════════════════════ TASK EXPLORER ═════════════════════════ -->
+<section id="tasks">
+  <div class="container">
+    <span class="eyebrow reveal">All 381 tasks</span>
+    <h2 class="reveal">Every scenario. Every action. Every reward.</h2>
+    <p class="lead reveal">
+      Filter by category, difficulty, or shard. Click any card for the full
+      ground-truth action chain, the design intention, and the reward trajectory
+      across each shard.
+    </p>
+
+    <div class="reveal" style="margin-top:36px">
+      <div class="filters">
+        <input id="search" class="filter-input" placeholder="Search tasks by id, title, or category…" />
+        <button class="filter-btn active" data-diff="all">All difficulties</button>
+        <button class="filter-btn" data-diff="easy">Easy</button>
+        <button class="filter-btn" data-diff="medium">Medium</button>
+        <button class="filter-btn" data-diff="hard">Hard</button>
+      </div>
+      <div class="task-stats-bar" id="stats-bar">Loading…</div>
+      <div id="task-grid" class="task-grid"><div class="loading">Loading tasks</div></div>
+    </div>
+
+    <div style="margin-top:60px">
+      <h3 class="reveal">Reward distribution across categories</h3>
+      <p class="reveal">Aggregated mean reward per scenario category, averaged over all 3 shards.</p>
+      <div class="plot-card reveal" style="margin-top:20px"><div id="plot-cat" style="height:420px"></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═════════════════════════ METHODOLOGY ═════════════════════════ -->
+<section id="methodology">
+  <div class="container">
+    <span class="eyebrow reveal">How training works</span>
+    <h2 class="reveal">From a scenario JSON to a LoRA delta.</h2>
+
+    <div class="mermaid-frame reveal" style="margin-top:30px">
+      <div class="mermaid">
+%%{init: {'theme':'dark','themeVariables':{'primaryColor':'#11162b','primaryTextColor':'#e9eeff','primaryBorderColor':'#7aa7ff','lineColor':'#7aa7ff','tertiaryColor':'#0a0d1c'}}}%%
+flowchart LR
+    A["Scenario JSON<br/>(381 files)"] --> B["IncidentCommanderEnv<br/>(reset + step)"]
+    B -->|observation| C["Phi-3.5-mini Actor<br/>4-bit + LoRA"]
+    C -->|action JSON| B
+    B -->|reward| D["DeepSeek-R1 Critic<br/>0–10 rubric"]
+    D -->|value| E["GAE advantages"]
+    C -->|log-prob| E
+    E --> F["PPO update<br/>clip + KL + entropy"]
+    F -->|grad| C
+    F --> G["training_kaggle*.json<br/>per-update metrics"]
+    F --> H["adapter_kaggle*<br/>LoRA delta"]
+      </div>
+    </div>
+
+    <div class="grid-2 reveal" style="margin-top:48px">
+      <div class="card">
+        <h3>1 · Rollout collection</h3>
+        <p>For each PPO update, the collector picks <code class="mono">rollouts_per_update=3</code> tasks via a <strong>persistent cursor</strong> (round-robins through the entire shard list — never resets). Each rollout runs up to 12 steps; the env terminates early if the agent submits a postmortem.</p>
+        <pre class="codeblock"><span class="c-com"># colab/train_lib.py — IncidentRolloutCollector.collect</span>
+<span class="c-key">for</span> ep <span class="c-key">in</span> range(n_episodes):
+    tid = self.tasks[self._cursor % len(self.tasks)]
+    self._cursor += <span class="c-num">1</span>
+    obs = env.reset(tid)
+    <span class="c-key">for</span> t <span class="c-key">in</span> range(max_steps):
+        action, meta = actor.act(obs)
+        value         = critic.value(obs, action)
+        step          = env.step(action)
+        transitions.append(...)</pre>
+      </div>
+      <div class="card">
+        <h3>2 · Advantage estimation</h3>
+        <p>Generalised Advantage Estimation with γ=0.95, λ=0.92. Critic provides a value-baseline per (state, action) so the policy gradient is variance-reduced.</p>
+        <pre class="codeblock"><span class="c-key">def</span> compute_gae(trans, gamma, lam):
+    advs, ret = [], <span class="c-num">0.0</span>
+    <span class="c-key">for</span> t <span class="c-key">in</span> reversed(trans):
+        delta = t.reward + gamma * t.next_v - t.value
+        ret   = delta + gamma * lam * ret
+        advs.append((ret, ret + t.value))
+    <span class="c-key">return</span> advs[::-<span class="c-num">1</span>]</pre>
+      </div>
+      <div class="card">
+        <h3>3 · PPO update</h3>
+        <p>Clipped surrogate with KL penalty + entropy bonus. <code class="mono">clip_eps=0.2</code>, <code class="mono">kl_coef=0.02</code>, <code class="mono">entropy_coef=0.01</code>. 2 PPO epochs per update with mini-batch 4. Gradient checkpointing OFF on the 3.8 B actor — fits in 16 GB VRAM and roughly halves backward time.</p>
+        <pre class="codeblock">ratio  = exp(logp - old_logp)
+surr1  = ratio * adv
+surr2  = clamp(ratio, 1-ε, 1+ε) * adv
+loss   = -min(surr1, surr2).mean()
+       + kl_coef * (old_logp - logp).mean()</pre>
+      </div>
+      <div class="card">
+        <h3>4 · Sharded coverage</h3>
+        <p>Modulo-3 split: shard <em>k</em> takes tasks <em>i</em> where <code class="mono">i ≡ k (mod 3)</code>. The 381 sorted task ids divide cleanly into 127 + 127 + 127 — disjoint and exhaustive. After all 3 finish, <code class="mono">scripts/merge_lora_adapters.py</code> takes a weighted mean of the three adapters into one final delta.</p>
+        <pre class="codeblock">tasks = [t <span class="c-key">for</span> i, t <span class="c-key">in</span> enumerate(sorted_ids)
+                <span class="c-key">if</span> i % n_shards == shard]
+<span class="c-com"># Shard 0 → 127 tasks, shard 1 → 127, shard 2 → 127</span></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═════════════════════════ PIPELINE ═════════════════════════ -->
+<section id="pipeline">
+  <div class="container">
+    <span class="eyebrow reveal">End-to-end</span>
+    <h2 class="reveal">From git push to trained adapter.</h2>
+    <p class="lead reveal">
+      Code lives on GitHub. Each Kaggle notebook clones the repo at run-time
+      (<code class="mono">git clone --depth 1</code>), so any commit is picked up
+      automatically without re-uploading the notebook. Models are attached as
+      Kaggle Models so they live in the read-only mount and don't eat the 20 GB
+      working quota.
+    </p>
+
+    <div class="pipeline reveal stagger">
+      <div class="stage"><div class="num">1</div><h4>GitHub</h4><p><code class="mono">r1cksync/meta-rl-hack</code> — single source of truth.</p></div>
+      <div class="stage"><div class="num">2</div><h4>Kaggle clone</h4><p>Notebook does <code class="mono">git clone --depth 1</code> on every run.</p></div>
+      <div class="stage"><div class="num">3</div><h4>Models attached</h4><p>Phi-3.5-mini + DeepSeek-R1 from Kaggle Models read-only mount.</p></div>
+      <div class="stage"><div class="num">4</div><h4>PPO loop</h4><p>60 updates × 3 rollouts × 12 steps; live ETA every 5 s.</p></div>
+      <div class="stage"><div class="num">5</div><h4>Adapter zip</h4><p><code class="mono">adapter_kaggle{N}.zip</code> downloaded; merged offline.</p></div>
+    </div>
+
+    <div style="margin-top:60px">
+      <h3 class="reveal">The 3 Kaggle notebooks</h3>
+      <p class="reveal">Identical 9-cell structure. Only differences: <code class="mono">IC_TASK_SHARD ∈ {0,1,2}</code> and <code class="mono">IC_RUN_NAME ∈ {kaggle1,kaggle2,kaggle3}</code>.</p>
+      <div class="grid-3 reveal stagger" style="margin-top:24px">
+        <div class="card"><span class="chip chip-shard">Shard 1</span><h3 style="margin-top:10px">kaggle_train_shard1.ipynb</h3><p>Tasks at sorted indices 0,3,6,…,378 — 127 unique tasks. Output: <code class="mono">adapter_kaggle1.zip</code>.</p></div>
+        <div class="card"><span class="chip chip-shard">Shard 2</span><h3 style="margin-top:10px">kaggle_train_shard2.ipynb</h3><p>Tasks at sorted indices 1,4,7,…,379. Output: <code class="mono">adapter_kaggle2.zip</code>.</p></div>
+        <div class="card"><span class="chip chip-shard">Shard 3</span><h3 style="margin-top:10px">kaggle_train_shard3.ipynb</h3><p>Tasks at sorted indices 2,5,8,…,380. Output: <code class="mono">adapter_kaggle3.zip</code>.</p></div>
+      </div>
+    </div>
+
+    <div style="margin-top:48px">
+      <h3 class="reveal">9-cell notebook anatomy</h3>
+      <div class="reveal" style="margin-top:18px">
+        <table class="file-table">
+          <thead><tr><th>Cell</th><th>Purpose</th><th>What it does</th></tr></thead>
+          <tbody>
+            <tr><td><strong>1</strong></td><td>Title (markdown)</td><td class="desc">Attach instructions for the 2 Kaggle Models + GPU/Internet/Persistence settings.</td></tr>
+            <tr><td><strong>2</strong></td><td>Install</td><td class="desc">Best-effort <code class="mono">pip install unsloth</code>, then pin transformers ≥ 4.51, peft, accelerate, bitsandbytes. Prints the unsloth return-code so failures are visible but non-fatal.</td></tr>
+            <tr><td><strong>3</strong></td><td>GPU sanity</td><td class="desc"><code class="mono">nvidia-smi -L</code> + <code class="mono">torch.cuda.is_available()</code>.</td></tr>
+            <tr><td><strong>4</strong></td><td>Verify mounts + suppress warnings</td><td class="desc">Asserts the 2 Kaggle Models are attached, redirects HF cache to <code class="mono">/tmp/hf-cache</code>, wipes any cached custom modeling code, optionally pulls <code class="mono">HF_TOKEN</code> from Kaggle Secrets, installs warning filters.</td></tr>
+            <tr><td><strong>5</strong></td><td>Clone repo</td><td class="desc"><code class="mono">git clone --depth 1 https://github.com/r1cksync/meta-rl-hack.git</code> — fresh on every run, prints the commit hash.</td></tr>
+            <tr><td><strong>6</strong></td><td>Configure run</td><td class="desc">Sets all <code class="mono">IC_*</code> environment variables: shard index, run name, total updates, rollouts, max steps, checkpoint cadence, model paths.</td></tr>
+            <tr><td><strong>7</strong></td><td>Train</td><td class="desc"><code class="mono">subprocess.run(['python','scripts/run_training.py'])</code> — produces <code class="mono">colab/logs/training_kaggle{N}.json</code> + adapter checkpoints every 15 updates.</td></tr>
+            <tr><td><strong>8</strong></td><td>Package</td><td class="desc">Zips the final adapter to <code class="mono">/kaggle/working/adapter_kaggle{N}.zip</code>, copies the JSON log to <code class="mono">/kaggle/working/</code>.</td></tr>
+            <tr><td><strong>9</strong></td><td>Done (markdown)</td><td class="desc">Merge instructions for <code class="mono">scripts/merge_lora_adapters.py</code>.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═════════════════════════ INFRA / TERRAFORM ═════════════════════════ -->
+<section id="infra">
+  <div class="container">
+    <span class="eyebrow reveal">Production wiring</span>
+    <h2 class="reveal">Terraform → Hetzner → k3s → live agent.</h2>
+    <p class="lead reveal">
+      The agent's write actions normally land in a mock cluster, but the same code
+      path can target a real Kubernetes cluster. The Terraform module provisions a
+      3-node k3s cluster on Hetzner Cloud (€20/month), wires a load balancer, and
+      installs the AcmeCorp microservices (frontend, payments-api, inventory-service,
+      notification-service, order-worker) via Helm.
+    </p>
+
+    <div class="mermaid-frame reveal" style="margin-top:30px">
+      <div class="mermaid">
+%%{init:{'theme':'dark','themeVariables':{'primaryColor':'#11162b','primaryTextColor':'#e9eeff','primaryBorderColor':'#7aa7ff','lineColor':'#a78bfa','clusterBkg':'#0a0d1c','clusterBorder':'#7aa7ff'}}}%%
+flowchart TB
+    subgraph TF["infra/terraform/main.tf"]
+      direction LR
+      net[hcloud_network<br/>10.0.0.0/16]
+      subnet[hcloud_network_subnet<br/>10.0.1.0/24]
+      ssh[hcloud_ssh_key]
+      lb[hcloud_load_balancer<br/>lb11 · port 80/443]
+      n0[hcloud_server · master<br/>cx21 · ubuntu-22.04]
+      n1[hcloud_server · worker]
+      n2[hcloud_server · worker]
+    end
+    subgraph K3S["k3s cluster"]
+      direction LR
+      ing[ingress-nginx]
+      svc1[frontend]
+      svc2[payments-api]
+      svc3[inventory-service]
+      svc4[notification-service]
+      svc5[order-worker]
+    end
+    subgraph AGENT["IncidentCommander agent"]
+      direction LR
+      env["env.step(action)"]
+      adapter["LoRA adapter<br/>(merged)"]
+      env --> adapter
+      adapter --> env
+    end
+    TF -->|provision| K3S
+    AGENT -->|REAL_K8S=true| ing
+    ing --> svc1 & svc2 & svc3 & svc4 & svc5
+      </div>
+    </div>
+
+    <div class="grid-2 reveal" style="margin-top:48px">
+      <div class="card">
+        <h3>Terraform resources</h3>
+        <p>Defined in <code class="mono">infra/terraform/main.tf</code>:</p>
+        <ul style="color:var(--muted);font-size:14.5px;line-height:1.8;padding-left:20px">
+          <li><code class="mono">hcloud_network</code> — private 10.0.0.0/16 VPC</li>
+          <li><code class="mono">hcloud_network_subnet</code> — 10.0.1.0/24 in eu-central</li>
+          <li><code class="mono">hcloud_ssh_key</code> — ingest <code class="mono">~/.ssh/id_rsa.pub</code></li>
+          <li><code class="mono">hcloud_server[count=3]</code> — cx21 nodes (1 master, 2 worker)</li>
+          <li><code class="mono">hcloud_load_balancer</code> — lb11 in front of the cluster</li>
+          <li><code class="mono">hcloud_load_balancer_target[count=3]</code> — health-checked targets</li>
+          <li><code class="mono">hcloud_load_balancer_service · http/https</code> — public ingress</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Bring-up sequence</h3>
+        <pre class="codeblock"><span class="c-com"># 1. Provision cluster ($20/mo, ~5 min)</span>
+cd infra/terraform
+terraform init
+terraform apply -var=<span class="c-str">"hcloud_token=$HCLOUD_TOKEN"</span>
+
+<span class="c-com"># 2. Install k3s on master (master IP from tf output)</span>
+ssh root@$MASTER curl -sfL https://get.k3s.io | sh -
+
+<span class="c-com"># 3. Helm-install AcmeCorp microservices</span>
+helm install acmecorp infra/helm/acmecorp \
+  --set image.tag=$GIT_SHA
+
+<span class="c-com"># 4. Point the agent at the cluster</span>
+export REAL_K8S=true
+export KUBECONFIG=~/.kube/config
+python -m rl_agent.server</pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═════════════════════════ FILES ═════════════════════════ -->
+<section id="files">
+  <div class="container">
+    <span class="eyebrow reveal">What's in the repo</span>
+    <h2 class="reveal">JSON file index — what each file is for.</h2>
+
+    <div class="reveal" style="margin-top:30px">
+      <table class="file-table">
+        <thead><tr><th>Path</th><th>Type</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td class="path">rl-agent/scenarios/{easy,medium,hard}/*.json</td><td>scenario</td><td class="desc">23 hand-curated incident archetypes. Each has <code class="mono">id, difficulty, title, description, preconditions, correct_action_chain, target_score, max_steps</code>.</td></tr>
+          <tr><td class="path">rl-agent/scenarios/sim/{easy,medium,hard}/*.json</td><td>scenario</td><td class="desc">381 simulator-grade scenarios (156 easy + 128 medium + 97 hard) used for RL training. Adds <code class="mono">topology_overrides, saboteur, slack, traffic_profile, k8s_controller, seed</code>.</td></tr>
+          <tr><td class="path">colab/logs/training_kaggle{1,2,3}.json</td><td>training log</td><td class="desc">Per-update metrics for one shard: <code class="mono">update, elapsed_s, wall_s, mean_reward, mean_value, ppo{loss, kl, policy_loss, value_err}, rewards_by_task</code>. Union of <code class="mono">rewards_by_task</code> keys = full coverage proof.</td></tr>
+          <tr><td class="path">kaggle ran notebooks/shard {1,2,3}/adapter_kaggle{N}/adapter_config.json</td><td>peft</td><td class="desc">LoRA configuration: <code class="mono">r=16, alpha=32, dropout=0, target_modules=[qkv_proj, o_proj, gate_up_proj, down_proj]</code>.</td></tr>
+          <tr><td class="path">kaggle ran notebooks/shard {1,2,3}/adapter_kaggle{N}/adapter_model.safetensors</td><td>weights</td><td class="desc">The actual LoRA delta — ~50 MB per shard. Loadable with <code class="mono">PeftModel.from_pretrained(base, path)</code>.</td></tr>
+          <tr><td class="path">rl-agent/showcase_data.json</td><td>derived</td><td class="desc">Bundle consumed by this page. Built by <code class="mono">scripts/build_showcase_data.py</code> from the 3 training logs + 381 scenarios.</td></tr>
+          <tr><td class="path">openenv.yaml</td><td>OpenEnv manifest</td><td class="desc">Declares HTTP API for OpenEnv compliance: <code class="mono">/reset, /step, /state, /health</code>.</td></tr>
+          <tr><td class="path">frontend/package.json</td><td>npm</td><td class="desc">Next.js 14 AcmeCorp e-commerce surface used as both the chaos-target topology and live UI.</td></tr>
+          <tr><td class="path">frontend/tsconfig.json</td><td>typescript</td><td class="desc">Strict TS configuration for the live app.</td></tr>
+          <tr><td class="path">frontend/tailwind.config.js / postcss.config.js</td><td>tailwind</td><td class="desc">Styling stack for the AcmeCorp app.</td></tr>
+          <tr><td class="path">backend/{payments-api,inventory-service,notification-service,order-worker}/package.json</td><td>npm</td><td class="desc">Per-service Node.js apps that get rolled out, restarted, scaled, and patched by agent actions.</td></tr>
+          <tr><td class="path">infra/terraform/main.tf</td><td>terraform</td><td class="desc">Hetzner Cloud cluster provisioning (network, subnet, ssh key, 3 servers, load balancer, listener services).</td></tr>
+          <tr><td class="path">infra/k8s/*.yaml</td><td>kubernetes</td><td class="desc">Deployments, Services, ConfigMaps, ChaosMesh experiments for the live cluster.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ═════════════════════════ FOOTER ═════════════════════════ -->
+<footer>
+  <div>
+    <a href="/dashboard">Live Dashboard</a> ·
+    <a href="/docs">API docs</a> ·
+    <a href="/health">Health</a> ·
+    <a href="https://github.com/r1cksync/meta-rl-hack" target="_blank" rel="noopener">GitHub</a> ·
+    <a href="https://huggingface.co/spaces/sagnik-mukherjee/incodent-commander" target="_blank" rel="noopener">HF Space</a>
+  </div>
+  <div style="margin-top:18px">
+    Built for the <strong style="color:var(--text)">Meta PyTorch OpenEnv Hackathon × Scaler School of Technology, 2026</strong>.
+  </div>
+</footer>
+
+<!-- ═════════════════════════ MODAL ═════════════════════════ -->
+<div class="modal-back" id="modal-back" onclick="if(event.target.id==='modal-back')closeModal()">
+  <div class="modal" id="modal">
+    <button class="modal-close" onclick="closeModal()">×</button>
+    <div class="modal-head">
+      <div class="id" id="m-id">—</div>
+      <h3 id="m-title">—</h3>
+      <div id="m-chips"></div>
+    </div>
+    <div class="modal-body" id="m-body"></div>
+  </div>
+</div>
+
+<!-- ═════════════════════════ JS ═════════════════════════ -->
+<script>
+  // Smooth scroll active-link tracking
+  const navLinks = document.querySelectorAll('.nav a');
+  const sections = [...navLinks].map(a => document.querySelector(a.getAttribute('href'))).filter(Boolean);
+  const onScroll = () => {
+    const y = window.scrollY + 100;
+    let active = sections[0];
+    for (const s of sections) if (s && s.offsetTop <= y) active = s;
+    navLinks.forEach(a => a.classList.toggle('live', a.getAttribute('href') === '#' + (active && active.id)));
+  };
+  window.addEventListener('scroll', onScroll, {passive:true});
+
+  // Reveal on scroll
+  const io = new IntersectionObserver((entries) => {
+    for (const e of entries) if (e.isIntersecting) e.target.classList.add('in');
+  }, {threshold:.12, rootMargin:'0px 0px -8% 0px'});
+  document.querySelectorAll('.reveal, .stagger').forEach(el => io.observe(el));
+
+  // Mermaid
+  mermaid.initialize({startOnLoad:true, theme:'dark', securityLevel:'loose'});
+
+  // Plotly base layout
+  const plotLayout = (extra={}) => ({
+    paper_bgcolor:'rgba(0,0,0,0)',
+    plot_bgcolor:'rgba(0,0,0,0)',
+    font:{family:'Inter, sans-serif',color:'#aeb9d8',size:12},
+    margin:{l:48,r:18,t:14,b:42},
+    xaxis:{gridcolor:'rgba(122,167,255,.08)',zerolinecolor:'rgba(122,167,255,.16)',linecolor:'rgba(122,167,255,.18)'},
+    yaxis:{gridcolor:'rgba(122,167,255,.08)',zerolinecolor:'rgba(122,167,255,.16)',linecolor:'rgba(122,167,255,.18)'},
+    legend:{orientation:'h',y:-0.18,bgcolor:'rgba(0,0,0,0)'},
+    ...extra,
+  });
+  const plotConfig = {displayModeBar:false, responsive:true};
+  const colors = ['#7aa7ff','#a78bfa','#ff9f7a'];
+
+  // ── Load data ──
+  let DATA = null;
+  let filterDiff = 'all', filterText = '';
+  fetch('/showcase/data').then(r => r.json()).then(d => { DATA = d; render(); }).catch(err => {
+    document.getElementById('task-grid').innerHTML = '<div class="empty">Failed to load showcase data: '+err+'</div>';
+  });
+
+  function render(){
+    renderKPI();
+    renderConfig();
+    renderTrainingPlots();
+    renderCategoryPlot();
+    renderTasks();
+    bindFilters();
+  }
+
+  function fmtSeconds(s){
+    if (!s) return '—';
+    const h = Math.floor(s/3600), m = Math.floor((s%3600)/60);
+    return h ? `${h}h ${m}m` : `${m}m`;
+  }
+
+  function renderKPI(){
+    const s = DATA.summary;
+    document.getElementById('kpi-scenarios').textContent = s.n_tasks_total;
+    document.getElementById('kpi-trained').textContent   = s.n_tasks_trained;
+    document.getElementById('kpi-updates').textContent   = s.n_updates_per_shard;
+    document.getElementById('kpi-wall').textContent      = fmtSeconds(s.wall_seconds_total);
+  }
+
+  function renderConfig(){
+    const s = DATA.summary;
+    document.getElementById('cfg-actor').textContent  = s.actor;
+    document.getElementById('cfg-critic').textContent = s.critic;
+    document.getElementById('cfg-ppo').textContent    =
+      `lora_r        : ${s.lora_r}\n` +
+      `lora_alpha    : ${s.lora_alpha}\n` +
+      `lr            : ${s.lr}\n` +
+      `gamma         : ${s.gamma}\n` +
+      `gae_lambda    : ${s.gae_lambda}\n` +
+      `clip_eps      : ${s.clip_eps}\n` +
+      `kl_coef       : ${s.kl_coef}\n` +
+      `rollouts/upd  : ${s.rollouts_per_update}\n` +
+      `max_steps/ep  : ${s.max_steps_per_ep}`;
+  }
+
+  function trace(shard, key, name){
+    return {
+      x: shard.trajectory.map(t => t.u),
+      y: shard.trajectory.map(t => t[key]),
+      type:'scatter', mode:'lines',
+      name: name,
+      line:{width:2.5, shape:'spline', smoothing:0.6},
+    };
+  }
+
+  function renderTrainingPlots(){
+    const ds = DATA.shards;
+    const colorise = (traces) => traces.map((t,i) => ({...t, line:{...t.line, color:colors[i]}}));
+
+    Plotly.newPlot('plot-reward',
+      colorise(ds.map(s => trace(s,'r','Shard '+s.shard))),
+      plotLayout({yaxis:{title:'mean reward', gridcolor:'rgba(122,167,255,.08)'}}), plotConfig);
+
+    Plotly.newPlot('plot-loss',
+      colorise(ds.map(s => trace(s,'loss','Shard '+s.shard))),
+      plotLayout({yaxis:{title:'loss', gridcolor:'rgba(122,167,255,.08)'}}), plotConfig);
+
+    Plotly.newPlot('plot-kl',
+      colorise(ds.map(s => trace(s,'kl','Shard '+s.shard))),
+      plotLayout({yaxis:{title:'KL', gridcolor:'rgba(122,167,255,.08)'}}), plotConfig);
+
+    Plotly.newPlot('plot-elapsed',
+      colorise(ds.map(s => trace(s,'elapsed','Shard '+s.shard))),
+      plotLayout({yaxis:{title:'seconds/update', gridcolor:'rgba(122,167,255,.08)'}}), plotConfig);
+  }
+
+  function renderCategoryPlot(){
+    const buckets = {};
+    for (const sc of DATA.scenarios){
+      const summ = DATA.cross_shard_index[sc.id];
+      if (!summ) continue;
+      const r = summ.shards.reduce((a,b) => a + (b.mean_reward||0), 0) / summ.shards.length;
+      (buckets[sc.category] = buckets[sc.category] || []).push(r);
+    }
+    const cats = Object.keys(buckets).sort((a,b) =>
+      (buckets[b].reduce((x,y)=>x+y,0)/buckets[b].length) -
+      (buckets[a].reduce((x,y)=>x+y,0)/buckets[a].length)
+    );
+    const means = cats.map(c => buckets[c].reduce((a,b)=>a+b,0)/buckets[c].length);
+    Plotly.newPlot('plot-cat', [{
+      type:'bar', orientation:'h',
+      x: means.reverse(),
+      y: cats.reverse(),
+      marker:{
+        color: means.map(m => m >= 0 ? '#7aa7ff' : '#ff7a9f'),
+        line:{width:0},
+      },
+      hovertemplate:'%{y}<br>mean reward: %{x:.3f}<extra></extra>',
+    }], plotLayout({margin:{l:240,r:30,t:14,b:42}, height:420, yaxis:{automargin:true}}), plotConfig);
+  }
+
+  function difficultyChip(d){
+    return `<span class="chip chip-${d}">${d}</span>`;
+  }
+
+  function renderTasks(){
+    const grid = document.getElementById('task-grid');
+    const stats = document.getElementById('stats-bar');
+
+    let scenarios = DATA.scenarios;
+    if (filterDiff !== 'all') scenarios = scenarios.filter(s => s.difficulty === filterDiff);
+    if (filterText){
+      const q = filterText.toLowerCase();
+      scenarios = scenarios.filter(s =>
+        s.id.toLowerCase().includes(q) ||
+        (s.title||'').toLowerCase().includes(q) ||
+        (s.category||'').toLowerCase().includes(q));
+    }
+
+    const counts = {easy:0, medium:0, hard:0};
+    scenarios.forEach(s => { counts[s.difficulty] = (counts[s.difficulty]||0)+1; });
+    stats.innerHTML =
+      `<div><strong>${scenarios.length}</strong> tasks shown</div>` +
+      `<div>${counts.easy||0} easy · ${counts.medium||0} medium · ${counts.hard||0} hard</div>` +
+      `<div>Click any card for full details</div>`;
+
+    if (!scenarios.length){
+      grid.innerHTML = '<div class="empty">No tasks match the current filter.</div>';
+      return;
+    }
+
+    grid.innerHTML = scenarios.slice(0, 200).map(s => {
+      const summ = DATA.cross_shard_index[s.id];
+      const meanR = summ ? (summ.shards.reduce((a,b)=>a+b.mean_reward,0)/summ.shards.length).toFixed(3) : '—';
+      const visits = summ ? summ.shards.reduce((a,b)=>a+b.visits,0) : 0;
+      const rewardClr = summ && summ.shards[0].mean_reward >= 0 ? 'var(--good)' : 'var(--bad)';
+      return `<div class="task-card" data-id="${s.id}">
+        <div class="id">${s.id}</div>
+        <div class="title">${s.title}</div>
+        <div class="meta">${difficultyChip(s.difficulty)}<span class="chip chip-shard">${s.category}</span></div>
+        <div class="row"><span>Mean reward</span><strong style="color:${rewardClr}">${meanR}</strong></div>
+        <div class="row"><span>Episode visits</span><strong>${visits}</strong></div>
+        <div class="row"><span>Action chain</span><strong>${s.n_actions} steps</strong></div>
+      </div>`;
+    }).join('') + (scenarios.length > 200 ? `<div class="empty">…and ${scenarios.length - 200} more — refine the filter.</div>` : '');
+
+    grid.querySelectorAll('.task-card').forEach(el => {
+      el.addEventListener('click', () => openModal(el.dataset.id));
+    });
+  }
+
+  function bindFilters(){
+    document.querySelectorAll('.filter-btn[data-diff]').forEach(b => {
+      b.addEventListener('click', () => {
+        document.querySelectorAll('.filter-btn[data-diff]').forEach(x => x.classList.remove('active'));
+        b.classList.add('active');
+        filterDiff = b.dataset.diff;
+        renderTasks();
+      });
+    });
+    document.getElementById('search').addEventListener('input', e => {
+      filterText = e.target.value.trim();
+      renderTasks();
+    });
+  }
+
+  function openModal(id){
+    const s = DATA.scenarios.find(x => x.id === id);
+    const summ = DATA.cross_shard_index[id];
+    if (!s) return;
+    document.getElementById('m-id').textContent = id;
+    document.getElementById('m-title').textContent = s.title;
+    document.getElementById('m-chips').innerHTML =
+      difficultyChip(s.difficulty) + ` <span class="chip chip-shard">${s.category}</span>` +
+      (s.target_score != null ? ` <span class="chip chip-shard">target ${s.target_score}</span>` : '');
+
+    let actionsHtml = '';
+    if (s.actions && s.actions.length){
+      actionsHtml = s.actions.map((a,i) =>
+        `<div class="action-step">${i+1}. <strong style="color:var(--accent)">${a.id}</strong> ${a.params ? JSON.stringify(a.params) : ''}</div>`
+      ).join('');
+    } else {
+      actionsHtml = '<div style="color:var(--muted)">No action chain recorded.</div>';
+    }
+
+    let shardsHtml = '<div style="color:var(--muted)">No training data.</div>';
+    if (summ){
+      shardsHtml = '<table style="width:100%;font-size:13px;border-collapse:collapse">' +
+        '<tr><th style="text-align:left;padding:6px 8px;color:var(--accent)">Shard</th>' +
+        '<th style="text-align:right;padding:6px 8px;color:var(--accent)">Visits</th>' +
+        '<th style="text-align:right;padding:6px 8px;color:var(--accent)">First reward</th>' +
+        '<th style="text-align:right;padding:6px 8px;color:var(--accent)">Last reward</th>' +
+        '<th style="text-align:right;padding:6px 8px;color:var(--accent)">Mean</th></tr>' +
+        summ.shards.map(sh =>
+          `<tr><td style="padding:6px 8px">Shard ${sh.shard}</td>` +
+          `<td style="text-align:right;padding:6px 8px">${sh.visits}</td>` +
+          `<td style="text-align:right;padding:6px 8px">${sh.first.toFixed(3)}</td>` +
+          `<td style="text-align:right;padding:6px 8px">${sh.last.toFixed(3)}</td>` +
+          `<td style="text-align:right;padding:6px 8px;color:${sh.mean_reward>=0?'var(--good)':'var(--bad)'}">${sh.mean_reward.toFixed(3)}</td></tr>`
+        ).join('') + '</table>';
+    }
+
+    document.getElementById('m-body').innerHTML =
+      `<h4>Description</h4><p>${s.description || '—'}</p>` +
+      `<h4>Design intention</h4><p>${s.intention || '—'}</p>` +
+      `<h4>Ground-truth action chain</h4>${actionsHtml}` +
+      `<h4>Training trajectory · per shard</h4>${shardsHtml}`;
+
+    document.getElementById('modal-back').classList.add('show');
+  }
+  function closeModal(){ document.getElementById('modal-back').classList.remove('show'); }
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+</script>
+</body>
+</html>

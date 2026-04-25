@@ -472,6 +472,25 @@ def dashboard_legacy():
     return HTMLResponse(content="<h1>Legacy dashboard not found</h1>", status_code=404)
 
 
+@app.get("/showcase", response_class=HTMLResponse)
+def showcase():
+    """Apple-style fluid showcase page documenting every task, action, reward,
+    training methodology, infra layout, and JSON file in the repo."""
+    html_path = Path(__file__).resolve().parent / "showcase.html"
+    if html_path.exists():
+        return HTMLResponse(content=html_path.read_text(encoding="utf-8"), status_code=200)
+    return HTMLResponse(content="<h1>Showcase not found — rebuild Docker image.</h1>", status_code=404)
+
+
+@app.get("/showcase/data")
+def showcase_data():
+    """Pre-computed showcase bundle: 381 scenarios + 3 shards of training metrics."""
+    data_path = Path(__file__).resolve().parent / "showcase_data.json"
+    if not data_path.exists():
+        raise HTTPException(status_code=404, detail="showcase_data.json missing — run scripts/build_showcase_data.py")
+    return json.loads(data_path.read_text(encoding="utf-8"))
+
+
 # Register the extra /dashboard/* pages.
 try:
     from dashboard_pages import register as _register_dashboard_pages

@@ -55,3 +55,6 @@ htmlcov/
 rl-agent/.srv.err
 rl-agent/.srv.out
 .env.aws.local
+
+# Local Kaggle artefacts (large; metrics already in rl-agent/showcase_data.json)
+kaggle ran notebooks/

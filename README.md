@@ -19,7 +19,7 @@ tags:
 
 Built for the **Meta PyTorch OpenEnv Hackathon x Scaler School of Technology, 2026**.
 
-[Live Dashboard](https://sagnik-mukherjee-incodent-commander.hf.space/dashboard) | [API Health](https://sagnik-mukherjee-incodent-commander.hf.space/health) | [API Docs](https://sagnik-mukherjee-incodent-commander.hf.space/docs)
+[🌟 **Showcase Page**](https://sagnik-mukherjee-incodent-commander.hf.space/showcase) | [Live Dashboard](https://sagnik-mukherjee-incodent-commander.hf.space/dashboard) | [API Health](https://sagnik-mukherjee-incodent-commander.hf.space/health) | [API Docs](https://sagnik-mukherjee-incodent-commander.hf.space/docs)
 
 ---
 
@@ -286,6 +286,139 @@ python -m rl_agent.eval \
 
 ---
 
+## Actual Training We Ran (PPO + LoRA, 3 Kaggle Shards)
+
+The GRPO roadmap above was the original plan; in practice we ran a custom PPO loop with a dual-model setup that fit comfortably on free Kaggle T4s. The full live numbers are visible at [`/showcase`](https://sagnik-mukherjee-incodent-commander.hf.space/showcase).
+
+### Models
+
+| Role | Model | Quant | LoRA |
+|------|-------|-------|------|
+| **Actor** | `microsoft/Phi-3.5-mini-instruct` | 4-bit NF4 | r=16, α=32, dropout=0, target = qkv/o/gate_up/down |
+| **Critic** | `deepseek-ai/DeepSeek-R1-0528-Qwen3-8B` | 4-bit | prompt-only 0–10 rubric scorer (no grad) |
+
+The critic is loaded once and frozen — it just provides the value baseline `V(s, a)` for advantage estimation. The actor is the only model with trainable parameters (~25 M LoRA weights).
+
+### PPO hyper-parameters
+
+| Hyperparam | Value |
+|------------|-------|
+| Updates / shard | 60 |
+| Rollouts / update | 3 |
+| Max steps / episode | 12 |
+| Discount γ | 0.95 |
+| GAE λ | 0.92 |
+| Clip ε | 0.2 |
+| KL coefficient | 0.02 |
+| Entropy coefficient | 0.01 |
+| PPO epochs | 2 |
+| Mini-batch | 4 |
+| Learning rate | 5e-5 |
+
+### Three-shard parallel training
+
+381 sim scenarios, divided modulo 3 over the sorted task ids:
+
+| Shard | Index slice | Tasks | Notebook | Output |
+|-------|-------------|-------|----------|--------|
+| 1 | `i % 3 == 0` | 127 | [`kaggle_train_shard1.ipynb`](kaggle/kaggle_train_shard1.ipynb) | `adapter_kaggle1.zip` |
+| 2 | `i % 3 == 1` | 127 | [`kaggle_train_shard2.ipynb`](kaggle/kaggle_train_shard2.ipynb) | `adapter_kaggle2.zip` |
+| 3 | `i % 3 == 2` | 127 | [`kaggle_train_shard3.ipynb`](kaggle/kaggle_train_shard3.ipynb) | `adapter_kaggle3.zip` |
+
+Each shard runs 60 PPO updates × 3 rollouts × 12 steps = 2160 env transitions on a single Kaggle T4 in roughly 4–6 hours. Three free Kaggle accounts run in parallel; `scripts/merge_lora_adapters.py` then takes a weighted mean of the three resulting LoRA deltas into a single adapter.
+
+### GitHub → Kaggle pipeline
+
+The notebooks deliberately do **not** vendor the training code — every cell-5 run does:
+
+```python
+!git clone --depth 1 https://github.com/r1cksync/meta-rl-hack.git
+%cd meta-rl-hack/incident-commander
+```
+
+…so any commit on `main` is picked up automatically without re-uploading the `.ipynb`. Cell 6 sets the per-shard env vars (`IC_TASK_SHARD`, `IC_RUN_NAME`, …); cell 7 invokes `python scripts/run_training.py` which loads the actor + critic, builds the env, runs the PPO loop, and writes:
+
+- `colab/logs/training_kaggle{N}.json` — per-update metrics (reward, KL, loss, value error, per-task rewards)
+- `adapter_kaggle{N}/` — final LoRA at update 60, plus checkpoints every 15 updates
+- The notebook's cell 8 zips the adapter and copies the JSON log to `/kaggle/working/` so they show up as downloadable outputs.
+
+After all three shards finish:
+
+```bash
+python scripts/merge_lora_adapters.py \
+    --adapters adapter_kaggle1 adapter_kaggle2 adapter_kaggle3 \
+    --output  adapter_merged \
+    --weights 1.0 1.0 1.0
+```
+
+The merged adapter is then loaded on top of the same 4-bit Phi-3.5-mini base for inference / evaluation.
+
+---
+
+## Production Pipeline (Terraform → Hetzner → k3s)
+
+The agent's write actions normally land in a mock cluster (`MOCK_MODE=true`), but the same code path can drive a real Kubernetes cluster (`REAL_K8S=true`). We provision that cluster with Terraform on Hetzner Cloud — €20 / month for a usable demo cluster.
+
+```
+infra/terraform/main.tf       Hetzner Cloud network + 3 servers + load balancer
+infra/k8s/                    Deployments / Services / ConfigMaps for the 5 microservices
+infra/helm/acmecorp/          Helm chart that rolls everything out
+infra/aws/   infra/eks/       Optional AWS variant if you have free EKS credits
+```
+
+The Terraform module declares:
+
+| Resource | Purpose |
+|----------|---------|
+| `hcloud_network` | Private 10.0.0.0/16 VPC |
+| `hcloud_network_subnet` | 10.0.1.0/24 in `eu-central` |
+| `hcloud_ssh_key` | Reads `~/.ssh/id_rsa.pub` |
+| `hcloud_server` × 3 | `cx21` Ubuntu nodes (1 master + 2 worker) |
+| `hcloud_load_balancer` | `lb11` in front of the cluster |
+| `hcloud_load_balancer_target` × 3 | Health-checked targets |
+| `hcloud_load_balancer_service` × 2 | Public HTTP (80) + HTTPS (443) listeners |
+
+Bring-up:
+
+```bash
+cd infra/terraform
+terraform init
+terraform apply -var="hcloud_token=$HCLOUD_TOKEN"
+
+# Master IP from terraform output
+ssh root@$MASTER curl -sfL https://get.k3s.io | sh -
+
+# Roll out AcmeCorp microservices
+helm install acmecorp infra/helm/acmecorp --set image.tag=$GIT_SHA
+
+# Point the agent at the live cluster
+export REAL_K8S=true
+export KUBECONFIG=~/.kube/config
+python -m rl_agent.server
+```
+
+---
+
+## File / JSON Index
+
+| Path | What it is |
+|------|------------|
+| `rl-agent/scenarios/{easy,medium,hard}/*.json` | 23 hand-curated incident archetypes (id, difficulty, title, description, preconditions, correct_action_chain, target_score, max_steps). |
+| `rl-agent/scenarios/sim/{easy,medium,hard}/*.json` | 381 simulator-grade RL scenarios (156 + 128 + 97). Adds `topology_overrides`, `saboteur`, `slack`, `traffic_profile`, `k8s_controller`, `seed`. |
+| `colab/logs/training_kaggle{1,2,3}.json` | Per-update training metrics for one shard: `update, elapsed_s, mean_reward, mean_value, ppo{loss, kl, policy_loss, value_err}, rewards_by_task`. The union of `rewards_by_task` keys across all three files = full 381-task coverage proof. |
+| `kaggle ran notebooks/shard {1,2,3}/adapter_kaggle{N}/adapter_config.json` | LoRA configuration emitted by PEFT (`r=16, alpha=32, target_modules=[…]`). |
+| `kaggle ran notebooks/shard {1,2,3}/adapter_kaggle{N}/adapter_model.safetensors` | The actual LoRA delta — ~50 MB per shard. Loadable with `PeftModel.from_pretrained(base, path)`. |
+| `rl-agent/showcase_data.json` | Pre-computed bundle that hydrates the `/showcase` page. Built by `scripts/build_showcase_data.py`. |
+| `openenv.yaml` | OpenEnv manifest declaring `/reset, /step, /state, /health`. |
+| `frontend/package.json` | Next.js 14 AcmeCorp e-commerce app — both chaos target and live UI. |
+| `frontend/tsconfig.json` | Strict TS configuration. |
+| `frontend/tailwind.config.js`, `postcss.config.js` | Frontend styling stack. |
+| `backend/{payments-api,inventory-service,notification-service,order-worker}/package.json` | Per-service Node apps that get rolled out, restarted, scaled, and patched by agent actions. |
+| `infra/terraform/main.tf` | Hetzner cluster provisioning (network, subnet, ssh key, 3 servers, load balancer, listeners). |
+| `infra/k8s/*.yaml` | Deployments, Services, ConfigMaps, ChaosMesh experiments for the live cluster. |
+
+---
+
 ## API Endpoints
 
 | Endpoint | Method | Description |
@@ -302,6 +435,8 @@ python -m rl_agent.eval \
 | `/adversarial/design` | POST | Design a novel scenario (LLM or procedural) |
 | `/judge/config` | POST | Switch judge persona / toggle LLM judge |
 | `/dashboard` | GET | **Live diagnostic dashboard** with tier + phase indicators |
+| `/showcase` | GET | **Showcase page** — every task, action, reward, training curve, file index |
+| `/showcase/data` | GET | Pre-computed JSON bundle (381 scenarios + 3 shards × 60 updates) |
 | `/docs` | GET | Swagger UI |
 
 ---
