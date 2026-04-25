@@ -92,6 +92,15 @@ elif TASK_MODE == "hard":
 else:
     tasks = _CURATED
 
+# Optional sharding: take every Nth task starting at SHARD index. Used for
+# splitting the corpus across parallel Kaggle notebooks (no warm-start needed
+# between them; outputs can be averaged at the end).
+_n_shards = int(os.environ.get("IC_TASK_SHARDS", 1))
+_shard    = int(os.environ.get("IC_TASK_SHARD", 0))
+if _n_shards > 1:
+    tasks = [t for i, t in enumerate(tasks) if i % _n_shards == _shard]
+    print(f"[hfjob] sharded {_shard}/{_n_shards} → {len(tasks)} tasks")
+
 print(f"[hfjob] task_mode={TASK_MODE}  count={len(tasks)}")
 
 # ── Optional warm-start from a prior phase's HF model repo ─────────────
@@ -113,7 +122,9 @@ CFG.update({
     "rollouts_per_update": int(os.environ.get("IC_ROLLOUTS", 6)),
     "max_steps_per_ep":    int(os.environ.get("IC_MAX_STEPS", 16)),
     "checkpoint_every":    int(os.environ.get("IC_CKPT_EVERY", 20)),
-    "critic_provider":     "hf",
+    "actor_model":         os.environ.get("IC_ACTOR_MODEL",
+                                          CFG.get("actor_model")),
+    "critic_provider":     os.environ.get("IC_CRITIC_PROVIDER", "hf"),
     "critic_model":        os.environ.get("IC_CRITIC_MODEL",
                                           "Qwen/Qwen2.5-72B-Instruct"),
     "lr":                  1e-5,

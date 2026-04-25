@@ -150,6 +150,23 @@ class LLMCritic:
                 print("[critic] WARNING: HF_TOKEN not set — calls will fail.",
                       file=sys.stderr)
             self._client = InferenceClient(token=token, timeout=60)
+        elif self.provider == "local":
+            # Run the critic on the same GPU in 4-bit. `model` here may be a
+            # HF repo id OR a local path (e.g. /kaggle/input/...).
+            from transformers import (AutoModelForCausalLM, AutoTokenizer,
+                                      BitsAndBytesConfig)
+            import torch as _torch
+            print(f"[critic] loading LOCAL model: {self.model}")
+            bnb = BitsAndBytesConfig(load_in_4bit=True,
+                                     bnb_4bit_compute_dtype=_torch.bfloat16,
+                                     bnb_4bit_use_double_quant=True,
+                                     bnb_4bit_quant_type="nf4")
+            self._tok   = AutoTokenizer.from_pretrained(self.model)
+            self._model = AutoModelForCausalLM.from_pretrained(
+                self.model, quantization_config=bnb, device_map="auto")
+            self._model.eval()
+            self._client = None
+            print(f"[critic] local critic ready ({self.model})")
         elif self.provider == "anthropic":
             try:
                 import anthropic
@@ -178,6 +195,23 @@ class LLMCritic:
                     temperature=self.temperature,
                 )
                 text = out.choices[0].message.content or "0"
+            elif self.provider == "local":
+                import torch as _torch
+                msgs = [{"role": "system", "content": self._SYSTEM},
+                        {"role": "user",   "content": prompt}]
+                tmpl = self._tok.apply_chat_template(
+                    msgs, tokenize=False, add_generation_prompt=True)
+                ids = self._tok(tmpl, return_tensors="pt",
+                                truncation=True, max_length=2048
+                                ).to(self._model.device)
+                with _torch.inference_mode():
+                    out_ids = self._model.generate(
+                        **ids, max_new_tokens=self.max_tokens,
+                        do_sample=False,
+                        pad_token_id=self._tok.eos_token_id)
+                text = self._tok.decode(
+                    out_ids[0, ids.input_ids.shape[1]:],
+                    skip_special_tokens=True)
             elif self._client is not None:
                 resp = self._client.messages.create(
                     model=self.model,
