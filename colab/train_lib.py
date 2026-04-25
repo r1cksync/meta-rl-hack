@@ -254,6 +254,20 @@ class QwenActor:
         self._train_mode = False
         self.max_seq_len = max_seq_len
 
+        # Silence the noisy `Both max_new_tokens and max_length seem to have
+        # been set` FutureWarning. Qwen ships a default max_length=32768 in
+        # its generation_config; we always pass max_new_tokens at call time,
+        # so dropping the inherited max_length is correct.
+        try:
+            self.model.generation_config.max_length = None
+        except Exception:                                       # noqa: BLE001
+            pass
+        import warnings as _w
+        _w.filterwarnings("ignore", category=FutureWarning,
+                          module="transformers")
+        _w.filterwarnings("ignore", message=".*max_new_tokens.*max_length.*")
+        _w.filterwarnings("ignore", message=".*attention mask API.*")
+
     # -----------------------------------------------------
     def _format(self, observation: str) -> str:
         msgs = [{"role": "system", "content": self.SYSTEM_PROMPT},
