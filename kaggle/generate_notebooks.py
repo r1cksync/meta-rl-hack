@@ -10,11 +10,19 @@ from pathlib import Path
 
 NOTEBOOK_DIR = Path(__file__).resolve().parent
 
-# Hugging Face repo IDs for the actor (1.5B) and critic (7B). Both are
-# downloaded at notebook startup via huggingface_hub.snapshot_download — no
-# Kaggle Models attachment needed.
-ACTOR_REPO  = "Qwen/Qwen2.5-1.5B-Instruct"
-CRITIC_REPO = "Qwen/Qwen2.5-7B-Instruct"
+# Kaggle Models mount paths (read-only, mounted at /kaggle/input/, do NOT
+# consume the 20 GB /kaggle/working/ quota). The user must attach these two
+# models in the notebook sidebar ("+ Add Input" → Models) — both are gated
+# by a one-click license accept on the Kaggle Models page.
+#
+# Slugs (use these EXACT strings when searching the Kaggle Models picker):
+#   • Actor : meta/llama-3.2  →  Framework: transformers  →  Variation: 1b-instruct
+#   • Critic: meta/llama-3.1  →  Framework: transformers  →  Variation: 8b-instruct
+ACTOR_GLOB  = "/kaggle/input/llama-3.2/transformers/1b-instruct/*"
+CRITIC_GLOB = "/kaggle/input/llama-3.1/transformers/8b-instruct/*"
+
+ACTOR_NAME  = "meta-llama/Llama-3.2-1B-Instruct"
+CRITIC_NAME = "meta-llama/Llama-3.1-8B-Instruct"
 
 REPO_URL = "https://github.com/r1cksync/meta-rl-hack.git"
 
@@ -33,14 +41,23 @@ def build(shard: int, total_shards: int = 3) -> dict:
     title = f"# IncidentCommander RL — Kaggle shard {shard + 1} / {total_shards}"
     intro = f"""
 **Workload:** every {total_shards}rd task starting at index {shard}
-(~127 of 381 scenarios). Trains a LoRA on `{ACTOR_REPO}` using a
-local `{CRITIC_REPO}` critic. **Both models download from Hugging Face Hub
-at notebook startup — no Kaggle Models attachment needed.**
+(~127 of 381 scenarios). Trains a LoRA on **{ACTOR_NAME}** using a local
+**{CRITIC_NAME}** critic — both attached as Kaggle Models so they live in
+the read-only `/kaggle/input/` mount and DO NOT eat the 20 GB working quota.
+
+**REQUIRED — attach these 2 Kaggle Models before running** (right sidebar →
+`+ Add Input` → `Models` tab):
+1.  `meta/llama-3.2`  →  framework `Transformers`  →  variation `1b-instruct`
+2.  `meta/llama-3.1`  →  framework `Transformers`  →  variation `8b-instruct`
+
+Both require a one-click license-accept on their Kaggle Models page (use the
+`Open in Kaggle` button if the picker says `License required`). After accept
+they attach instantly to any of your notebooks.
 
 **Required notebook settings** (right-hand sidebar):
 - Accelerator: `GPU T4 x2` or `GPU P100`
-- Persistence: `Files only` (so `/kaggle/working/` survives restarts)
-- Internet: `On` (needed to download the models + clone the repo)
+- Persistence: `Files only`
+- Internet: `On` (for `git clone` and optional HF Hub upload)
 
 **Optional** (only if you want intermediate checkpoint upload to your HF
 repo): Add-ons → Secrets → add `HF_TOKEN` and toggle it on.
@@ -75,39 +92,48 @@ print('CUDA OK?', torch.cuda.is_available(), '| device:',
     "datasets" "sentencepiece" "protobuf" "safetensors"
 """.strip()),
 
-        cell_md("## 3. Download actor + critic from Hugging Face Hub"),
+        cell_md("## 3. Resolve attached Kaggle Models (read-only, no download)"),
         cell_code(f"""\
-import os, pathlib
-from huggingface_hub import snapshot_download
+import os, glob, pathlib
 
-# Optional HF_TOKEN — only needed if you have it set in Kaggle Secrets.
-# Qwen 2.5 instruct models are public, so anonymous download works fine.
+ACTOR_GLOB  = '{ACTOR_GLOB}'
+CRITIC_GLOB = '{CRITIC_GLOB}'
+
+def resolve(glob_pat, label):
+    hits = sorted(glob.glob(glob_pat))
+    if not hits:
+        raise SystemExit(
+            f'{{label}} not attached. Open the right sidebar → "+ Add Input" '
+            f'→ Models → search "{{glob_pat.split(chr(47))[3]}}" → pick the '
+            f'"{{glob_pat.split(chr(47))[5]}}" variation → Add. '
+            f'(Accept the license on the Kaggle Models page first if needed.)')
+    # Pick highest version directory and confirm it has weights inside.
+    for cand in reversed(hits):
+        if any(pathlib.Path(cand).glob('*.safetensors')) \\
+           or any(pathlib.Path(cand).glob('*.bin')):
+            return cand
+    raise SystemExit(f'{{label}} found at {{hits}} but no weights inside.')
+
+ACTOR_PATH  = resolve(ACTOR_GLOB,  'actor (Llama-3.2-1B-Instruct)')
+CRITIC_PATH = resolve(CRITIC_GLOB, 'critic (Llama-3.1-8B-Instruct)')
+
+print('actor :', ACTOR_PATH)
+print('critic:', CRITIC_PATH)
+
+# Push HF Hub cache out of /kaggle/working so an accidental snapshot_download
+# (e.g. by a tokenizer) writes to /tmp instead of eating the 20 GB quota.
+os.environ['HF_HOME']              = '/tmp/hf-cache'
+os.environ['HUGGINGFACE_HUB_CACHE'] = '/tmp/hf-cache'
+os.environ['TRANSFORMERS_CACHE']   = '/tmp/hf-cache'
+pathlib.Path('/tmp/hf-cache').mkdir(parents=True, exist_ok=True)
+
+# Optional HF_TOKEN — only used if you want to upload checkpoints.
 try:
     from kaggle_secrets import UserSecretsClient
     os.environ['HF_TOKEN'] = UserSecretsClient().get_secret('HF_TOKEN')
     print('HF_TOKEN attached from Kaggle Secrets')
 except Exception:
-    print('No HF_TOKEN — anonymous download (Qwen 2.5 instruct is public).')
-
-CACHE = '/kaggle/working/hf-cache'
-pathlib.Path(CACHE).mkdir(parents=True, exist_ok=True)
-os.environ['HF_HOME']            = CACHE
-os.environ['HUGGINGFACE_HUB_CACHE'] = CACHE
-
-print('downloading actor : {ACTOR_REPO}  (~3 GB) ...')
-ACTOR_PATH = snapshot_download(
-    repo_id='{ACTOR_REPO}',
-    cache_dir=CACHE,
-    allow_patterns=['*.json', '*.safetensors', '*.txt', 'tokenizer*'])
-
-print('downloading critic: {CRITIC_REPO}  (~15 GB) ...')
-CRITIC_PATH = snapshot_download(
-    repo_id='{CRITIC_REPO}',
-    cache_dir=CACHE,
-    allow_patterns=['*.json', '*.safetensors', '*.txt', 'tokenizer*'])
-
-print('actor :', ACTOR_PATH)
-print('critic:', CRITIC_PATH)
+    print('No HF_TOKEN — that is fine, training works fully offline now.')
 """.strip()),
 
         cell_md("## 4. Clone the repo (public GitHub)"),
@@ -193,7 +219,7 @@ python scripts/merge_lora_adapters.py `
 ```
 
 The merged adapter loads with the standard `peft` API on top of
-`Qwen/Qwen2.5-1.5B-Instruct`.
+`{ACTOR_NAME}`.
 """),
     ]
 
