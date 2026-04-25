@@ -134,14 +134,20 @@ except Exception:
 os.environ['TRANSFORMERS_TRUST_REMOTE_CODE'] = '1'
 """.strip()),
 
-        cell_md("## 4. Clone the repo (public GitHub)"),
+        cell_md("## 4. Clone the repo (public GitHub) — always pull latest"),
         cell_code(f"""\
-import os, subprocess, pathlib
+import os, subprocess, pathlib, shutil
 WORK = '/kaggle/working/incident-commander'
-if not pathlib.Path(WORK).exists():
-    subprocess.run(['git', 'clone', '--depth', '1',
-                    '{REPO_URL}', WORK], check=True)
+p = pathlib.Path(WORK)
+if p.exists():
+    # Wipe any stale clone from a previous session so we always get the
+    # newest scripts/run_training.py + colab/train_lib.py from main.
+    shutil.rmtree(WORK)
+subprocess.run(['git', 'clone', '--depth', '1',
+                '{REPO_URL}', WORK], check=True)
 os.chdir(WORK)
+# Show the commit we are running so it is obvious in the logs.
+subprocess.run(['git', '-C', WORK, 'log', '-1', '--oneline'], check=False)
 print('cwd =', os.getcwd())
 """.strip()),
 
