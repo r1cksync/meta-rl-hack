@@ -82,12 +82,13 @@ print('CUDA OK?', torch.cuda.is_available(), '| device:',
 
         cell_md("## 2. Install deps (Kaggle has torch/transformers preinstalled — we just pin compatible versions)"),
         cell_code("""\
-%pip install -q \\
-    "transformers==4.46.3" \\
-    "peft==0.13.2" \\
-    "accelerate==1.1.1" \\
-    "bitsandbytes==0.45.5" \\
-    "trl==0.12.1" \\
+# Qwen3 architecture (used inside DeepSeek-R1-0528-Qwen3-8B) requires
+# transformers >= 4.51. Bump the whole stack to a known-compatible set.
+%pip install -q -U \\
+    "transformers>=4.51,<4.55" \\
+    "peft>=0.13,<0.16" \\
+    "accelerate>=1.1,<1.5" \\
+    "bitsandbytes>=0.45.5" \\
     "huggingface_hub>=0.25,<1.0" \\
     "pydantic>=2,<3" \\
     "datasets" "sentencepiece" "protobuf" "safetensors"
