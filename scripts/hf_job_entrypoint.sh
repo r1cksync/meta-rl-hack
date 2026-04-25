@@ -24,10 +24,13 @@ echo "[hfjob] cwd: $(pwd)"
 
 echo "[hfjob] === stage 2: install ==="
 $PY -m pip install -q --upgrade pip
+# Install unsloth_zoo first (required by unsloth) then unsloth without deps so
+# it doesn't try to repin transformers/torch from the GPU image.
+$PY -m pip install -q unsloth_zoo
 $PY -m pip install -q --no-deps \
-    "unsloth[colab-new] @ git+https://github.com/unslothai/unsloth.git" || true
+    "unsloth[colab-new] @ git+https://github.com/unslothai/unsloth.git"
 $PY -m pip install -q --no-deps \
-    "xformers<0.0.27" trl peft accelerate bitsandbytes || true
+    "xformers<0.0.27" trl peft accelerate bitsandbytes datasets sentencepiece protobuf hf_transfer
 $PY -m pip install -q "huggingface_hub>=0.25" "pydantic>=2,<3" httpx safetensors
 
 echo "[hfjob] === stage 3: train ==="
