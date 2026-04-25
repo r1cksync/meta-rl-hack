@@ -131,8 +131,19 @@ try:
 except Exception:
     print('No HF_TOKEN — that is fine, training works fully offline now.')
 
-# Trust remote code is required for DeepSeek-R1-Qwen3 architecture.
-os.environ['TRANSFORMERS_TRUST_REMOTE_CODE'] = '1'
+# IMPORTANT: do NOT set TRANSFORMERS_TRUST_REMOTE_CODE here. Phi-3 (>=4.40)
+# and Qwen3 (>=4.51) are natively supported by transformers — using the
+# custom modeling_*.py shipped inside the Kaggle Models mount triggers an
+# `AttributeError: 'DynamicCache' object has no attribute 'get_max_length'`
+# because that custom code targets transformers <4.48. We force native impl
+# by NOT enabling trust_remote_code (train_lib.py also passes it as False).
+# Clear any previously-downloaded custom modeling code that an earlier run
+# may have cached, otherwise from_pretrained reuses it from the cache.
+import shutil as _sh, pathlib as _pl
+_modules = _pl.Path('/tmp/hf-cache/modules')
+if _modules.exists():
+    _sh.rmtree(_modules, ignore_errors=True)
+    print('cleared cached custom modeling code at', _modules)
 """.strip()),
 
         cell_md("## 4. Clone the repo (public GitHub) — always pull latest"),

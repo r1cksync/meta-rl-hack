@@ -161,10 +161,10 @@ class LLMCritic:
                                      bnb_4bit_compute_dtype=_torch.bfloat16,
                                      bnb_4bit_use_double_quant=True,
                                      bnb_4bit_quant_type="nf4")
-            self._tok   = AutoTokenizer.from_pretrained(self.model, trust_remote_code=True)
+            self._tok   = AutoTokenizer.from_pretrained(self.model, trust_remote_code=False)
             self._model = AutoModelForCausalLM.from_pretrained(
                 self.model, quantization_config=bnb, device_map="auto",
-                trust_remote_code=True)
+                trust_remote_code=False)
             self._model.eval()
             self._client = None
             print(f"[critic] local critic ready ({self.model})")
@@ -310,10 +310,10 @@ class QwenActor:
                                      bnb_4bit_use_double_quant=True,
                                      bnb_4bit_quant_type="nf4")
             self.tokenizer = AutoTokenizer.from_pretrained(
-                hf_name, trust_remote_code=True)
+                hf_name, trust_remote_code=False)
             base = AutoModelForCausalLM.from_pretrained(
                 hf_name, quantization_config=bnb, device_map="auto",
-                trust_remote_code=True)
+                trust_remote_code=False)
             base = prepare_model_for_kbit_training(base)
             # Pick LoRA target modules that actually exist in this arch.
             # Qwen / Llama use split q/k/v/gate/up. Phi-3 uses fused
