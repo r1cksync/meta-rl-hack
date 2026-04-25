@@ -569,7 +569,13 @@ class IncidentRolloutCollector:
                 obs_text = self._obs_to_text(env, step_result.observation)
                 if progress_cb is not None:
                     try:
-                        progress_cb(ep, t, n_episodes, self.max_steps_per_ep)
+                        progress_cb(ep, t, n_episodes, self.max_steps_per_ep, tid)
+                    except TypeError:
+                        # Backwards compat: callbacks taking 4 args.
+                        try:
+                            progress_cb(ep, t, n_episodes, self.max_steps_per_ep)
+                        except Exception:                        # noqa: BLE001
+                            pass
                     except Exception:                            # noqa: BLE001
                         pass
                 if done:
@@ -810,7 +816,8 @@ def train_loop(cfg: dict | None = None) -> Path:
     _last_beat = [0.0]
 
     def _heartbeat(ep_idx: int, step_idx: int,
-                   n_eps: int, max_steps: int) -> None:
+                   n_eps: int, max_steps: int,
+                   task_id: str = "") -> None:
         now = time.time()
         if now - _last_beat[0] < 5.0:        # cap to one line every ~5 s
             return
@@ -830,9 +837,10 @@ def train_loop(cfg: dict | None = None) -> Path:
         remaining_full_updates = max(total - upd, 0)
         live_eta = est_upd_remaining + remaining_full_updates * per_upd_avg
         wall_now = now - train_t0
+        tid_str = f" task={task_id}" if task_id else ""
         msg = (f"  [upd {upd:03d}/{total:03d} "
                f"ep {ep_idx + 1}/{n_eps} step {step_idx + 1}/{max_steps}"
-               f" ({frac_in_upd*100:5.1f}%)]  "
+               f" ({frac_in_upd*100:5.1f}%)]{tid_str}  "
                f"upd-elapsed={_fmt_dur(upd_elapsed)} "
                f"upd-ETA={_fmt_dur(est_upd_remaining)}  "
                f"wall={_fmt_dur(wall_now)} "
