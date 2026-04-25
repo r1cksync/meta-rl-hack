@@ -11,18 +11,18 @@ from pathlib import Path
 NOTEBOOK_DIR = Path(__file__).resolve().parent
 
 # Kaggle Models mount paths (read-only, mounted at /kaggle/input/, do NOT
-# consume the 20 GB /kaggle/working/ quota). The user must attach these two
-# models in the notebook sidebar ("+ Add Input" → Models) — both are gated
-# by a one-click license accept on the Kaggle Models page.
+# consume the 20 GB /kaggle/working/ quota). Microsoft Phi-3 family is
+# MIT-licensed and instantly attachable on Kaggle — NO access request, NO
+# license accept popup.
 #
 # Slugs (use these EXACT strings when searching the Kaggle Models picker):
-#   • Actor : meta/llama-3.2  →  Framework: transformers  →  Variation: 1b-instruct
-#   • Critic: meta/llama-3.1  →  Framework: transformers  →  Variation: 8b-instruct
-ACTOR_GLOB  = "/kaggle/input/llama-3.2/transformers/1b-instruct/*"
-CRITIC_GLOB = "/kaggle/input/llama-3.1/transformers/8b-instruct/*"
+#   • Actor : microsoft/phi-3.5  →  Framework: transformers  →  Variation: mini-instruct        (~3.8B)
+#   • Critic: microsoft/phi-3    →  Framework: transformers  →  Variation: medium-4k-instruct   (~14B)
+ACTOR_GLOB  = "/kaggle/input/phi-3.5/transformers/mini-instruct/*"
+CRITIC_GLOB = "/kaggle/input/phi-3/transformers/medium-4k-instruct/*"
 
-ACTOR_NAME  = "meta-llama/Llama-3.2-1B-Instruct"
-CRITIC_NAME = "meta-llama/Llama-3.1-8B-Instruct"
+ACTOR_NAME  = "microsoft/Phi-3.5-mini-instruct"
+CRITIC_NAME = "microsoft/Phi-3-medium-4k-instruct"
 
 REPO_URL = "https://github.com/r1cksync/meta-rl-hack.git"
 
@@ -46,13 +46,10 @@ def build(shard: int, total_shards: int = 3) -> dict:
 the read-only `/kaggle/input/` mount and DO NOT eat the 20 GB working quota.
 
 **REQUIRED — attach these 2 Kaggle Models before running** (right sidebar →
-`+ Add Input` → `Models` tab):
-1.  `meta/llama-3.2`  →  framework `Transformers`  →  variation `1b-instruct`
-2.  `meta/llama-3.1`  →  framework `Transformers`  →  variation `8b-instruct`
-
-Both require a one-click license-accept on their Kaggle Models page (use the
-`Open in Kaggle` button if the picker says `License required`). After accept
-they attach instantly to any of your notebooks.
+`+ Add Input` → `Models` tab). Phi-3 is **MIT-licensed**, no access
+request, instant attach:
+1.  `microsoft/phi-3.5`  →  framework `Transformers`  →  variation `mini-instruct`        (~3.8B actor)
+2.  `microsoft/phi-3`    →  framework `Transformers`  →  variation `medium-4k-instruct`   (~14B critic)
 
 **Required notebook settings** (right-hand sidebar):
 - Accelerator: `GPU T4 x2` or `GPU P100`
@@ -114,8 +111,8 @@ def resolve(glob_pat, label):
             return cand
     raise SystemExit(f'{{label}} found at {{hits}} but no weights inside.')
 
-ACTOR_PATH  = resolve(ACTOR_GLOB,  'actor (Llama-3.2-1B-Instruct)')
-CRITIC_PATH = resolve(CRITIC_GLOB, 'critic (Llama-3.1-8B-Instruct)')
+ACTOR_PATH  = resolve(ACTOR_GLOB,  'actor (Phi-3.5-mini-instruct)')
+CRITIC_PATH = resolve(CRITIC_GLOB, 'critic (Phi-3-medium-4k-instruct)')
 
 print('actor :', ACTOR_PATH)
 print('critic:', CRITIC_PATH)
