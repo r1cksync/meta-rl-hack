@@ -6,15 +6,17 @@
 #   ./scripts/launch_phase3.ps1
 
 $ErrorActionPreference = "Stop"
-if (-not $env:HF_TOKEN_C) { throw "HF_TOKEN_C (X2-0's token) is required." }
+# Account C token (X2-0)
+if (-not $env:HF_TOKEN_C) { $env:HF_TOKEN_C = "<paste-X2-0-token-here>" }
 
 $flavor   = "l4x1"
-$updates  = "300"
-$rollouts = "6"
-$run      = "phase3_polish"
+$updates  = "60"
+$rollouts = "3"
+$steps    = "12"
+$run      = "phase3"
 $repo     = "https://github.com/r1cksync/meta-rl-hack.git"
 
-Write-Host "Phase 3: HARD 35 tasks, $updates x $rollouts, Qwen2.5-72B critic"
+Write-Host "Phase 3: HARD 35 tasks, $updates x $rollouts x $steps, Qwen2.5-72B critic"
 Write-Host "  Account     : X2-0"
 Write-Host "  Warm-start  : Shubhang3011/incident-commander-actor (phase 2)"
 Write-Host "  Push target : X2-0/incident-commander-actor"
@@ -28,6 +30,8 @@ hf jobs run -d `
     --env   "IC_REPO_URL=$repo" `
     --env   "IC_TOTAL_UPDATES=$updates" `
     --env   "IC_ROLLOUTS=$rollouts" `
+    --env   "IC_MAX_STEPS=$steps" `
+    --env   "IC_CKPT_EVERY=15" `
     --env   "IC_RUN_NAME=$run" `
     --env   "IC_TASK_MODE=hard" `
     --env   "IC_CRITIC_MODEL=Qwen/Qwen2.5-72B-Instruct" `

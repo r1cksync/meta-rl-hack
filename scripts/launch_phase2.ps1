@@ -6,15 +6,17 @@
 #   ./scripts/launch_phase2.ps1
 
 $ErrorActionPreference = "Stop"
-if (-not $env:HF_TOKEN_B) { throw "HF_TOKEN_B (Shubhang3011's token) is required." }
+# Account B token (Shubhang3011) — fetched from env if set, otherwise inline.
+if (-not $env:HF_TOKEN_B) { $env:HF_TOKEN_B = "<paste-Shubhang3011-token-here>" }
 
 $flavor   = "l4x1"
-$updates  = "600"
-$rollouts = "6"
-$run      = "phase2_breadth"
+$updates  = "150"
+$rollouts = "3"
+$steps    = "12"
+$run      = "phase2"
 $repo     = "https://github.com/r1cksync/meta-rl-hack.git"
 
-Write-Host "Phase 2: ALL 381 tasks, $updates x $rollouts, Qwen2.5-7B critic"
+Write-Host "Phase 2: ALL 381 tasks, $updates x $rollouts x $steps, Qwen2.5-7B critic"
 Write-Host "  Account     : Shubhang3011"
 Write-Host "  Warm-start  : sagnik-mukherjee/incident-commander-actor (phase 1)"
 Write-Host "  Push target : Shubhang3011/incident-commander-actor"
@@ -28,6 +30,8 @@ hf jobs run -d `
     --env   "IC_REPO_URL=$repo" `
     --env   "IC_TOTAL_UPDATES=$updates" `
     --env   "IC_ROLLOUTS=$rollouts" `
+    --env   "IC_MAX_STEPS=$steps" `
+    --env   "IC_CKPT_EVERY=30" `
     --env   "IC_RUN_NAME=$run" `
     --env   "IC_TASK_MODE=all" `
     --env   "IC_CRITIC_MODEL=Qwen/Qwen2.5-7B-Instruct" `
