@@ -161,9 +161,10 @@ class LLMCritic:
                                      bnb_4bit_compute_dtype=_torch.bfloat16,
                                      bnb_4bit_use_double_quant=True,
                                      bnb_4bit_quant_type="nf4")
-            self._tok   = AutoTokenizer.from_pretrained(self.model)
+            self._tok   = AutoTokenizer.from_pretrained(self.model, trust_remote_code=True)
             self._model = AutoModelForCausalLM.from_pretrained(
-                self.model, quantization_config=bnb, device_map="auto")
+                self.model, quantization_config=bnb, device_map="auto",
+                trust_remote_code=True)
             self._model.eval()
             self._client = None
             print(f"[critic] local critic ready ({self.model})")
@@ -297,23 +298,43 @@ class QwenActor:
             from transformers import (AutoModelForCausalLM, AutoTokenizer,
                                       BitsAndBytesConfig)
             from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
-            # Use the non-unsloth quantised checkpoint when falling back.
-            hf_name = model_name.replace("unsloth/", "Qwen/").replace(
-                "-bnb-4bit", "")
+            # If model_name is a local path (e.g. /kaggle/input/...) keep it
+            # verbatim; otherwise translate the unsloth slug to its HF origin.
+            if os.path.isdir(model_name):
+                hf_name = model_name
+            else:
+                hf_name = model_name.replace("unsloth/", "Qwen/").replace(
+                    "-bnb-4bit", "")
             bnb = BitsAndBytesConfig(load_in_4bit=True,
                                      bnb_4bit_compute_dtype=torch.bfloat16,
                                      bnb_4bit_use_double_quant=True,
                                      bnb_4bit_quant_type="nf4")
-            self.tokenizer = AutoTokenizer.from_pretrained(hf_name)
+            self.tokenizer = AutoTokenizer.from_pretrained(
+                hf_name, trust_remote_code=True)
             base = AutoModelForCausalLM.from_pretrained(
-                hf_name, quantization_config=bnb, device_map="auto")
+                hf_name, quantization_config=bnb, device_map="auto",
+                trust_remote_code=True)
             base = prepare_model_for_kbit_training(base)
+            # Pick LoRA target modules that actually exist in this arch.
+            # Qwen / Llama use split q/k/v/gate/up. Phi-3 uses fused
+            # qkv_proj + gate_up_proj. Detect by introspecting param names.
+            param_names = {n.rsplit(".", 1)[-1]
+                           for n, _ in base.named_modules()}
+            if {"qkv_proj", "gate_up_proj"}.issubset(param_names):
+                target_modules = ["qkv_proj", "o_proj",
+                                  "gate_up_proj", "down_proj"]
+            elif {"q_proj", "k_proj", "v_proj"}.issubset(param_names):
+                target_modules = ["q_proj", "k_proj", "v_proj", "o_proj",
+                                  "gate_proj", "up_proj", "down_proj"]
+            else:
+                # Last-resort: regex match every linear named *_proj.
+                target_modules = r".*_proj$"
+            print(f"[actor] LoRA target_modules = {target_modules}")
             self.model = get_peft_model(base, LoraConfig(
                 r=lora_r, lora_alpha=lora_alpha,
                 lora_dropout=lora_dropout, bias="none",
                 task_type="CAUSAL_LM",
-                target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
-                                "gate_proj", "up_proj", "down_proj"]))
+                target_modules=target_modules))
             self._unsloth = False
             print(f"[actor] using HF transformers backend ({hf_name})")
         self._train_mode = False

@@ -11,18 +11,19 @@ from pathlib import Path
 NOTEBOOK_DIR = Path(__file__).resolve().parent
 
 # Kaggle Models mount paths (read-only, mounted at /kaggle/input/, do NOT
-# consume the 20 GB /kaggle/working/ quota). Microsoft Phi-3 family is
-# MIT-licensed and instantly attachable on Kaggle — NO access request, NO
-# license accept popup.
+# consume the 20 GB /kaggle/working/ quota). Exact paths the user pinned:
 #
-# Slugs (use these EXACT strings when searching the Kaggle Models picker):
-#   • Actor : microsoft/phi-3.5  →  Framework: transformers  →  Variation: mini-instruct        (~3.8B)
-#   • Critic: microsoft/phi-3    →  Framework: transformers  →  Variation: medium-4k-instruct   (~14B)
-ACTOR_GLOB  = "/kaggle/input/phi-3.5/transformers/mini-instruct/*"
-CRITIC_GLOB = "/kaggle/input/phi-3/transformers/medium-4k-instruct/*"
+#   Actor : /kaggle/input/models/Microsoft/phi-3/pytorch/phi-3.5-mini-instruct/2
+#   Critic: /kaggle/input/models/deepseek-ai/deepseek-r1-0528/transformers/deepseek-r1-0528-qwen3-8b/1
+#
+# In the Kaggle notebook sidebar ("+ Add Input" → Models):
+#   • search `phi-3`         → publisher Microsoft  → framework PyTorch       → variation `phi-3.5-mini-instruct`        → version 2  → Add
+#   • search `deepseek-r1`   → publisher deepseek-ai → framework Transformers  → variation `deepseek-r1-0528-qwen3-8b`     → version 1  → Add
+ACTOR_PATH_LITERAL  = "/kaggle/input/models/Microsoft/phi-3/pytorch/phi-3.5-mini-instruct/2"
+CRITIC_PATH_LITERAL = "/kaggle/input/models/deepseek-ai/deepseek-r1-0528/transformers/deepseek-r1-0528-qwen3-8b/1"
 
 ACTOR_NAME  = "microsoft/Phi-3.5-mini-instruct"
-CRITIC_NAME = "microsoft/Phi-3-medium-4k-instruct"
+CRITIC_NAME = "deepseek-ai/DeepSeek-R1-0528-Qwen3-8B"
 
 REPO_URL = "https://github.com/r1cksync/meta-rl-hack.git"
 
@@ -46,10 +47,13 @@ def build(shard: int, total_shards: int = 3) -> dict:
 the read-only `/kaggle/input/` mount and DO NOT eat the 20 GB working quota.
 
 **REQUIRED — attach these 2 Kaggle Models before running** (right sidebar →
-`+ Add Input` → `Models` tab). Phi-3 is **MIT-licensed**, no access
-request, instant attach:
-1.  `microsoft/phi-3.5`  →  framework `Transformers`  →  variation `mini-instruct`        (~3.8B actor)
-2.  `microsoft/phi-3`    →  framework `Transformers`  →  variation `medium-4k-instruct`   (~14B critic)
+`+ Add Input` → `Models` tab). Both are open / no access request:
+1.  `Microsoft / phi-3`        → framework `PyTorch`       → variation `phi-3.5-mini-instruct`     → version `2`
+2.  `deepseek-ai / deepseek-r1-0528` → framework `Transformers` → variation `deepseek-r1-0528-qwen3-8b` → version `1`
+
+Expected mount paths after attach (cell 3 verifies):
+- `{ACTOR_PATH_LITERAL}`
+- `{CRITIC_PATH_LITERAL}`
 
 **Required notebook settings** (right-hand sidebar):
 - Accelerator: `GPU T4 x2` or `GPU P100`
@@ -91,31 +95,25 @@ print('CUDA OK?', torch.cuda.is_available(), '| device:',
 
         cell_md("## 3. Resolve attached Kaggle Models (read-only, no download)"),
         cell_code(f"""\
-import os, glob, pathlib
+import os, pathlib
 
-ACTOR_GLOB  = '{ACTOR_GLOB}'
-CRITIC_GLOB = '{CRITIC_GLOB}'
+ACTOR_PATH  = '{ACTOR_PATH_LITERAL}'
+CRITIC_PATH = '{CRITIC_PATH_LITERAL}'
 
-def resolve(glob_pat, label):
-    hits = sorted(glob.glob(glob_pat))
-    if not hits:
+def verify(path, label):
+    p = pathlib.Path(path)
+    if not p.exists():
         raise SystemExit(
-            f'{{label}} not attached. Open the right sidebar → "+ Add Input" '
-            f'→ Models → search "{{glob_pat.split(chr(47))[3]}}" → pick the '
-            f'"{{glob_pat.split(chr(47))[5]}}" variation → Add. '
-            f'(Accept the license on the Kaggle Models page first if needed.)')
-    # Pick highest version directory and confirm it has weights inside.
-    for cand in reversed(hits):
-        if any(pathlib.Path(cand).glob('*.safetensors')) \\
-           or any(pathlib.Path(cand).glob('*.bin')):
-            return cand
-    raise SystemExit(f'{{label}} found at {{hits}} but no weights inside.')
+            f'{{label}} not found at {{path}}. Open the right sidebar → '
+            f'"+ Add Input" → Models → attach the model with the matching '
+            f'publisher/framework/variation/version (see the markdown above).')
+    has_weights = any(p.glob('*.safetensors')) or any(p.glob('*.bin'))
+    if not has_weights:
+        raise SystemExit(f'{{label}} found at {{path}} but no *.safetensors / *.bin inside.')
+    print(f'{{label}}: OK  →  {{path}}')
 
-ACTOR_PATH  = resolve(ACTOR_GLOB,  'actor (Phi-3.5-mini-instruct)')
-CRITIC_PATH = resolve(CRITIC_GLOB, 'critic (Phi-3-medium-4k-instruct)')
-
-print('actor :', ACTOR_PATH)
-print('critic:', CRITIC_PATH)
+verify(ACTOR_PATH,  'actor  (Phi-3.5-mini-instruct)')
+verify(CRITIC_PATH, 'critic (DeepSeek-R1-0528-Qwen3-8B)')
 
 # Push HF Hub cache out of /kaggle/working so an accidental snapshot_download
 # (e.g. by a tokenizer) writes to /tmp instead of eating the 20 GB quota.
@@ -131,6 +129,9 @@ try:
     print('HF_TOKEN attached from Kaggle Secrets')
 except Exception:
     print('No HF_TOKEN — that is fine, training works fully offline now.')
+
+# Trust remote code is required for DeepSeek-R1-Qwen3 architecture.
+os.environ['TRANSFORMERS_TRUST_REMOTE_CODE'] = '1'
 """.strip()),
 
         cell_md("## 4. Clone the repo (public GitHub)"),
