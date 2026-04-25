@@ -110,6 +110,8 @@ if _n_shards > 1:
     print(f"[hfjob] sharded {_shard}/{_n_shards} → {len(tasks)} tasks")
 
 print(f"[hfjob] task_mode={TASK_MODE}  count={len(tasks)}")
+print(f"[hfjob] first 5 task ids: {tasks[:5]}")
+print(f"[hfjob] last  5 task ids: {tasks[-5:]}")
 
 # ── Optional warm-start from a prior phase's HF model repo ─────────────
 init_repo = os.environ.get("IC_INIT_ADAPTER_REPO", "").strip()

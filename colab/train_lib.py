@@ -535,6 +535,11 @@ class IncidentRolloutCollector:
     critic: LLMCritic
     tasks:  list[str]
     max_steps_per_ep: int = 16
+    # Persistent cursor — advances ACROSS update calls so we round-robin the
+    # whole task list instead of always picking tasks[0..n_episodes-1] at
+    # every PPO update. Without this, IC_ROLLOUTS=3 with 127 shard tasks would
+    # train on only the first 3 forever.
+    _cursor: int = 0
 
     def collect(self, n_episodes: int,
                 progress_cb=None) -> list[Transition]:
@@ -547,7 +552,8 @@ class IncidentRolloutCollector:
         env = IncidentCommanderEnv(use_mock=True)
         transitions: list[Transition] = []
         for ep in range(n_episodes):
-            tid = self.tasks[ep % len(self.tasks)]
+            tid = self.tasks[self._cursor % len(self.tasks)]
+            self._cursor += 1
             obs_struct = env.reset(tid)
             obs_text   = self._obs_to_text(env, obs_struct)
             for t in range(self.max_steps_per_ep):
