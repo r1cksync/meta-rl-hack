@@ -514,17 +514,73 @@ class PPOTrainer:
         return {k: float(sum(v) / max(len(v), 1)) for k, v in stats.items()}
 
 
+def _fmt_dur(seconds: float) -> str:
+    seconds = int(max(0, seconds))
+    h, rem = divmod(seconds, 3600)
+    m, s   = divmod(rem, 60)
+    if h:  return f"{h}h{m:02d}m{s:02d}s"
+    if m:  return f"{m}m{s:02d}s"
+    return f"{s}s"
+
+
+def _make_hf_pusher(cfg: dict, run_name: str):
+    """Return a callable(local_dir, path_in_repo) that uploads a folder to a
+    private HF model repo. No-op if HF push isn't configured."""
+    push_user = os.environ.get("IC_PUSH_USER", "").strip()
+    if not push_user or not os.environ.get("HF_TOKEN"):
+        print("[ckpt-push] disabled (set IC_PUSH_USER + HF_TOKEN to enable).")
+        return lambda *_a, **_kw: None
+
+    try:
+        from huggingface_hub import HfApi, create_repo
+    except ImportError:                                         # pragma: no cover
+        print("[ckpt-push] huggingface_hub missing — skipping push.")
+        return lambda *_a, **_kw: None
+
+    repo  = f"{push_user}/incident-commander-actor"
+    token = os.environ["HF_TOKEN"]
+    create_repo(repo, exist_ok=True, repo_type="model", token=token,
+                private=False)
+    api = HfApi(token=token)
+    print(f"[ckpt-push] enabled → https://huggingface.co/{repo}")
+
+    def _push(local_dir: Path, path_in_repo: str) -> None:
+        try:
+            api.upload_folder(
+                folder_path=str(local_dir),
+                repo_id=repo,
+                repo_type="model",
+                path_in_repo=path_in_repo,
+                commit_message=f"{run_name}: {path_in_repo}",
+                run_as_future=False,
+            )
+            print(f"[ckpt-push] uploaded {path_in_repo}")
+        except Exception as exc:                                # noqa: BLE001
+            print(f"[ckpt-push] upload failed for {path_in_repo}: {exc}",
+                  file=sys.stderr)
+
+    return _push
+
+
 # ---------------------------------------------------------------------------
 # Public entry point.
 # ---------------------------------------------------------------------------
 def train_loop(cfg: dict | None = None) -> Path:
-    """Run the full training loop. Returns the path to the JSON log."""
+    """Run the full training loop. Returns the path to the JSON log.
+
+    Progress + ETA are printed every update. If `IC_PUSH_USER` and `HF_TOKEN`
+    are set, every checkpoint **and** the live JSON log are streamed to
+    `<user>/incident-commander-actor` on HF Hub — so the moment your compute
+    credits run out, the latest checkpoint is already safe in the cloud.
+    """
     cfg = {**CFG, **(cfg or {})}
     run_name = cfg["run_name"] or f"run_{int(time.time())}"
     log_path = LOGS_DIR / f"training_{run_name}.json"
     print(f"[train] run={run_name}  log={log_path}")
     print(f"[train] device CUDA?: {torch.cuda.is_available()}  "
           f"name: {torch.cuda.get_device_name(0) if torch.cuda.is_available() else '-'}")
+
+    push_ckpt = _make_hf_pusher(cfg, run_name)
 
     actor  = QwenActor(model_name=cfg["actor_model"],
                        max_seq_len=cfg["max_seq_len"],
@@ -545,7 +601,23 @@ def train_loop(cfg: dict | None = None) -> Path:
     log: dict[str, Any] = {"config": cfg, "updates": []}
     log_path.write_text(json.dumps(log, indent=2))
 
-    for upd in range(1, cfg["total_updates"] + 1):
+    # tqdm if available, otherwise a no-op shim.
+    try:
+        from tqdm.auto import tqdm
+        bar = tqdm(total=cfg["total_updates"], desc=f"PPO[{run_name}]",
+                   unit="upd", dynamic_ncols=True)
+    except Exception:                                            # noqa: BLE001
+        class _Shim:
+            def update(self, *_a, **_kw): pass
+            def set_postfix_str(self, *_a, **_kw): pass
+            def close(self): pass
+        bar = _Shim()
+
+    total = cfg["total_updates"]
+    train_t0 = time.time()
+    rolling: list[float] = []                                    # last-N step times
+
+    for upd in range(1, total + 1):
         t0 = time.time()
         trans   = collector.collect(cfg["rollouts_per_update"])
         adv_ret = compute_gae(trans, cfg["gamma"], cfg["gae_lambda"])
@@ -556,10 +628,20 @@ def train_loop(cfg: dict | None = None) -> Path:
         for tr in trans:
             ep_rewards.setdefault(tr.task_id, []).append(tr.reward)
         per_ep = {tid: round(sum(rs), 3) for tid, rs in ep_rewards.items()}
-        elapsed = round(time.time() - t0, 2)
+        elapsed = time.time() - t0
+
+        rolling.append(elapsed)
+        rolling = rolling[-10:]                                  # last 10 updates
+        avg_per_upd = sum(rolling) / len(rolling)
+        remaining   = total - upd
+        eta_s       = remaining * avg_per_upd
+        wall        = time.time() - train_t0
+
         entry = {
             "update":          upd,
-            "elapsed_s":       elapsed,
+            "elapsed_s":       round(elapsed, 2),
+            "wall_s":          round(wall, 1),
+            "eta_s":           round(eta_s, 1),
             "n_transitions":   len(trans),
             "mean_reward":     round(sum(t.reward for t in trans) / max(len(trans), 1), 4),
             "mean_value":      round(sum(t.value  for t in trans) / max(len(trans), 1), 4),
@@ -568,19 +650,44 @@ def train_loop(cfg: dict | None = None) -> Path:
         }
         log["updates"].append(entry)
         log_path.write_text(json.dumps(log, indent=2))
-        print(f"[upd {upd:03d}] reward={entry['mean_reward']:+.3f} "
-              f"V̄={entry['mean_value']:+.3f} loss={stats['loss']:+.3f} "
-              f"kl={stats['kl']:+.4f}  ({elapsed}s)")
 
-        if upd % cfg["checkpoint_every"] == 0:
-            ckpt = LOGS_DIR / f"adapter_{run_name}_u{upd:04d}"
+        bar.set_postfix_str(
+            f"r={entry['mean_reward']:+.3f} "
+            f"V={entry['mean_value']:+.3f} "
+            f"kl={stats['kl']:+.4f} "
+            f"upd={_fmt_dur(elapsed)} "
+            f"ETA={_fmt_dur(eta_s)}")
+        bar.update(1)
+        # Always print a line too so non-tty environments (HF Jobs logs,
+        # nohup) still show progress.
+        print(f"[upd {upd:03d}/{total:03d}] reward={entry['mean_reward']:+.3f} "
+              f"V̄={entry['mean_value']:+.3f} loss={stats['loss']:+.3f} "
+              f"kl={stats['kl']:+.4f}  upd={_fmt_dur(elapsed)} "
+              f"wall={_fmt_dur(wall)}  ETA={_fmt_dur(eta_s)}",
+              flush=True)
+
+        # Stream the JSON log to HF every update so even if the pod dies
+        # mid-step you can recover the metrics.
+        push_ckpt(log_path.parent, "logs")
+
+        if upd % cfg["checkpoint_every"] == 0 or upd == total:
+            ckpt_name = (f"adapter_{run_name}_u{upd:04d}"
+                         if upd != total else f"adapter_{run_name}_final")
+            ckpt = LOGS_DIR / ckpt_name
             actor.model.save_pretrained(str(ckpt))
             actor.tokenizer.save_pretrained(str(ckpt))
-            print(f"[ckpt] saved {ckpt}")
+            print(f"[ckpt] saved {ckpt}", flush=True)
+            push_ckpt(ckpt, ckpt_name)
 
+    bar.close()
     final_ckpt = LOGS_DIR / f"adapter_{run_name}_final"
-    actor.model.save_pretrained(str(final_ckpt))
-    actor.tokenizer.save_pretrained(str(final_ckpt))
+    if not final_ckpt.exists():
+        actor.model.save_pretrained(str(final_ckpt))
+        actor.tokenizer.save_pretrained(str(final_ckpt))
+        push_ckpt(final_ckpt, final_ckpt.name)
+
+    total_wall = time.time() - train_t0
+    print(f"[done] total wall: {_fmt_dur(total_wall)}")
     print(f"[done] final adapter -> {final_ckpt}")
     print(f"[done] JSON log     -> {log_path}")
     return log_path
