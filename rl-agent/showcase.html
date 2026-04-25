@@ -265,12 +265,13 @@
     }
     .task-stats-bar strong{color:var(--text);font-weight:600}
 
-    .task-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:18px}
+    .task-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:18px;opacity:1 !important;transform:none !important}
     .task-card{
       background:var(--panel);border:1px solid var(--border);
       border-radius:var(--radius-sm);padding:18px;
-      cursor:pointer;transition:all .2s;
+      cursor:pointer;transition:border-color .2s,transform .2s,box-shadow .2s;
       backdrop-filter:blur(14px);
+      opacity:1 !important;
     }
     .task-card:hover{border-color:var(--border-strong);transform:translateY(-2px);box-shadow:var(--shadow-1)}
     .task-card .id{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--accent);word-break:break-all;margin-bottom:6px}
@@ -412,7 +413,8 @@
     </nav>
     <div class="topbar-cta">
       <a class="btn btn-ghost" href="https://github.com/r1cksync/meta-rl-hack" target="_blank" rel="noopener">GitHub</a>
-      <a class="btn btn-primary" href="/dashboard">Live Dashboard</a>
+      <a class="btn btn-ghost" href="/dashboard?ds=legacy">Legacy</a>
+      <a class="btn btn-primary" href="/dashboard/ppo">PPO Dashboard</a>
     </div>
   </div>
 </header>
@@ -537,7 +539,7 @@
       across each shard.
     </p>
 
-    <div class="reveal" style="margin-top:36px">
+    <div style="margin-top:36px">
       <div class="filters">
         <input id="search" class="filter-input" placeholder="Search tasks by id, title, or category…" />
         <button class="filter-btn active" data-diff="all">All difficulties</button>
@@ -553,6 +555,22 @@
       <h3 class="reveal">Reward distribution across categories</h3>
       <p class="reveal">Aggregated mean reward per scenario category, averaged over all 3 shards.</p>
       <div class="plot-card reveal" style="margin-top:20px"><div id="plot-cat" style="height:420px"></div></div>
+      <div class="card reveal" style="margin-top:24px;border-left:3px solid var(--accent)">
+        <h3 style="font-size:15px;margin-bottom:8px">Why are most rewards negative?</h3>
+        <p style="font-size:14.5px;line-height:1.65">
+          The reward signal lives in <strong style="color:var(--text)">[-2.0, +1.0]</strong> by design — most components are penalties:
+          <code class="mono">step_cost</code> (-0.01 / step), <code class="mono">acting_blind</code> (-0.20),
+          <code class="mono">red_herring</code> (-0.15), <code class="mono">repeat_command</code> (-0.15 / repeat, cap -0.45),
+          <code class="mono">wrong_service</code> (-0.15), <code class="mono">time_penalty</code> (-0.05 / step beyond step 5),
+          <code class="mono">phase_regression</code> (-0.10), <code class="mono">blast_radius_increase</code> (-0.10).
+          Positive components (<code class="mono">root_cause_correct</code> +0.30, <code class="mono">correct_mitigation</code> +0.20,
+          <code class="mono">postmortem_quality</code> up to +0.20, <code class="mono">phase_order</code> +0.10) only fire late
+          in well-behaved episodes. Early in PPO, the actor explores at random and trips every penalty — the absolute mean
+          starts deeply negative. <strong style="color:var(--text)">Improvement is measured by the trend</strong> (last update vs.
+          first update, or last episode vs. first episode for a single task) — not by hitting positive numbers in 60 updates
+          on a frozen 4-bit base. The merged adapter is the seed for a longer run, not the finished product.
+        </p>
+      </div>
     </div>
   </div>
 </section>
@@ -871,6 +889,11 @@ python -m rl_agent.server</pre>
     renderCategoryPlot();
     renderTasks();
     bindFilters();
+    // Safety: ensure any .reveal ancestor of dynamic content is forced visible.
+    document.querySelectorAll('#task-grid, #stats-bar, .filters').forEach(el => {
+      let p = el.parentElement;
+      while (p) { if (p.classList && p.classList.contains('reveal')) p.classList.add('in'); p = p.parentElement; }
+    });
   }
 
   function fmtSeconds(s){

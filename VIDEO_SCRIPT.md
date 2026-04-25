@@ -140,17 +140,23 @@ A quick word on pacing: the showcase page is built as a single scrollable surfac
 
 ---
 
-## Scene 11 — Live dashboard · 6:25 – 7:00
+## Scene 11 — Live dashboards · 6:25 – 7:15
 
-**Screen:** click the "Live Dashboard" button in the top-right of the showcase nav.
-**Action:** the multi-page `/dashboard` opens — Overview / Rewards / Tasks / Training / Cluster / AWS / Adversarial / Curriculum / Judge / API.
-**Cursor focus:** click through 2–3 of the dashboard tabs.
+**Screen:** the showcase nav now has **two** dashboard buttons — `Legacy` (yellow-trim) and `PPO Dashboard` (blue-trim).
 
-> *Script.* And alongside the showcase, there's a live operational dashboard — what the actual environment is doing right now. Current curriculum tier, which task is loaded, the agent's last action, the LLM judge's verdict. This is what an SRE platform team would actually watch in production.
+**Beat A — PPO dashboard.** Click `PPO Dashboard`. The page opens at `/dashboard/ppo`.
+**Cursor focus:** point at the blue **"PPO KAGGLE · 381 TASKS"** banner at the top, which lists the exact source files: `kaggle ran notebooks/shard {1,2,3}/training_kaggle{N}.json`, `rl-agent/scenarios/sim/{easy,medium,hard}/*.json`, `rl-agent/showcase_data.json`. Then click through 3 tabs: `Rewards` (reward distribution histogram + per-update curves for all 3 shards), `Tasks` (sortable 381-row table), `Training` (six-panel grid: reward, PPO loss, KL, value error, policy loss, wall-clock).
+
+> *Script.* This is the new PPO dashboard, every chart computed from the 381-task Kaggle run. Three shards, sixty PPO updates each, every transition replayable. The banner up top tells you exactly which JSON files each number came from — no magic.
+
+**Beat B — Legacy dashboard.** Click `← Legacy` in the banner. The page slides to `/dashboard` with a yellow **"LEGACY DATASET"** banner referencing `rl-agent/scenarios/{easy,medium,hard}/*.json`, `rl-agent/checkpoints/<run>/metrics.jsonl`, `colab/logs/reward_breakdown_history.jsonl`.
+**Cursor focus:** point at the yellow banner, then click `Rewards` to show the original 11-task heuristic curves (no longer stretching infinitely — that bug is fixed).
+
+> *Script.* And the original kube-sre-gym-style dashboard is still here, untouched, with its own banner so you can never confuse the two datasets. Same nav, same look, different data — and one click to swap between them.
 
 ---
 
-## Scene 12 — Wrap · 7:00 – 7:30
+## Scene 12 — Wrap · 7:15 – 7:45
 
 **Screen:** scroll back to the showcase hero.
 **Cursor focus:** hover the GitHub button in the top-right.
@@ -175,8 +181,9 @@ A quick word on pacing: the showcase page is built as a single scrollable surfac
 | 4:30 | The 5-stage pipeline boxes |
 | 5:15 | Bigger Mermaid (Terraform → k3s) |
 | 5:55 | A few rows in the file-index table |
-| 6:25 | "Live Dashboard" CTA + 2–3 dashboard tabs |
-| 7:00 | Hero (return) |
+| 6:25 | "PPO Dashboard" CTA → blue PPO banner → 3 tabs (Rewards / Tasks / Training) |
+| 7:00 | "← Legacy" link in banner → yellow Legacy banner → Rewards tab |
+| 7:15 | Hero (return) |
 
 ## Talking-points checklist (cover all)
 
