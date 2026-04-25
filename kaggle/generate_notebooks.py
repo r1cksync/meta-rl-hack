@@ -138,11 +138,14 @@ os.environ['TRANSFORMERS_TRUST_REMOTE_CODE'] = '1'
         cell_code(f"""\
 import os, subprocess, pathlib, shutil
 WORK = '/kaggle/working/incident-commander'
+# IMPORTANT: chdir OUT of WORK before deleting it, otherwise git clone fails
+# with "Unable to read current working directory" on a re-run.
+os.chdir('/kaggle/working')
 p = pathlib.Path(WORK)
 if p.exists():
-    # Wipe any stale clone from a previous session so we always get the
+    # Wipe any stale clone from a previous session/run so we always get the
     # newest scripts/run_training.py + colab/train_lib.py from main.
-    shutil.rmtree(WORK)
+    shutil.rmtree(WORK, ignore_errors=True)
 subprocess.run(['git', 'clone', '--depth', '1',
                 '{REPO_URL}', WORK], check=True)
 os.chdir(WORK)
