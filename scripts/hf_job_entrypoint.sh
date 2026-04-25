@@ -32,7 +32,7 @@ $PY -m pip install -q \
     "transformers==4.46.3" \
     "peft==0.13.2" \
     "accelerate==1.1.1" \
-    "bitsandbytes==0.44.1" \
+    "bitsandbytes==0.45.5" \
     "trl==0.12.1" \
     "datasets" "sentencepiece" "protobuf" "hf_transfer" "safetensors"
 $PY -m pip install -q "huggingface_hub>=0.25,<1.0" "pydantic>=2,<3" httpx
