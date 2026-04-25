@@ -233,25 +233,55 @@ class QwenActor:
     def __init__(self, *, model_name: str, max_seq_len: int,
                  lora_r: int, lora_alpha: int, lora_dropout: float,
                  init_adapter_path: str | None = None):
-        from unsloth import FastLanguageModel
-        self.model, self.tokenizer = FastLanguageModel.from_pretrained(
-            model_name=model_name,
-            max_seq_length=max_seq_len,
-            dtype=None,                # auto (bf16 on A100, fp16 on T4)
-            load_in_4bit=True,
-        )
-        self.model = FastLanguageModel.get_peft_model(
-            self.model,
-            r=lora_r,
-            lora_alpha=lora_alpha,
-            lora_dropout=lora_dropout,
-            target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
-                            "gate_proj", "up_proj", "down_proj"],
-            bias="none",
-            use_gradient_checkpointing="unsloth",
-            random_state=3407,
-        )
-        FastLanguageModel.for_inference(self.model)
+        # Prefer unsloth (2x faster). Fall back to plain HF transformers if
+        # the runtime image's torch is incompatible (HF Jobs hits this).
+        try:
+            from unsloth import FastLanguageModel
+            self.model, self.tokenizer = FastLanguageModel.from_pretrained(
+                model_name=model_name,
+                max_seq_length=max_seq_len,
+                dtype=None,                # auto (bf16 on A100, fp16 on T4)
+                load_in_4bit=True,
+            )
+            self.model = FastLanguageModel.get_peft_model(
+                self.model,
+                r=lora_r,
+                lora_alpha=lora_alpha,
+                lora_dropout=lora_dropout,
+                target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
+                                "gate_proj", "up_proj", "down_proj"],
+                bias="none",
+                use_gradient_checkpointing="unsloth",
+                random_state=3407,
+            )
+            FastLanguageModel.for_inference(self.model)
+            self._unsloth = True
+            print("[actor] using unsloth backend")
+        except Exception as exc:                                # noqa: BLE001
+            print(f"[actor] unsloth unavailable ({exc.__class__.__name__}): "
+                  f"falling back to HF transformers", file=sys.stderr)
+            from transformers import (AutoModelForCausalLM, AutoTokenizer,
+                                      BitsAndBytesConfig)
+            from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
+            # Use the non-unsloth quantised checkpoint when falling back.
+            hf_name = model_name.replace("unsloth/", "Qwen/").replace(
+                "-bnb-4bit", "")
+            bnb = BitsAndBytesConfig(load_in_4bit=True,
+                                     bnb_4bit_compute_dtype=torch.bfloat16,
+                                     bnb_4bit_use_double_quant=True,
+                                     bnb_4bit_quant_type="nf4")
+            self.tokenizer = AutoTokenizer.from_pretrained(hf_name)
+            base = AutoModelForCausalLM.from_pretrained(
+                hf_name, quantization_config=bnb, device_map="auto")
+            base = prepare_model_for_kbit_training(base)
+            self.model = get_peft_model(base, LoraConfig(
+                r=lora_r, lora_alpha=lora_alpha,
+                lora_dropout=lora_dropout, bias="none",
+                task_type="CAUSAL_LM",
+                target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
+                                "gate_proj", "up_proj", "down_proj"]))
+            self._unsloth = False
+            print(f"[actor] using HF transformers backend ({hf_name})")
         self._train_mode = False
         self.max_seq_len = max_seq_len
 
@@ -355,8 +385,11 @@ class QwenActor:
     def logp_of(self, prompt: str, response: str) -> torch.Tensor:
         """Compute log-prob of `response` under the *current* policy. Used
         for the PPO ratio. Differentiable."""
-        from unsloth import FastLanguageModel
-        FastLanguageModel.for_training(self.model)
+        if self._unsloth:
+            from unsloth import FastLanguageModel
+            FastLanguageModel.for_training(self.model)
+        else:
+            self.model.train()
         text = prompt + response
         ids = self.tokenizer(text, return_tensors="pt",
                              truncation=True, max_length=self.max_seq_len
@@ -487,8 +520,11 @@ class PPOTrainer:
     def update(self, transitions: list[Transition],
                adv_ret: list[tuple[float, float]],
                *, ppo_epochs: int, minibatch_size: int) -> dict:
-        from unsloth import FastLanguageModel
-        FastLanguageModel.for_training(self.actor.model)
+        if self.actor._unsloth:
+            from unsloth import FastLanguageModel
+            FastLanguageModel.for_training(self.actor.model)
+        else:
+            self.actor.model.train()
         device = self.actor.model.device
 
         # Normalise advantages.
