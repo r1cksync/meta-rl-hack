@@ -22,15 +22,46 @@ T4. If a non-T4 GPU is available it will be used automatically.
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 import sys
 import time
+import warnings
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Iterable
 
 import torch
+
+# ---------------------------------------------------------------------------
+# Silence the noisy per-token warnings emitted by Phi-3 and friends during
+# PPO updates (gradient checkpointing × cache interaction). They are harmless
+# but produce thousands of identical lines that hide actual progress.
+# ---------------------------------------------------------------------------
+warnings.filterwarnings(
+    "ignore", message=".*Caching is incompatible with gradient checkpointing.*")
+warnings.filterwarnings(
+    "ignore", message=".*None of the inputs have requires_grad=True.*")
+warnings.filterwarnings(
+    "ignore", message=".*use_reentrant parameter should be passed explicitly.*")
+warnings.filterwarnings(
+    "ignore", message=".*AccumulateGrad node's stream does not match.*")
+
+
+class _Phi3CacheFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:                 # noqa: D401
+        msg = record.getMessage()
+        if "Caching is incompatible with gradient checkpointing" in msg:
+            return False
+        if "None of the inputs have requires_grad" in msg:
+            return False
+        return True
+
+
+for _name in ("transformers", "transformers.models.phi3.modeling_phi3",
+              "torch.utils.checkpoint", "torch.autograd.graph"):
+    logging.getLogger(_name).addFilter(_Phi3CacheFilter())
 
 # ---------------------------------------------------------------------------
 # Repository wiring — assumes you cloned the repo and the notebook lives in
@@ -314,7 +345,13 @@ class QwenActor:
             base = AutoModelForCausalLM.from_pretrained(
                 hf_name, quantization_config=bnb, device_map="auto",
                 trust_remote_code=False)
-            base = prepare_model_for_kbit_training(base)
+            # NOTE: gradient checkpointing is OFF for the 3.8B actor — it
+            # fits in T4 16 GB without it, and disabling it 1) eliminates
+            # the per-token "Caching is incompatible with gradient
+            # checkpointing in Phi3DecoderLayer" warning spam, and 2) speeds
+            # up the PPO backward pass roughly 2x by avoiding recompute.
+            base = prepare_model_for_kbit_training(
+                base, use_gradient_checkpointing=False)
             # Pick LoRA target modules that actually exist in this arch.
             # Qwen / Llama use split q/k/v/gate/up. Phi-3 uses fused
             # qkv_proj + gate_up_proj. Detect by introspecting param names.
