@@ -10,11 +10,11 @@ from pathlib import Path
 
 NOTEBOOK_DIR = Path(__file__).resolve().parent
 
-# Path on Kaggle where the actor base model + critic model are mounted.
-# These are the standard Kaggle Models paths (user picks the version dropdown
-# in the Add Data > Models flow). The notebook auto-discovers via glob.
-ACTOR_GLOB  = "/kaggle/input/qwen-2.5/transformers/1.5b-instruct/*"
-CRITIC_GLOB = "/kaggle/input/qwen-2.5/transformers/7b-instruct/*"
+# Hugging Face repo IDs for the actor (1.5B) and critic (7B). Both are
+# downloaded at notebook startup via huggingface_hub.snapshot_download — no
+# Kaggle Models attachment needed.
+ACTOR_REPO  = "Qwen/Qwen2.5-1.5B-Instruct"
+CRITIC_REPO = "Qwen/Qwen2.5-7B-Instruct"
 
 REPO_URL = "https://github.com/r1cksync/meta-rl-hack.git"
 
@@ -33,20 +33,20 @@ def build(shard: int, total_shards: int = 3) -> dict:
     title = f"# IncidentCommander RL — Kaggle shard {shard + 1} / {total_shards}"
     intro = f"""
 **Workload:** every {total_shards}rd task starting at index {shard}
-(~127 of 381 scenarios). Trains a LoRA on Qwen2.5-1.5B-Instruct using a
-local Qwen2.5-7B-Instruct critic, both loaded from Kaggle Models inputs.
-
-**Required Kaggle inputs** (Add Data → Models, then Datasets):
-1. Model: `qwen-lm/qwen-2.5` → variation `1.5b-instruct` (the actor)
-2. Model: `qwen-lm/qwen-2.5` → variation `7b-instruct` (the critic)
+(~127 of 381 scenarios). Trains a LoRA on `{ACTOR_REPO}` using a
+local `{CRITIC_REPO}` critic. **Both models download from Hugging Face Hub
+at notebook startup — no Kaggle Models attachment needed.**
 
 **Required notebook settings** (right-hand sidebar):
 - Accelerator: `GPU T4 x2` or `GPU P100`
 - Persistence: `Files only` (so `/kaggle/working/` survives restarts)
-- Internet: `On` (needed to clone the public GitHub repo)
+- Internet: `On` (needed to download the models + clone the repo)
 
-**Output:** `/kaggle/working/adapter_kaggle{shard + 1}.zip` — download from the
-sidebar after the run finishes. Combine all 3 with
+**Optional** (only if you want intermediate checkpoint upload to your HF
+repo): Add-ons → Secrets → add `HF_TOKEN` and toggle it on.
+
+**Output:** `/kaggle/working/adapter_kaggle{shard + 1}.zip` — download from
+the sidebar after the run finishes. Combine all 3 with
 `scripts/merge_lora_adapters.py` on your laptop.
 """
     cells = [
@@ -54,19 +54,12 @@ sidebar after the run finishes. Combine all 3 with
 
         cell_md("## 1. GPU + path sanity"),
         cell_code(f"""\
-import os, glob, subprocess, sys, json, pathlib
-
+import subprocess
 print('--- GPU ---')
 subprocess.run(['nvidia-smi', '-L'], check=False)
-
-actor_dirs  = glob.glob('{ACTOR_GLOB}')
-critic_dirs = glob.glob('{CRITIC_GLOB}')
-assert actor_dirs,  'Actor model not attached. Add `qwen-lm/qwen-2.5 1.5b-instruct` via Add Data > Models.'
-assert critic_dirs, 'Critic model not attached. Add `qwen-lm/qwen-2.5 7b-instruct` via Add Data > Models.'
-ACTOR_PATH  = sorted(actor_dirs)[-1]   # latest version
-CRITIC_PATH = sorted(critic_dirs)[-1]
-print('actor :', ACTOR_PATH)
-print('critic:', CRITIC_PATH)
+import torch
+print('CUDA OK?', torch.cuda.is_available(), '| device:',
+      torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'none')
 """.strip()),
 
         cell_md("## 2. Install deps (Kaggle has torch/transformers preinstalled — we just pin compatible versions)"),
@@ -82,7 +75,42 @@ print('critic:', CRITIC_PATH)
     "datasets" "sentencepiece" "protobuf" "safetensors"
 """.strip()),
 
-        cell_md("## 3. Clone the repo (public GitHub)"),
+        cell_md("## 3. Download actor + critic from Hugging Face Hub"),
+        cell_code(f"""\
+import os, pathlib
+from huggingface_hub import snapshot_download
+
+# Optional HF_TOKEN — only needed if you have it set in Kaggle Secrets.
+# Qwen 2.5 instruct models are public, so anonymous download works fine.
+try:
+    from kaggle_secrets import UserSecretsClient
+    os.environ['HF_TOKEN'] = UserSecretsClient().get_secret('HF_TOKEN')
+    print('HF_TOKEN attached from Kaggle Secrets')
+except Exception:
+    print('No HF_TOKEN — anonymous download (Qwen 2.5 instruct is public).')
+
+CACHE = '/kaggle/working/hf-cache'
+pathlib.Path(CACHE).mkdir(parents=True, exist_ok=True)
+os.environ['HF_HOME']            = CACHE
+os.environ['HUGGINGFACE_HUB_CACHE'] = CACHE
+
+print('downloading actor : {ACTOR_REPO}  (~3 GB) ...')
+ACTOR_PATH = snapshot_download(
+    repo_id='{ACTOR_REPO}',
+    cache_dir=CACHE,
+    allow_patterns=['*.json', '*.safetensors', '*.txt', 'tokenizer*'])
+
+print('downloading critic: {CRITIC_REPO}  (~15 GB) ...')
+CRITIC_PATH = snapshot_download(
+    repo_id='{CRITIC_REPO}',
+    cache_dir=CACHE,
+    allow_patterns=['*.json', '*.safetensors', '*.txt', 'tokenizer*'])
+
+print('actor :', ACTOR_PATH)
+print('critic:', CRITIC_PATH)
+""".strip()),
+
+        cell_md("## 4. Clone the repo (public GitHub)"),
         cell_code(f"""\
 import os, subprocess, pathlib
 WORK = '/kaggle/working/incident-commander'
@@ -93,7 +121,7 @@ os.chdir(WORK)
 print('cwd =', os.getcwd())
 """.strip()),
 
-        cell_md("## 4. Configure run (shard, paths, env vars)"),
+        cell_md("## 5. Configure run (shard, paths, env vars)"),
         cell_code(f"""\
 import os
 
@@ -110,23 +138,12 @@ os.environ['IC_MAX_STEPS']       = '12'
 os.environ['IC_CKPT_EVERY']      = '15'
 os.environ['IC_RUN_NAME']        = 'kaggle{shard + 1}'
 
-# HF_TOKEN is only needed if you want intermediate-checkpoint upload to a
-# HF model repo. Otherwise leave unset and grab the final adapter from
-# /kaggle/working/. Use Kaggle Secrets > Add-ons to inject it safely.
-try:
-    from kaggle_secrets import UserSecretsClient
-    os.environ['HF_TOKEN'] = UserSecretsClient().get_secret('HF_TOKEN')
-    print('HF_TOKEN attached from Kaggle Secrets')
-except Exception:
-    print('HF_TOKEN not set — checkpoints stay local (download from sidebar).')
-
-# Sanity: print actor + critic mode.
 print('actor :', os.environ['IC_ACTOR_MODEL'])
 print('critic:', os.environ['IC_CRITIC_MODEL'])
 print('shard :', os.environ['IC_TASK_SHARD'], '/', os.environ['IC_TASK_SHARDS'])
 """.strip()),
 
-        cell_md("## 5. Train"),
+        cell_md("## 6. Train"),
         cell_code("""\
 # The training script runs to completion. tqdm progress + ETA are streamed
 # to stdout. Kaggle truncates very long outputs — adapter checkpoints are
@@ -137,7 +154,7 @@ result = subprocess.run([sys.executable, 'scripts/run_training.py'],
 print('exit code:', result.returncode)
 """.strip()),
 
-        cell_md("## 6. Package outputs for download"),
+        cell_md("## 7. Package outputs for download"),
         cell_code(f"""\
 import shutil, glob, pathlib
 
@@ -158,7 +175,8 @@ for j in glob.glob('colab/logs/training_kaggle{shard + 1}*.json'):
     shutil.copy(j, '/kaggle/working/')
 print('files in /kaggle/working/:')
 for f in sorted(pathlib.Path('/kaggle/working/').iterdir()):
-    print(' ', f.name, f.stat().st_size)
+    if f.name == 'hf-cache': continue   # don't list the model cache
+    print(' ', f.name, f.stat().st_size if f.is_file() else '<dir>')
 """.strip()),
 
         cell_md(f"""\
