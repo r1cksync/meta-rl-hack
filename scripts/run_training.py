@@ -46,6 +46,68 @@ print(f"[hfjob] logged in as {whoami(token=os.environ['HF_TOKEN']).get('name')}"
 
 from colab.train_lib import CFG, train_loop                     # noqa: E402
 
+# ── Task list selection ────────────────────────────────────────────────
+import glob as _glob
+import json as _json
+
+TASK_MODE = os.environ.get("IC_TASK_MODE", "curated").lower()
+_SCEN_ROOT = ROOT / "rl-agent" / "scenarios" / "sim"
+
+_CURATED = [
+    "sim_easy_lambda_throttle_001", "sim_easy_lambda_throttle_010",
+    "sim_med_eb_lambda_016",       "sim_med_eb_lambda_021",
+    "sim_hard_apigw_chain_001",    "sim_hard_ddb_chain_021",
+    "sim_hard_iam_chain_011",
+    "sim_advanced_cascade_users_db_001",
+    "sim_advanced_runbook_trap_postgres_001",
+    "sim_advanced_trolley_orders_db_001",
+    "sim_advanced_saboteur_duel_001",
+    "sim_advanced_slack_redherring_001",
+    "sim_gen_app_leak_checkout_007",   "sim_gen_app_leak_payments_019",
+    "sim_gen_db_duel_users_db_003",    "sim_gen_db_duel_orders_db_015",
+    "sim_gen_redherring_payments_013", "sim_gen_redherring_auth_001",
+    "sim_gen_cascade_payments_db_004", "sim_gen_cascade_users_db_023",
+    "sim_gen_cache_warm_session_cache_004",
+    "sim_gen_peak_frontend_001",
+    "sim_gen_restore_payments_db_001",
+]
+
+def _discover_all_task_ids():
+    ids = []
+    for p in _glob.glob(str(_SCEN_ROOT / "**" / "*.json"), recursive=True):
+        try:
+            data = _json.loads(open(p, encoding="utf-8").read())
+            tid = data.get("task_id") or data.get("id")
+            if tid:
+                ids.append(tid)
+        except Exception:                                       # noqa: BLE001
+            pass
+    return sorted(set(ids))
+
+if TASK_MODE == "all":
+    tasks = _discover_all_task_ids()
+elif TASK_MODE == "hard":
+    tasks = [t for t in _discover_all_task_ids()
+             if t.startswith("sim_hard_") or t.startswith("sim_advanced_")]
+else:
+    tasks = _CURATED
+
+print(f"[hfjob] task_mode={TASK_MODE}  count={len(tasks)}")
+
+# ── Optional warm-start from a prior phase's HF model repo ─────────────
+init_repo = os.environ.get("IC_INIT_ADAPTER_REPO", "").strip()
+init_subfolder = os.environ.get("IC_INIT_ADAPTER_SUBFOLDER", "adapter").strip()
+init_path = None
+if init_repo:
+    print(f"[hfjob] warm-start: downloading {init_repo}/{init_subfolder} ...")
+    from huggingface_hub import snapshot_download
+    local_dir = snapshot_download(
+        repo_id=init_repo, repo_type="model",
+        allow_patterns=[f"{init_subfolder}/*"],
+    )
+    init_path = str(Path(local_dir) / init_subfolder)
+    print(f"[hfjob] warm-start adapter at {init_path}")
+
 CFG.update({
     "total_updates":       int(os.environ.get("IC_TOTAL_UPDATES", 120)),
     "rollouts_per_update": int(os.environ.get("IC_ROLLOUTS", 6)),
@@ -59,24 +121,8 @@ CFG.update({
     "clip_eps":            0.20,
     "gae_lambda":          0.92,
     "run_name":            os.environ.get("IC_RUN_NAME", "hfjob01"),
-    "tasks": [
-        "sim_easy_lambda_throttle_001", "sim_easy_lambda_throttle_010",
-        "sim_med_eb_lambda_016",       "sim_med_eb_lambda_021",
-        "sim_hard_apigw_chain_001",    "sim_hard_ddb_chain_021",
-        "sim_hard_iam_chain_011",
-        "sim_advanced_cascade_users_db_001",
-        "sim_advanced_runbook_trap_postgres_001",
-        "sim_advanced_trolley_orders_db_001",
-        "sim_advanced_saboteur_duel_001",
-        "sim_advanced_slack_redherring_001",
-        "sim_gen_app_leak_checkout_007",   "sim_gen_app_leak_payments_019",
-        "sim_gen_db_duel_users_db_003",    "sim_gen_db_duel_orders_db_015",
-        "sim_gen_redherring_payments_013", "sim_gen_redherring_auth_001",
-        "sim_gen_cascade_payments_db_004", "sim_gen_cascade_users_db_023",
-        "sim_gen_cache_warm_session_cache_004",
-        "sim_gen_peak_frontend_001",
-        "sim_gen_restore_payments_db_001",
-    ],
+    "tasks":               tasks,
+    "init_adapter_path":   init_path,
 })
 
 print(f"[hfjob] starting run '{CFG['run_name']}': "

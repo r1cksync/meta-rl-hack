@@ -36,12 +36,13 @@ $cmd = @(
 
 hf jobs run `
     --flavor $flavor `
-    --secret "HF_TOKEN=$env:HF_TOKEN" `
+    --secrets "HF_TOKEN=$env:HF_TOKEN" `
     --env   "IC_PUSH_USER=$env:IC_PUSH_USER" `
     --env   "IC_REPO_URL=$repo" `
     --env   "IC_TOTAL_UPDATES=$updates" `
     --env   "IC_ROLLOUTS=$rollouts" `
     --env   "IC_RUN_NAME=$run" `
     --env   "HF_HUB_ENABLE_HF_TRANSFER=1" `
-    --image "huggingface/transformers-pytorch-gpu:latest" `
+    --timeout 4h `
+    "huggingface/transformers-pytorch-gpu:latest" `
     -- bash -c "$cmd"

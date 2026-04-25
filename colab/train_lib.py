@@ -231,7 +231,8 @@ class QwenActor:
     )
 
     def __init__(self, *, model_name: str, max_seq_len: int,
-                 lora_r: int, lora_alpha: int, lora_dropout: float):
+                 lora_r: int, lora_alpha: int, lora_dropout: float,
+                 init_adapter_path: str | None = None):
         from unsloth import FastLanguageModel
         self.model, self.tokenizer = FastLanguageModel.from_pretrained(
             model_name=model_name,
@@ -253,6 +254,29 @@ class QwenActor:
         FastLanguageModel.for_inference(self.model)
         self._train_mode = False
         self.max_seq_len = max_seq_len
+
+        # Warm-start: load LoRA weights from a prior checkpoint dir.
+        if init_adapter_path:
+            try:
+                from pathlib import Path as _P
+                from safetensors.torch import load_file as _load_st
+                from peft import set_peft_model_state_dict
+                p = _P(init_adapter_path)
+                st_file = p / "adapter_model.safetensors"
+                bin_file = p / "adapter_model.bin"
+                if st_file.exists():
+                    state = _load_st(str(st_file))
+                elif bin_file.exists():
+                    import torch as _t
+                    state = _t.load(str(bin_file), map_location="cpu")
+                else:
+                    raise FileNotFoundError(
+                        f"no adapter_model.safetensors|.bin in {p}")
+                set_peft_model_state_dict(self.model, state)
+                print(f"[actor] warm-started from {p}")
+            except Exception as exc:                            # noqa: BLE001
+                print(f"[actor] warm-start FAILED ({exc}); training from scratch",
+                      file=sys.stderr)
 
         # Silence the noisy `Both max_new_tokens and max_length seem to have
         # been set` FutureWarning. Qwen ships a default max_length=32768 in
@@ -585,7 +609,8 @@ def train_loop(cfg: dict | None = None) -> Path:
     actor  = QwenActor(model_name=cfg["actor_model"],
                        max_seq_len=cfg["max_seq_len"],
                        lora_r=cfg["lora_r"], lora_alpha=cfg["lora_alpha"],
-                       lora_dropout=cfg["lora_dropout"])
+                       lora_dropout=cfg["lora_dropout"],
+                       init_adapter_path=cfg.get("init_adapter_path"))
     critic = LLMCritic(provider=cfg["critic_provider"],
                        model=cfg["critic_model"],
                        max_tokens=cfg["critic_max_tokens"],
