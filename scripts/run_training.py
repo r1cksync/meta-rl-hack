@@ -36,13 +36,21 @@ sys.path.insert(0, str(ROOT / "rl-agent"))
 # Mock AWS so the simulator runs without boto3 creds.
 os.environ.setdefault("INCIDENT_COMMANDER_MOCK", "true")
 
-if not os.environ.get("HF_TOKEN"):
-    sys.exit("HF_TOKEN env var is required.")
-os.environ.setdefault("HUGGING_FACE_HUB_TOKEN", os.environ["HF_TOKEN"])
-
-from huggingface_hub import login, whoami                       # noqa: E402
-login(os.environ["HF_TOKEN"], add_to_git_credential=False)
-print(f"[hfjob] logged in as {whoami(token=os.environ['HF_TOKEN']).get('name')}")
+# HF_TOKEN is OPTIONAL — only needed if pushing checkpoints/adapters to the
+# Hub. Training itself works fully offline (e.g. on Kaggle with attached
+# Models). When absent we just skip login and disable Hub upload below.
+_hf_token = os.environ.get("HF_TOKEN", "").strip()
+if _hf_token:
+    os.environ.setdefault("HUGGING_FACE_HUB_TOKEN", _hf_token)
+    from huggingface_hub import login, whoami                   # noqa: E402
+    try:
+        login(_hf_token, add_to_git_credential=False)
+        print(f"[hfjob] logged in as {whoami(token=_hf_token).get('name')}")
+    except Exception as _exc:                                   # noqa: BLE001
+        print(f"[hfjob] HF login failed ({_exc}); continuing offline")
+        _hf_token = ""
+else:
+    print("[hfjob] no HF_TOKEN set — running offline (no Hub upload)")
 
 from colab.train_lib import CFG, train_loop                     # noqa: E402
 
@@ -145,13 +153,15 @@ print(f"[hfjob] training log → {log_path}")
 
 # ── Optional: push artifacts to a HF model repo ─────────────────────────
 push_user = os.environ.get("IC_PUSH_USER", "").strip()
+if push_user and not _hf_token:
+    print("[hfjob] IC_PUSH_USER set but no HF_TOKEN — skipping push.")
+    push_user = ""
 if push_user:
     import glob
     from huggingface_hub import HfApi, create_repo
-    api  = HfApi(token=os.environ["HF_TOKEN"])
+    api  = HfApi(token=_hf_token)
     repo = f"{push_user}/incident-commander-actor"
-    create_repo(repo, exist_ok=True, repo_type="model",
-                token=os.environ["HF_TOKEN"])
+    create_repo(repo, exist_ok=True, repo_type="model", token=_hf_token)
     finals = sorted(glob.glob(str(ROOT / "colab" / "logs" / "adapter_*_final")))
     if finals:
         api.upload_folder(folder_path=finals[-1], repo_id=repo,
@@ -166,6 +176,6 @@ if push_user:
                           allow_patterns=["*.html"])
     print(f"[hfjob] pushed → https://huggingface.co/{repo}")
 else:
-    print("[hfjob] IC_PUSH_USER not set — skipping HF push.")
+    print("[hfjob] skipping HF push (no IC_PUSH_USER or no HF_TOKEN).")
 
 print("[hfjob] done.")

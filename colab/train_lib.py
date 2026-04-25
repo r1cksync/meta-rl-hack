@@ -485,7 +485,14 @@ class IncidentRolloutCollector:
     tasks:  list[str]
     max_steps_per_ep: int = 16
 
-    def collect(self, n_episodes: int) -> list[Transition]:
+    def collect(self, n_episodes: int,
+                progress_cb=None) -> list[Transition]:
+        """Run `n_episodes` and return all transitions.
+
+        If `progress_cb` is given it is called after every rollout step with
+        ``(ep_idx, step_idx, n_episodes, max_steps_per_ep)`` so the outer
+        training loop can show a continuously-updating ETA.
+        """
         env = IncidentCommanderEnv(use_mock=True)
         transitions: list[Transition] = []
         for ep in range(n_episodes):
@@ -503,6 +510,11 @@ class IncidentRolloutCollector:
                     action=action, reward=float(step_result.reward),
                     value=value, old_logp=meta["old_logp"], done=done))
                 obs_text = self._obs_to_text(env, step_result.observation)
+                if progress_cb is not None:
+                    try:
+                        progress_cb(ep, t, n_episodes, self.max_steps_per_ep)
+                    except Exception:                            # noqa: BLE001
+                        pass
                 if done:
                     break
         return transitions
@@ -732,10 +744,46 @@ def train_loop(cfg: dict | None = None) -> Path:
     total = cfg["total_updates"]
     train_t0 = time.time()
     rolling: list[float] = []                                    # last-N step times
+    # Heartbeat ETA shown DURING an update — refreshes every step of every
+    # rollout so the user always sees a live estimate even when a single PPO
+    # update takes minutes.
+    _last_beat = [0.0]
+
+    def _heartbeat(ep_idx: int, step_idx: int,
+                   n_eps: int, max_steps: int) -> None:
+        now = time.time()
+        if now - _last_beat[0] < 5.0:        # cap to one line every ~5 s
+            return
+        _last_beat[0] = now
+        # Fraction of the CURRENT update completed (rough — assumes uniform
+        # cost per rollout step + ignores PPO update cost which is small).
+        completed = ep_idx * max_steps + step_idx + 1
+        total_steps_in_upd = max(n_eps * max_steps, 1)
+        frac_in_upd = min(completed / total_steps_in_upd, 1.0)
+        # Live per-update estimate: time so far this update / fraction done.
+        upd_elapsed = now - t0
+        est_upd_total = upd_elapsed / max(frac_in_upd, 0.05)
+        est_upd_remaining = max(est_upd_total - upd_elapsed, 0.0)
+        # Whole-run ETA: remaining time in THIS update + remaining updates *
+        # historical avg-per-update (or current estimate if no history yet).
+        per_upd_avg = (sum(rolling) / len(rolling)) if rolling else est_upd_total
+        remaining_full_updates = max(total - upd, 0)
+        live_eta = est_upd_remaining + remaining_full_updates * per_upd_avg
+        wall_now = now - train_t0
+        msg = (f"  [upd {upd:03d}/{total:03d} "
+               f"ep {ep_idx + 1}/{n_eps} step {step_idx + 1}/{max_steps}"
+               f" ({frac_in_upd*100:5.1f}%)]  "
+               f"upd-elapsed={_fmt_dur(upd_elapsed)} "
+               f"upd-ETA={_fmt_dur(est_upd_remaining)}  "
+               f"wall={_fmt_dur(wall_now)} "
+               f"run-ETA={_fmt_dur(live_eta)}")
+        bar.set_postfix_str(f"live-ETA={_fmt_dur(live_eta)}")
+        print(msg, flush=True)
 
     for upd in range(1, total + 1):
         t0 = time.time()
-        trans   = collector.collect(cfg["rollouts_per_update"])
+        trans   = collector.collect(cfg["rollouts_per_update"],
+                                     progress_cb=_heartbeat)
         adv_ret = compute_gae(trans, cfg["gamma"], cfg["gae_lambda"])
         stats   = trainer.update(trans, adv_ret,
                                   ppo_epochs=cfg["ppo_epochs"],
