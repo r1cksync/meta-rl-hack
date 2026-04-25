@@ -1,0 +1,72 @@
+{
+  "id": "sim_med_kms_lambda_041",
+  "difficulty": "medium",
+  "title": "reviews Lambda 5xx after KMS change",
+  "description": "`ic-reviews` invocations fail. Logs show KMS pending deletion on `alias/ic-reviews-data`.",
+  "preconditions": [
+    {
+      "path": "lambda_/ic-reviews",
+      "op": "set",
+      "value": {
+        "name": "ic-reviews",
+        "state": "Active",
+        "reserved_concurrency": 10,
+        "invocations": 0,
+        "errors": 3,
+        "throttles": 0
+      }
+    },
+    {
+      "path": "kms/alias/ic-reviews-data",
+      "op": "set",
+      "value": {
+        "alias": "alias/ic-reviews-data",
+        "state": "PendingDeletion",
+        "policy": "{}",
+        "pending_deletion_days": 7
+      }
+    }
+  ],
+  "scheduled_failures": [
+    {
+      "action_id": "lambda.invoke",
+      "error": "KMSInvalidStateException",
+      "message": "key alias/ic-reviews-data pending deletion",
+      "count": 1
+    }
+  ],
+  "correct_action_chain": [
+    {
+      "id": "lambda.describe",
+      "params": {
+        "resource_id": "ic-reviews"
+      }
+    },
+    {
+      "id": "lambda.invoke",
+      "params": {
+        "resource_id": "ic-reviews"
+      }
+    },
+    {
+      "id": "kms.describe",
+      "params": {
+        "resource_id": "alias/ic-reviews-data"
+      }
+    },
+    {
+      "id": "kms.enable",
+      "params": {
+        "resource_id": "alias/ic-reviews-data"
+      }
+    },
+    {
+      "id": "lambda.invoke",
+      "params": {
+        "resource_id": "ic-reviews"
+      }
+    }
+  ],
+  "target_score": 0.6,
+  "max_steps": 18
+}

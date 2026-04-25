@@ -1,0 +1,60 @@
+{
+  "id": "sim_med_eb_lambda_022",
+  "difficulty": "medium",
+  "title": "auth pipeline silent",
+  "description": "Events are being published to `ic-auth-bus` but `ic-auth-handler` is not invoked. Rule was disabled during a deploy.",
+  "preconditions": [
+    {
+      "path": "events/ic-auth-bus",
+      "op": "set",
+      "value": {
+        "name": "ic-auth-bus",
+        "rules": {
+          "ic-auth-rule": {
+            "name": "ic-auth-rule",
+            "state": "DISABLED",
+            "target_arn": "ic-auth-handler"
+          }
+        }
+      }
+    },
+    {
+      "path": "lambda_/ic-auth-handler",
+      "op": "set",
+      "value": {
+        "name": "ic-auth-handler",
+        "state": "Active",
+        "reserved_concurrency": 10,
+        "invocations": 0,
+        "errors": 0,
+        "throttles": 0
+      }
+    }
+  ],
+  "scheduled_failures": [],
+  "correct_action_chain": [
+    {
+      "id": "events.describe",
+      "params": {
+        "bus_name": "ic-auth-bus",
+        "rule_name": "ic-auth-rule"
+      }
+    },
+    {
+      "id": "events.enable",
+      "params": {
+        "bus_name": "ic-auth-bus",
+        "rule_name": "ic-auth-rule"
+      }
+    },
+    {
+      "id": "events.publish",
+      "params": {
+        "bus_name": "ic-auth-bus",
+        "payload": "ping"
+      }
+    }
+  ],
+  "target_score": 0.55,
+  "max_steps": 16
+}

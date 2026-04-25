@@ -1,0 +1,14 @@
+{
+  "task_id": "task12",
+  "difficulty": "medium",
+  "target_score": 0.50,
+  "fault_type": "sqs_dlq_growth",
+  "chaos_experiment_name": "",
+  "ground_truth_root_cause": "sqs_dlq_growth_from_payments_signature_mismatch",
+  "correct_mitigation_action": "rollback_deployment",
+  "correct_mitigation_target": "order-worker",
+  "wrong_mitigation_penalty_services": ["payments-api", "checkout-frontend"],
+  "useful_log_keywords": ["SQS", "ApproximateNumberOfMessages", "DLQ", "signature mismatch", "ReceiveMessage", "VisibilityTimeout"],
+  "red_herrings": ["notification-service"],
+  "reference_postmortem": "AWS SQS DLQ depth on the order-payments-dlq queue spiked from 0 to 12,400 within 4 minutes. Root cause: order-worker v1.42 introduced a new HMAC signature on the SQS message envelope that payments-api still rejects, so every message is retried 3x and dropped to DLQ. Mitigation: rollback order-worker to v1.41. Follow-up: add a contract test for the SQS envelope between order-worker and payments-api, and a CloudWatch alarm on ApproximateNumberOfMessages > 100 for the DLQ. IAM least-privilege: order-worker only needs sqs:SendMessage on the DLQ; remove sqs:* from the role."
+}

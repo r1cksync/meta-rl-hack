@@ -1,0 +1,60 @@
+{
+  "id": "sim_med_eb_lambda_021",
+  "difficulty": "medium",
+  "title": "recommendations pipeline silent",
+  "description": "Events are being published to `ic-recommendations-bus` but `ic-recommendations-handler` is not invoked. Rule was disabled during a deploy.",
+  "preconditions": [
+    {
+      "path": "events/ic-recommendations-bus",
+      "op": "set",
+      "value": {
+        "name": "ic-recommendations-bus",
+        "rules": {
+          "ic-recommendations-rule": {
+            "name": "ic-recommendations-rule",
+            "state": "DISABLED",
+            "target_arn": "ic-recommendations-handler"
+          }
+        }
+      }
+    },
+    {
+      "path": "lambda_/ic-recommendations-handler",
+      "op": "set",
+      "value": {
+        "name": "ic-recommendations-handler",
+        "state": "Active",
+        "reserved_concurrency": 10,
+        "invocations": 0,
+        "errors": 0,
+        "throttles": 0
+      }
+    }
+  ],
+  "scheduled_failures": [],
+  "correct_action_chain": [
+    {
+      "id": "events.describe",
+      "params": {
+        "bus_name": "ic-recommendations-bus",
+        "rule_name": "ic-recommendations-rule"
+      }
+    },
+    {
+      "id": "events.enable",
+      "params": {
+        "bus_name": "ic-recommendations-bus",
+        "rule_name": "ic-recommendations-rule"
+      }
+    },
+    {
+      "id": "events.publish",
+      "params": {
+        "bus_name": "ic-recommendations-bus",
+        "payload": "ping"
+      }
+    }
+  ],
+  "target_score": 0.55,
+  "max_steps": 16
+}

@@ -1,0 +1,57 @@
+{
+  "id": "sim_easy_lambda_throttle_009",
+  "difficulty": "easy",
+  "title": "shipping Lambda throttling",
+  "description": "Customers report 5xx from /shipping. CloudWatch alarm `shipping-Throttles` is in ALARM. Fix the throttle.",
+  "preconditions": [
+    {
+      "path": "lambda_/ic-shipping",
+      "op": "set",
+      "value": {
+        "name": "ic-shipping",
+        "state": "Active",
+        "reserved_concurrency": 0,
+        "invocations": 0,
+        "errors": 0,
+        "throttles": 5
+      }
+    }
+  ],
+  "scheduled_failures": [
+    {
+      "action_id": "lambda.invoke",
+      "error": "TooManyRequestsException",
+      "message": "Reserved concurrency = 0",
+      "count": 1
+    }
+  ],
+  "correct_action_chain": [
+    {
+      "id": "lambda.describe",
+      "params": {
+        "resource_id": "ic-shipping"
+      }
+    },
+    {
+      "id": "lambda.invoke",
+      "params": {
+        "resource_id": "ic-shipping"
+      }
+    },
+    {
+      "id": "lambda.scale",
+      "params": {
+        "resource_id": "ic-shipping",
+        "capacity": 25
+      }
+    },
+    {
+      "id": "lambda.invoke",
+      "params": {
+        "resource_id": "ic-shipping"
+      }
+    }
+  ],
+  "target_score": 0.55,
+  "max_steps": 16
+}

@@ -1,0 +1,14 @@
+{
+  "task_id": "task13",
+  "difficulty": "hard",
+  "target_score": 0.40,
+  "fault_type": "dynamodb_throttle",
+  "chaos_experiment_name": "",
+  "ground_truth_root_cause": "dynamodb_provisioned_throughput_exceeded_on_inventory_table",
+  "correct_mitigation_action": "apply_config_patch",
+  "correct_mitigation_target": "inventory-service",
+  "wrong_mitigation_penalty_services": ["payments-api", "order-worker"],
+  "useful_log_keywords": ["ProvisionedThroughputExceededException", "DynamoDB", "throttle", "ConditionalCheckFailed", "BatchGetItem", "inventory-table"],
+  "red_herrings": ["redis"],
+  "reference_postmortem": "DynamoDB returned ProvisionedThroughputExceededException at >40 rps on the inventory-items table because a Black-Friday traffic surge exceeded provisioned RCUs (50). inventory-service was retrying with exponential backoff but pod CPU climbed to 95%. Mitigation: apply_config_patch on inventory-service to switch the table to PAY_PER_REQUEST mode (set BILLING_MODE env var). Follow-up: enable DynamoDB auto-scaling on RCU/WCU, add a CloudWatch alarm on ConsumedReadCapacityUnits > 80% of provisioned, and instrument client-side metric for ThrottleCount. Cost-awareness: PAY_PER_REQUEST is cheaper for spikey workloads like ours."
+}

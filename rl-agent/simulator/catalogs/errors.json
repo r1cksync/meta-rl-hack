@@ -1,0 +1,1280 @@
+{
+  "ResourceNotFoundException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "missing",
+    "http_status": 404
+  },
+  "ResourceAlreadyExistsException": {
+    "retriable": false,
+    "severity": "warning",
+    "hint": "duplicate",
+    "http_status": 409
+  },
+  "ConflictException": {
+    "retriable": false,
+    "severity": "warning",
+    "hint": "conflict",
+    "http_status": 409
+  },
+  "AccessDeniedException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "iam",
+    "http_status": 403
+  },
+  "UnauthorizedOperation": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "iam",
+    "http_status": 403
+  },
+  "ThrottlingException": {
+    "retriable": true,
+    "severity": "warning",
+    "hint": "throttle",
+    "http_status": 429
+  },
+  "TooManyRequestsException": {
+    "retriable": true,
+    "severity": "warning",
+    "hint": "throttle",
+    "http_status": 429
+  },
+  "Client.RequestLimitExceeded": {
+    "retriable": true,
+    "severity": "warning",
+    "hint": "throttle",
+    "http_status": 429
+  },
+  "ProvisionedThroughputExceededException": {
+    "retriable": true,
+    "severity": "warning",
+    "hint": "throttle",
+    "http_status": 400
+  },
+  "RequestLimitExceeded": {
+    "retriable": true,
+    "severity": "warning",
+    "hint": "throttle",
+    "http_status": 429
+  },
+  "LimitExceededException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "quota",
+    "http_status": 400
+  },
+  "LimitExceeded": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "quota",
+    "http_status": 400
+  },
+  "ServiceQuotaExceededException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "quota",
+    "http_status": 402
+  },
+  "OverLimit": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "quota",
+    "http_status": 400
+  },
+  "InvalidParameterValueException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "validation",
+    "http_status": 400
+  },
+  "InvalidParameterException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "validation",
+    "http_status": 400
+  },
+  "ValidationException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "validation",
+    "http_status": 400
+  },
+  "MalformedPolicyDocument": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "policy",
+    "http_status": 400
+  },
+  "InvalidStateException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "state",
+    "http_status": 409
+  },
+  "ServiceException": {
+    "retriable": true,
+    "severity": "error",
+    "hint": "service",
+    "http_status": 500
+  },
+  "InternalServerException": {
+    "retriable": true,
+    "severity": "error",
+    "hint": "service",
+    "http_status": 500
+  },
+  "InternalServerError": {
+    "retriable": true,
+    "severity": "error",
+    "hint": "service",
+    "http_status": 500
+  },
+  "DependencyViolation": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "dependency",
+    "http_status": 400
+  },
+  "TooManyTagsException": {
+    "retriable": false,
+    "severity": "warning",
+    "hint": "tags",
+    "http_status": 400
+  },
+  "ResourceConflictException": {
+    "retriable": false,
+    "severity": "warning",
+    "hint": "conflict",
+    "http_status": 409
+  },
+  "InsufficientCapacity": {
+    "retriable": true,
+    "severity": "warning",
+    "hint": "capacity",
+    "http_status": 503
+  },
+  "InsufficientInstanceCapacity": {
+    "retriable": true,
+    "severity": "warning",
+    "hint": "capacity",
+    "http_status": 503
+  },
+  "ServiceUnavailableException": {
+    "retriable": true,
+    "severity": "error",
+    "hint": "service",
+    "http_status": 503
+  },
+  "ServiceUnavailable": {
+    "retriable": true,
+    "severity": "error",
+    "hint": "service",
+    "http_status": 503
+  },
+  "KMSAccessDeniedException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "kms",
+    "http_status": 403
+  },
+  "KMSInvalidStateException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "kms",
+    "http_status": 400
+  },
+  "KMS.DisabledException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "kms",
+    "http_status": 400
+  },
+  "KMS.KeyUnavailableException": {
+    "retriable": true,
+    "severity": "error",
+    "hint": "kms",
+    "http_status": 500
+  },
+  "KMSInternalException": {
+    "retriable": true,
+    "severity": "error",
+    "hint": "kms",
+    "http_status": 500
+  },
+  "DecryptionFailure": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "kms",
+    "http_status": 400
+  },
+  "KmsThrottled": {
+    "retriable": true,
+    "severity": "warning",
+    "hint": "throttle",
+    "http_status": 400
+  },
+  "VpcLimitExceeded": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "quota",
+    "http_status": 400
+  },
+  "InvalidVpcID.NotFound": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "missing",
+    "http_status": 400
+  },
+  "InvalidServiceName": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "validation",
+    "http_status": 400
+  },
+  "VpcEndpointLimitExceeded": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "quota",
+    "http_status": 400
+  },
+  "InvalidJobStateException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "state",
+    "http_status": 400
+  },
+  "VolumeInUse": {
+    "retriable": false,
+    "severity": "warning",
+    "hint": "state",
+    "http_status": 400
+  },
+  "InvalidVolume.NotFound": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "missing",
+    "http_status": 404
+  },
+  "SnapshotLimitExceeded": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "quota",
+    "http_status": 400
+  },
+  "InstanceLimitExceeded": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "quota",
+    "http_status": 400
+  },
+  "InvalidInstanceID.NotFound": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "missing",
+    "http_status": 404
+  },
+  "InvalidInstanceId": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "missing",
+    "http_status": 404
+  },
+  "VpnConnectionLimitExceeded": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "quota",
+    "http_status": 400
+  },
+  "TransitGatewayLimitExceeded": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "quota",
+    "http_status": 400
+  },
+  "NoSuchBucket": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "missing",
+    "http_status": 404
+  },
+  "NoSuchKey": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "missing",
+    "http_status": 404
+  },
+  "AccessDenied": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "iam",
+    "http_status": 403
+  },
+  "BucketAlreadyExists": {
+    "retriable": false,
+    "severity": "warning",
+    "hint": "duplicate",
+    "http_status": 409
+  },
+  "BucketNotEmpty": {
+    "retriable": false,
+    "severity": "warning",
+    "hint": "state",
+    "http_status": 409
+  },
+  "SlowDown": {
+    "retriable": true,
+    "severity": "warning",
+    "hint": "throttle",
+    "http_status": 503
+  },
+  "AWS.SimpleQueueService.NonExistentQueue": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "missing",
+    "http_status": 400
+  },
+  "AWS.SimpleQueueService.QueueDeletedRecently": {
+    "retriable": false,
+    "severity": "warning",
+    "hint": "state",
+    "http_status": 400
+  },
+  "AWS.SimpleQueueService.PurgeQueueInProgress": {
+    "retriable": true,
+    "severity": "warning",
+    "hint": "state",
+    "http_status": 403
+  },
+  "ConditionalCheckFailedException": {
+    "retriable": false,
+    "severity": "warning",
+    "hint": "logic",
+    "http_status": 400
+  },
+  "TransactionConflictException": {
+    "retriable": true,
+    "severity": "warning",
+    "hint": "conflict",
+    "http_status": 400
+  },
+  "ItemCollectionSizeLimitExceededException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "quota",
+    "http_status": 400
+  },
+  "CodeStorageExceededException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "quota",
+    "http_status": 400
+  },
+  "RequestEntityTooLargeException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "validation",
+    "http_status": 413
+  },
+  "UnsupportedMediaTypeException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "validation",
+    "http_status": 415
+  },
+  "StateMachineDoesNotExist": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "missing",
+    "http_status": 400
+  },
+  "ExecutionDoesNotExist": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "missing",
+    "http_status": 400
+  },
+  "States.TaskFailed": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "state",
+    "http_status": 400
+  },
+  "States.Timeout": {
+    "retriable": true,
+    "severity": "warning",
+    "hint": "timeout",
+    "http_status": 408
+  },
+  "StateMachineLimitExceeded": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "quota",
+    "http_status": 400
+  },
+  "NoSuchEntity": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "missing",
+    "http_status": 404
+  },
+  "NoSuchEntityException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "missing",
+    "http_status": 404
+  },
+  "EntityAlreadyExists": {
+    "retriable": false,
+    "severity": "warning",
+    "hint": "duplicate",
+    "http_status": 409
+  },
+  "DeleteConflict": {
+    "retriable": false,
+    "severity": "warning",
+    "hint": "dependency",
+    "http_status": 409
+  },
+  "UnmodifiableEntity": {
+    "retriable": false,
+    "severity": "warning",
+    "hint": "state",
+    "http_status": 400
+  },
+  "UserNotFoundException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "missing",
+    "http_status": 404
+  },
+  "NotAuthorizedException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "iam",
+    "http_status": 401
+  },
+  "RepositoryNotFoundException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "missing",
+    "http_status": 404
+  },
+  "ImageNotFoundException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "missing",
+    "http_status": 404
+  },
+  "RepositoryAlreadyExistsException": {
+    "retriable": false,
+    "severity": "warning",
+    "hint": "duplicate",
+    "http_status": 409
+  },
+  "ParameterNotFound": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "missing",
+    "http_status": 400
+  },
+  "ParameterAlreadyExists": {
+    "retriable": false,
+    "severity": "warning",
+    "hint": "duplicate",
+    "http_status": 400
+  },
+  "InvalidDocument": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "validation",
+    "http_status": 400
+  },
+  "TooManyUpdates": {
+    "retriable": true,
+    "severity": "warning",
+    "hint": "throttle",
+    "http_status": 429
+  },
+  "DBInstanceNotFound": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "missing",
+    "http_status": 404
+  },
+  "DBClusterNotFoundFault": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "missing",
+    "http_status": 404
+  },
+  "DBInstanceAlreadyExists": {
+    "retriable": false,
+    "severity": "warning",
+    "hint": "duplicate",
+    "http_status": 409
+  },
+  "InsufficientDBInstanceCapacity": {
+    "retriable": true,
+    "severity": "warning",
+    "hint": "capacity",
+    "http_status": 503
+  },
+  "InvalidDBClusterStateFault": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "state",
+    "http_status": 400
+  },
+  "StorageQuotaExceeded": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "quota",
+    "http_status": 400
+  },
+  "ClusterNotFoundException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "missing",
+    "http_status": 404
+  },
+  "ServiceNotFoundException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "missing",
+    "http_status": 404
+  },
+  "TaskNotFoundException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "missing",
+    "http_status": 404
+  },
+  "AlreadyExists": {
+    "retriable": false,
+    "severity": "warning",
+    "hint": "duplicate",
+    "http_status": 409
+  },
+  "ScalingActivityInProgress": {
+    "retriable": true,
+    "severity": "warning",
+    "hint": "state",
+    "http_status": 400
+  },
+  "ResourceInUse": {
+    "retriable": false,
+    "severity": "warning",
+    "hint": "dependency",
+    "http_status": 409
+  },
+  "ResourceLimitExceeded": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "quota",
+    "http_status": 400
+  },
+  "ResourceNotFound": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "missing",
+    "http_status": 404
+  },
+  "AlarmNotFound": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "missing",
+    "http_status": 404
+  },
+  "InvalidRequestException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "validation",
+    "http_status": 400
+  },
+  "InvalidRequest": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "validation",
+    "http_status": 400
+  },
+  "InvalidArgumentException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "validation",
+    "http_status": 400
+  },
+  "BadRequestException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "validation",
+    "http_status": 400
+  },
+  "InvalidEventPatternException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "validation",
+    "http_status": 400
+  },
+  "ManagedRuleException": {
+    "retriable": false,
+    "severity": "warning",
+    "hint": "iam",
+    "http_status": 400
+  },
+  "ModelTimeoutException": {
+    "retriable": true,
+    "severity": "warning",
+    "hint": "timeout",
+    "http_status": 408
+  },
+  "ImageTooLargeException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "validation",
+    "http_status": 400
+  },
+  "TextSizeLimitExceededException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "validation",
+    "http_status": 400
+  },
+  "EntityNotFoundException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "missing",
+    "http_status": 404
+  },
+  "EntityNotExistsException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "missing",
+    "http_status": 404
+  },
+  "ConcurrentModificationException": {
+    "retriable": true,
+    "severity": "warning",
+    "hint": "conflict",
+    "http_status": 409
+  },
+  "ConcurrentRunsExceededException": {
+    "retriable": false,
+    "severity": "warning",
+    "hint": "quota",
+    "http_status": 400
+  },
+  "ResourceNumberLimitExceededException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "quota",
+    "http_status": 400
+  },
+  "RuleLimitExceededException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "quota",
+    "http_status": 400
+  },
+  "PipelineNotFoundException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "missing",
+    "http_status": 404
+  },
+  "StageNotFoundException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "missing",
+    "http_status": 404
+  },
+  "ApplicationDoesNotExistException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "missing",
+    "http_status": 404
+  },
+  "DeploymentDoesNotExistException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "missing",
+    "http_status": 404
+  },
+  "RepositoryDoesNotExistException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "missing",
+    "http_status": 404
+  },
+  "BranchDoesNotExistException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "missing",
+    "http_status": 404
+  },
+  "MessageRejected": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "validation",
+    "http_status": 400
+  },
+  "MailFromDomainNotVerified": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "validation",
+    "http_status": 400
+  },
+  "ConfigurationSetDoesNotExistException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "missing",
+    "http_status": 404
+  },
+  "ForbiddenException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "iam",
+    "http_status": 403
+  },
+  "FleetCapacityExceededException": {
+    "retriable": true,
+    "severity": "warning",
+    "hint": "capacity",
+    "http_status": 503
+  },
+  "ContainerNotFoundException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "missing",
+    "http_status": 404
+  },
+  "UnprocessableEntityException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "validation",
+    "http_status": 422
+  },
+  "InvalidJobIdException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "missing",
+    "http_status": 400
+  },
+  "DataUnavailableException": {
+    "retriable": false,
+    "severity": "warning",
+    "hint": "missing",
+    "http_status": 404
+  },
+  "DescribeChimeWebhookConfigurationsException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "service",
+    "http_status": 400
+  },
+  "OperationFailureException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "service",
+    "http_status": 500
+  },
+  "OperationNotPermittedException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "iam",
+    "http_status": 403
+  },
+  "RejectedRecordsException": {
+    "retriable": false,
+    "severity": "warning",
+    "hint": "validation",
+    "http_status": 400
+  },
+  "TooManyEnvironmentsException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "quota",
+    "http_status": 400
+  },
+  "InvalidApplicationConfigurationException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "validation",
+    "http_status": 400
+  },
+  "InvalidPaginationToken": {
+    "retriable": false,
+    "severity": "warning",
+    "hint": "validation",
+    "http_status": 400
+  },
+  "InvalidPaginationTokenException": {
+    "retriable": false,
+    "severity": "warning",
+    "hint": "validation",
+    "http_status": 400
+  },
+  "ResourceShareLimitExceededException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "quota",
+    "http_status": 400
+  },
+  "UnknownResourceException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "missing",
+    "http_status": 404
+  },
+  "ClusterNotFound": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "missing",
+    "http_status": 404
+  },
+  "InvalidClusterState": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "state",
+    "http_status": 400
+  },
+  "InsufficientClusterCapacity": {
+    "retriable": true,
+    "severity": "warning",
+    "hint": "capacity",
+    "http_status": 503
+  },
+  "NoUpdateAvailableException": {
+    "retriable": false,
+    "severity": "warning",
+    "hint": "state",
+    "http_status": 400
+  },
+  "ChangeSetNotFound": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "missing",
+    "http_status": 404
+  },
+  "InsufficientCapabilitiesException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "iam",
+    "http_status": 400
+  },
+  "StackInstanceNotFoundException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "missing",
+    "http_status": 404
+  },
+  "AlreadyExistsException": {
+    "retriable": false,
+    "severity": "warning",
+    "hint": "duplicate",
+    "http_status": 409
+  },
+  "FleetNotFoundException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "missing",
+    "http_status": 404
+  },
+  "FilterPolicyLimitExceededException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "quota",
+    "http_status": 400
+  },
+  "AuthorizationErrorException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "iam",
+    "http_status": 403
+  },
+  "ThrottledException": {
+    "retriable": true,
+    "severity": "warning",
+    "hint": "throttle",
+    "http_status": 429
+  },
+  "InternalException": {
+    "retriable": true,
+    "severity": "error",
+    "hint": "service",
+    "http_status": 500
+  },
+  "BaseException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "service",
+    "http_status": 500
+  },
+  "ClientLimitExceededException": {
+    "retriable": true,
+    "severity": "warning",
+    "hint": "throttle",
+    "http_status": 429
+  },
+  "DisabledOperationException": {
+    "retriable": false,
+    "severity": "warning",
+    "hint": "state",
+    "http_status": 400
+  },
+  "DirectoryNotShared": {
+    "retriable": false,
+    "severity": "warning",
+    "hint": "state",
+    "http_status": 400
+  },
+  "RequestInProgressException": {
+    "retriable": true,
+    "severity": "warning",
+    "hint": "state",
+    "http_status": 409
+  },
+  "WAFNonexistentItemException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "missing",
+    "http_status": 404
+  },
+  "WAFLimitsExceededException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "quota",
+    "http_status": 400
+  },
+  "DirectConnectClientException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "validation",
+    "http_status": 400
+  },
+  "DirectConnectServerException": {
+    "retriable": true,
+    "severity": "error",
+    "hint": "service",
+    "http_status": 500
+  },
+  "UnauthorizedException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "iam",
+    "http_status": 401
+  },
+  "TaskStoppedException": {
+    "retriable": false,
+    "severity": "warning",
+    "hint": "state",
+    "http_status": 400
+  },
+  "ClientException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "validation",
+    "http_status": 400
+  },
+  "ServerException": {
+    "retriable": true,
+    "severity": "error",
+    "hint": "service",
+    "http_status": 500
+  },
+  "InvalidGatewayRequestException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "validation",
+    "http_status": 400
+  },
+  "FileSystemNotFound": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "missing",
+    "http_status": 404
+  },
+  "MountTargetNotFound": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "missing",
+    "http_status": 404
+  },
+  "ThroughputLimitExceeded": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "quota",
+    "http_status": 400
+  },
+  "BackupNotFound": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "missing",
+    "http_status": 404
+  },
+  "TrailNotFoundException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "missing",
+    "http_status": 404
+  },
+  "InsufficientS3BucketPolicyException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "policy",
+    "http_status": 400
+  },
+  "ResourceNotFoundFault": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "missing",
+    "http_status": 404
+  },
+  "InvalidResourceStateFault": {
+    "retriable": false,
+    "severity": "warning",
+    "hint": "state",
+    "http_status": 400
+  },
+  "NoSuchHostedZone": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "missing",
+    "http_status": 404
+  },
+  "NoSuchHealthCheck": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "missing",
+    "http_status": 404
+  },
+  "HostedZoneAlreadyExists": {
+    "retriable": false,
+    "severity": "warning",
+    "hint": "duplicate",
+    "http_status": 409
+  },
+  "NoSuchDistribution": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "missing",
+    "http_status": 404
+  },
+  "DistributionNotDisabled": {
+    "retriable": false,
+    "severity": "warning",
+    "hint": "state",
+    "http_status": 409
+  },
+  "TooManyDistributions": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "quota",
+    "http_status": 400
+  },
+  "InvalidArgument": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "validation",
+    "http_status": 400
+  },
+  "NotFoundException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "missing",
+    "http_status": 404
+  },
+  "ListenerNotFoundException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "missing",
+    "http_status": 404
+  },
+  "AcceleratorNotFoundException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "missing",
+    "http_status": 404
+  },
+  "NamespaceNotFound": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "missing",
+    "http_status": 404
+  },
+  "ServiceNotFound": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "missing",
+    "http_status": 404
+  },
+  "ServiceFailureException": {
+    "retriable": true,
+    "severity": "error",
+    "hint": "service",
+    "http_status": 500
+  },
+  "LexiconNotFoundException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "missing",
+    "http_status": 404
+  },
+  "InvalidOperationException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "validation",
+    "http_status": 400
+  },
+  "DuplicateResourceException": {
+    "retriable": false,
+    "severity": "warning",
+    "hint": "duplicate",
+    "http_status": 409
+  },
+  "BackupRequestStoppedException": {
+    "retriable": false,
+    "severity": "warning",
+    "hint": "state",
+    "http_status": 400
+  },
+  "CloudHsmResourceNotFoundException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "missing",
+    "http_status": 404
+  },
+  "CloudHsmInternalFailureException": {
+    "retriable": true,
+    "severity": "error",
+    "hint": "service",
+    "http_status": 500
+  },
+  "InvalidAccessException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "iam",
+    "http_status": 403
+  },
+  "DescribeDirectoryException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "missing",
+    "http_status": 404
+  },
+  "AccountNotFoundException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "missing",
+    "http_status": 404
+  },
+  "TaskFailedException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "state",
+    "http_status": 400
+  },
+  "ObjectNotFoundException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "service",
+    "http_status": 400
+  },
+  "InvalidInputException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "service",
+    "http_status": 400
+  },
+  "ProjectNotFoundException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "service",
+    "http_status": 400
+  },
+  "NoSuchBucketException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "service",
+    "http_status": 400
+  },
+  "NoSuchConfigRuleException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "service",
+    "http_status": 400
+  },
+  "ServiceAccountException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "service",
+    "http_status": 400
+  },
+  "EntityDoesNotExistException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "service",
+    "http_status": 400
+  },
+  "DisabledException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "service",
+    "http_status": 400
+  },
+  "KeyUnavailableException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "service",
+    "http_status": 400
+  },
+  "ResourceExistsException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "service",
+    "http_status": 400
+  },
+  "InvalidParametersException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "service",
+    "http_status": 400
+  },
+  "NodeQuotaForCustomerExceededFault": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "service",
+    "http_status": 400
+  },
+  "CacheClusterNotFoundFault": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "service",
+    "http_status": 400
+  },
+  "CacheClusterAlreadyExistsFault": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "service",
+    "http_status": 400
+  },
+  "InternalServerErrorException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "service",
+    "http_status": 400
+  },
+  "ClusterNotFoundFault": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "service",
+    "http_status": 400
+  },
+  "InvalidParameterValuesException": {
+    "retriable": false,
+    "severity": "error",
+    "hint": "service",
+    "http_status": 400
+  }
+}

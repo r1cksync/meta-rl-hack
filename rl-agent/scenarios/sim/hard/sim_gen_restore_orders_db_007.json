@@ -1,0 +1,74 @@
+{
+  "id": "sim_gen_restore_orders_db_007",
+  "difficulty": "hard",
+  "title": "Corruption in orders_db \u2014 restore vs rebuild trolley",
+  "description": "orders_db is corrupted. Agent must read the runbook and pick: restore from a 0.5h-old backup (data loss) or rebuild (long downtime).",
+  "preconditions": [],
+  "scheduled_failures": [],
+  "topology_overrides": [
+    {
+      "kind": "set_status",
+      "node": "orders_db",
+      "status": "corrupted"
+    }
+  ],
+  "trolley": {
+    "ttr_rebuild_ticks": 12,
+    "backup_age_hours": 0.5
+  },
+  "saboteur": {
+    "primary_target": "orders_db",
+    "failover_target": null,
+    "dependency_chain": [
+      "api_gateway"
+    ],
+    "aggressiveness": 0.3,
+    "cooldown_ticks": 3
+  },
+  "slack": {
+    "msgs_per_tick": 1.0
+  },
+  "traffic_profile": {
+    "period": 12,
+    "amplitude": 0.6,
+    "phase": 1.0,
+    "jitter": 0.1
+  },
+  "seed": 40007,
+  "k8s_controller": true,
+  "correct_action_chain": [
+    {
+      "id": "platform.read_slack",
+      "params": {
+        "last_n": 5
+      }
+    },
+    {
+      "id": "platform.get_logs",
+      "params": {
+        "service": "orders_db"
+      }
+    },
+    {
+      "id": "platform.get_trace",
+      "params": {
+        "service": "frontend"
+      }
+    },
+    {
+      "id": "platform.search_runbook",
+      "params": {
+        "query": "corruption restore"
+      }
+    },
+    {
+      "id": "platform.restore_from_backup",
+      "params": {
+        "target": "orders_db",
+        "backup_age_hours": 0.5
+      }
+    }
+  ],
+  "target_score": 0.6,
+  "max_steps": 14
+}

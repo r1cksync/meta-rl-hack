@@ -1,0 +1,67 @@
+{
+  "id": "sim_med_sfn_lambda_049",
+  "difficulty": "medium",
+  "title": "payments state machine failing",
+  "description": "`ic-payments-saga` executions stuck in FAILED. Underlying Lambda is throttled.",
+  "preconditions": [
+    {
+      "path": "stepfunctions/ic-payments-saga",
+      "op": "set",
+      "value": {
+        "name": "ic-payments-saga",
+        "executions": [
+          {
+            "id": "e0",
+            "status": "FAILED",
+            "error": "States.TaskFailed",
+            "input": "{}"
+          }
+        ],
+        "force_fail": true
+      }
+    },
+    {
+      "path": "lambda_/ic-payments-step",
+      "op": "set",
+      "value": {
+        "name": "ic-payments-step",
+        "state": "Active",
+        "reserved_concurrency": 0,
+        "invocations": 0,
+        "errors": 0,
+        "throttles": 4
+      }
+    }
+  ],
+  "scheduled_failures": [],
+  "correct_action_chain": [
+    {
+      "id": "stepfunctions.describe",
+      "params": {
+        "resource_id": "ic-payments-saga"
+      }
+    },
+    {
+      "id": "lambda.describe",
+      "params": {
+        "resource_id": "ic-payments-step"
+      }
+    },
+    {
+      "id": "lambda.scale",
+      "params": {
+        "resource_id": "ic-payments-step",
+        "capacity": 25
+      }
+    },
+    {
+      "id": "stepfunctions.start",
+      "params": {
+        "resource_id": "ic-payments-saga",
+        "input": "{}"
+      }
+    }
+  ],
+  "target_score": 0.55,
+  "max_steps": 18
+}

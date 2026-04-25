@@ -1,0 +1,67 @@
+{
+  "id": "sim_med_sfn_lambda_060",
+  "difficulty": "medium",
+  "title": "analytics state machine failing",
+  "description": "`ic-analytics-saga` executions stuck in FAILED. Underlying Lambda is throttled.",
+  "preconditions": [
+    {
+      "path": "stepfunctions/ic-analytics-saga",
+      "op": "set",
+      "value": {
+        "name": "ic-analytics-saga",
+        "executions": [
+          {
+            "id": "e0",
+            "status": "FAILED",
+            "error": "States.TaskFailed",
+            "input": "{}"
+          }
+        ],
+        "force_fail": true
+      }
+    },
+    {
+      "path": "lambda_/ic-analytics-step",
+      "op": "set",
+      "value": {
+        "name": "ic-analytics-step",
+        "state": "Active",
+        "reserved_concurrency": 0,
+        "invocations": 0,
+        "errors": 0,
+        "throttles": 4
+      }
+    }
+  ],
+  "scheduled_failures": [],
+  "correct_action_chain": [
+    {
+      "id": "stepfunctions.describe",
+      "params": {
+        "resource_id": "ic-analytics-saga"
+      }
+    },
+    {
+      "id": "lambda.describe",
+      "params": {
+        "resource_id": "ic-analytics-step"
+      }
+    },
+    {
+      "id": "lambda.scale",
+      "params": {
+        "resource_id": "ic-analytics-step",
+        "capacity": 25
+      }
+    },
+    {
+      "id": "stepfunctions.start",
+      "params": {
+        "resource_id": "ic-analytics-saga",
+        "input": "{}"
+      }
+    }
+  ],
+  "target_score": 0.55,
+  "max_steps": 18
+}

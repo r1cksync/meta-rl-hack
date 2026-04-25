@@ -1,0 +1,74 @@
+{
+  "id": "sim_gen_restore_inventory_db_004",
+  "difficulty": "hard",
+  "title": "Corruption in inventory_db \u2014 restore vs rebuild trolley",
+  "description": "inventory_db is corrupted. Agent must read the runbook and pick: restore from a 1.5h-old backup (data loss) or rebuild (long downtime).",
+  "preconditions": [],
+  "scheduled_failures": [],
+  "topology_overrides": [
+    {
+      "kind": "set_status",
+      "node": "inventory_db",
+      "status": "corrupted"
+    }
+  ],
+  "trolley": {
+    "ttr_rebuild_ticks": 12,
+    "backup_age_hours": 1.5
+  },
+  "saboteur": {
+    "primary_target": "inventory_db",
+    "failover_target": null,
+    "dependency_chain": [
+      "api_gateway"
+    ],
+    "aggressiveness": 0.3,
+    "cooldown_ticks": 3
+  },
+  "slack": {
+    "msgs_per_tick": 1.0
+  },
+  "traffic_profile": {
+    "period": 12,
+    "amplitude": 0.6,
+    "phase": 4.0,
+    "jitter": 0.1
+  },
+  "seed": 40004,
+  "k8s_controller": true,
+  "correct_action_chain": [
+    {
+      "id": "platform.read_slack",
+      "params": {
+        "last_n": 5
+      }
+    },
+    {
+      "id": "platform.get_logs",
+      "params": {
+        "service": "inventory_db"
+      }
+    },
+    {
+      "id": "platform.get_trace",
+      "params": {
+        "service": "frontend"
+      }
+    },
+    {
+      "id": "platform.search_runbook",
+      "params": {
+        "query": "corruption restore"
+      }
+    },
+    {
+      "id": "platform.restore_from_backup",
+      "params": {
+        "target": "inventory_db",
+        "backup_age_hours": 1.5
+      }
+    }
+  ],
+  "target_score": 0.6,
+  "max_steps": 14
+}

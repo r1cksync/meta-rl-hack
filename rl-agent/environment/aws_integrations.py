@@ -28,13 +28,22 @@ from typing import Any, Optional
 log = logging.getLogger(__name__)
 
 
+# Mentor 2026-04-25: live AWS is OFF by default. Set IC_USE_LIVE_AWS=true to
+# re-enable. When False, every helper in this module reports enabled=False
+# and `_client` raises so that no boto3 call can leak through.
+USE_LIVE_AWS = os.getenv("IC_USE_LIVE_AWS", "false").lower() in ("1", "true", "yes")
+
+
 def _have_aws_credentials() -> bool:
     """Fast, non-network check for AWS credentials.
 
-    Returns True only if env-var credentials are present OR a profile is
+    Returns False unconditionally when IC_USE_LIVE_AWS is off. Otherwise
+    returns True only if env-var credentials are present OR a profile is
     configured. Avoids IMDS calls that block for seconds on a laptop / HF
     Space with no AWS access.
     """
+    if not USE_LIVE_AWS:
+        return False
     if os.getenv("AWS_ACCESS_KEY_ID") and os.getenv("AWS_SECRET_ACCESS_KEY"):
         return True
     if os.getenv("AWS_PROFILE"):
@@ -48,7 +57,14 @@ def _have_aws_credentials() -> bool:
 
 def _client(service: str, region: Optional[str] = None):
     """Build a boto3 client with short connect/read timeouts so importing the
-    module against a no-creds machine doesn't stall the HF Space."""
+    module against a no-creds machine doesn't stall the HF Space.
+
+    Refuses to construct a client when IC_USE_LIVE_AWS is off (mentor cost
+    cutoff 2026-04-25). Set IC_USE_LIVE_AWS=true to re-enable.
+    """
+    if not USE_LIVE_AWS:
+        raise RuntimeError(
+            "live AWS disabled (set IC_USE_LIVE_AWS=true to re-enable)")
     import boto3  # type: ignore
     from botocore.config import Config  # type: ignore
     cfg = Config(connect_timeout=2, read_timeout=3, retries={"max_attempts": 1})
@@ -346,6 +362,259 @@ class SecretsLoader:
 
 
 # ---------------------------------------------------------------------------
+# SQS — incident events queue
+# ---------------------------------------------------------------------------
+
+class SQSEventPublisher:
+    """Push every agent action onto an SQS queue so a side-car Lambda or the
+    next training run can replay them.
+
+    Enabled when `SQS_QUEUE_URL` is set and boto3 creds resolve.
+    """
+
+    def __init__(self, queue_url: Optional[str] = None, region: Optional[str] = None):
+        self.queue_url = queue_url or os.getenv("SQS_QUEUE_URL")
+        self.region    = region    or os.getenv("AWS_REGION")
+        self._client = None
+        self.enabled = False
+        if self.queue_url and _have_aws_credentials():
+            try:
+                self._client = _client("sqs", self.region)
+                self._client.get_queue_attributes(
+                    QueueUrl=self.queue_url, AttributeNames=["QueueArn"])
+                self.enabled = True
+                log.info("SQS publisher: %s", self.queue_url)
+            except Exception as e:
+                log.warning("SQS disabled (%s)", e)
+
+    def publish(self, body: dict, group_id: Optional[str] = None) -> bool:
+        if not self.enabled or self._client is None:
+            return False
+        try:
+            kwargs: dict[str, Any] = {
+                "QueueUrl":    self.queue_url,
+                "MessageBody": json.dumps(body, default=str),
+            }
+            if self.queue_url and self.queue_url.endswith(".fifo"):
+                kwargs["MessageGroupId"]         = group_id or "default"
+                kwargs["MessageDeduplicationId"] = f"{group_id or 'd'}-{int(time.time()*1000)}"
+            self._client.send_message(**kwargs)
+            return True
+        except Exception as e:
+            log.warning("sqs publish failed: %s", e)
+            return False
+
+
+# ---------------------------------------------------------------------------
+# Lambda invoker — call a runbook lambda
+# ---------------------------------------------------------------------------
+
+class LambdaInvoker:
+    """Synchronously invoke a Lambda function (e.g. a remediation runbook).
+
+    Enabled when `LAMBDA_RUNBOOK_FUNCTION` is set and boto3 creds resolve.
+    """
+
+    def __init__(self, function_name: Optional[str] = None, region: Optional[str] = None):
+        self.function_name = function_name or os.getenv("LAMBDA_RUNBOOK_FUNCTION")
+        self.region        = region        or os.getenv("AWS_REGION")
+        self._client = None
+        self.enabled = False
+        if self.function_name and _have_aws_credentials():
+            try:
+                self._client = _client("lambda", self.region)
+                self._client.get_function(FunctionName=self.function_name)
+                self.enabled = True
+                log.info("Lambda invoker: %s", self.function_name)
+            except Exception as e:
+                log.warning("Lambda disabled (%s)", e)
+
+    def invoke(self, payload: dict) -> dict:
+        if not self.enabled or self._client is None:
+            return {"ok": False, "error": "lambda not configured"}
+        try:
+            resp = self._client.invoke(
+                FunctionName=self.function_name,
+                InvocationType="RequestResponse",
+                Payload=json.dumps(payload, default=str).encode("utf-8"),
+            )
+            body = resp.get("Payload")
+            return {
+                "ok":          resp.get("StatusCode", 500) < 300,
+                "status":      resp.get("StatusCode"),
+                "body":        body.read().decode("utf-8", errors="replace") if body else "",
+                "function_error": resp.get("FunctionError"),
+            }
+        except Exception as e:
+            log.warning("lambda invoke failed: %s", e)
+            return {"ok": False, "error": str(e)}
+
+
+# ---------------------------------------------------------------------------
+# EventBridge publisher
+# ---------------------------------------------------------------------------
+
+class EventBridgePublisher:
+    """Publish a structured event to an EventBridge bus so other workloads
+    (e.g. PagerDuty integration) can react.
+
+    Enabled when `EVENTBRIDGE_BUS_NAME` is set and boto3 creds resolve.
+    """
+
+    def __init__(self, bus_name: Optional[str] = None, region: Optional[str] = None):
+        self.bus_name = bus_name or os.getenv("EVENTBRIDGE_BUS_NAME", "default")
+        self.source   = os.getenv("EVENTBRIDGE_SOURCE", "incident-commander.agent")
+        self.region   = region or os.getenv("AWS_REGION")
+        self._client = None
+        self.enabled = False
+        if _have_aws_credentials():
+            try:
+                self._client = _client("events", self.region)
+                self._client.describe_event_bus(Name=self.bus_name)
+                self.enabled = True
+                log.info("EventBridge publisher: bus=%s source=%s",
+                         self.bus_name, self.source)
+            except Exception as e:
+                log.warning("EventBridge disabled (%s)", e)
+
+    def publish(self, detail_type: str, detail: dict) -> bool:
+        if not self.enabled or self._client is None:
+            return False
+        try:
+            self._client.put_events(Entries=[{
+                "Source":       self.source,
+                "DetailType":   detail_type,
+                "Detail":       json.dumps(detail, default=str),
+                "EventBusName": self.bus_name,
+            }])
+            return True
+        except Exception as e:
+            log.warning("eventbridge put_events failed: %s", e)
+            return False
+
+
+# ---------------------------------------------------------------------------
+# X-Ray trace reader (read-only)
+# ---------------------------------------------------------------------------
+
+class XRayTraceReader:
+    """List recent X-Ray trace summaries so the agent can correlate latency
+    spikes with downstream calls.
+
+    Enabled when `XRAY_ENABLED` is truthy and boto3 creds resolve.
+    """
+
+    def __init__(self, region: Optional[str] = None):
+        self.region = region or os.getenv("AWS_REGION")
+        self._client = None
+        self.enabled = False
+        if os.getenv("XRAY_ENABLED", "").lower() in ("1", "true", "yes") \
+                and _have_aws_credentials():
+            try:
+                self._client = _client("xray", self.region)
+                # cheap probe — list_groups is always allowed if xray:* granted
+                self._client.get_groups()
+                self.enabled = True
+                log.info("X-Ray reader enabled")
+            except Exception as e:
+                log.warning("X-Ray disabled (%s)", e)
+
+    def recent_traces(self, last_minutes: int = 5, limit: int = 20) -> list[dict]:
+        if not self.enabled or self._client is None:
+            return []
+        from datetime import datetime as _dt, timezone as _tz, timedelta as _td
+        end   = _dt.now(_tz.utc)
+        start = end - _td(minutes=last_minutes)
+        try:
+            resp = self._client.get_trace_summaries(StartTime=start, EndTime=end)
+            out: list[dict] = []
+            for s in resp.get("TraceSummaries", [])[:limit]:
+                out.append({
+                    "id":       s.get("Id"),
+                    "duration": s.get("Duration"),
+                    "has_error": bool(s.get("HasError")),
+                    "has_fault": bool(s.get("HasFault")),
+                    "http":     s.get("Http", {}),
+                })
+            return out
+        except Exception as e:
+            log.warning("xray get_trace_summaries failed: %s", e)
+            return []
+
+
+# ---------------------------------------------------------------------------
+# SSM Parameter Store reader
+# ---------------------------------------------------------------------------
+
+class SSMParameterReader:
+    """Read SSM parameters used as runtime feature flags / config values.
+
+    Enabled when boto3 creds resolve. Fails closed (returns None) on errors.
+    """
+
+    def __init__(self, region: Optional[str] = None):
+        self.region = region or os.getenv("AWS_REGION")
+        self._client = None
+        self.enabled = False
+        if _have_aws_credentials():
+            try:
+                self._client = _client("ssm", self.region)
+                self.enabled = True
+                log.info("SSM parameter reader enabled")
+            except Exception as e:
+                log.warning("SSM disabled (%s)", e)
+
+    def get(self, name: str, with_decryption: bool = True) -> Optional[str]:
+        if not self.enabled or self._client is None:
+            return None
+        try:
+            resp = self._client.get_parameter(Name=name, WithDecryption=with_decryption)
+            return (resp.get("Parameter") or {}).get("Value")
+        except Exception as e:
+            log.warning("ssm get_parameter(%s) failed: %s", name, e)
+            return None
+
+
+# ---------------------------------------------------------------------------
+# KMS — small data-key generator for envelope encryption tests
+# ---------------------------------------------------------------------------
+
+class KMSDataKeyClient:
+    """Generate data keys to verify the agent's KMS permissions are wired up.
+
+    Enabled when `KMS_KEY_ID` is set and boto3 creds resolve.
+    """
+
+    def __init__(self, key_id: Optional[str] = None, region: Optional[str] = None):
+        self.key_id = key_id or os.getenv("KMS_KEY_ID")
+        self.region = region or os.getenv("AWS_REGION")
+        self._client = None
+        self.enabled = False
+        if self.key_id and _have_aws_credentials():
+            try:
+                self._client = _client("kms", self.region)
+                self._client.describe_key(KeyId=self.key_id)
+                self.enabled = True
+                log.info("KMS data-key client: %s", self.key_id)
+            except Exception as e:
+                log.warning("KMS disabled (%s)", e)
+
+    def generate_data_key(self, spec: str = "AES_256") -> Optional[dict]:
+        if not self.enabled or self._client is None:
+            return None
+        try:
+            resp = self._client.generate_data_key(KeyId=self.key_id, KeySpec=spec)
+            return {
+                "ciphertext_b64_len": len(resp.get("CiphertextBlob", b"")),
+                "plaintext_bytes":    len(resp.get("Plaintext", b"")),
+                "key_id":             resp.get("KeyId"),
+            }
+        except Exception as e:
+            log.warning("kms generate_data_key failed: %s", e)
+            return None
+
+
+# ---------------------------------------------------------------------------
 # Aggregate status for /aws/status + /dashboard/aws
 # ---------------------------------------------------------------------------
 
@@ -376,6 +645,12 @@ def aws_status() -> dict[str, Any]:
     cwm  = CloudWatchMetricsPublisher()
     sns  = SNSIncidentPublisher()
     sec  = SecretsLoader()
+    sqs  = SQSEventPublisher()
+    lam  = LambdaInvoker()
+    eb   = EventBridgePublisher()
+    xr   = XRayTraceReader()
+    ssm  = SSMParameterReader()
+    kms  = KMSDataKeyClient()
 
     _svc("CloudWatch Logs",   cw.enabled,   {"log_group": cw.log_group})
     _svc("S3",                s3.enabled,   {"bucket": s3.bucket, "prefix": s3.prefix})
@@ -383,6 +658,12 @@ def aws_status() -> dict[str, Any]:
     _svc("CloudWatch Metrics",cwm.enabled,  {"namespace": cwm.namespace})
     _svc("SNS",               sns.enabled,  {"topic": sns.topic_arn})
     _svc("Secrets Manager",   sec.enabled,  {"configured_secret": os.getenv("OPENAI_SECRET_ARN")})
+    _svc("SQS",               sqs.enabled,  {"queue": sqs.queue_url})
+    _svc("Lambda",            lam.enabled,  {"function": lam.function_name})
+    _svc("EventBridge",       eb.enabled,   {"bus": eb.bus_name, "source": eb.source})
+    _svc("X-Ray",             xr.enabled,   {"note": "set XRAY_ENABLED=1 to probe"})
+    _svc("SSM",               ssm.enabled,  {"note": "GetParameter access"})
+    _svc("KMS",               kms.enabled,  {"key_id": kms.key_id})
     _svc("EKS",               bool(os.getenv("EKS_CLUSTER_NAME")),
                                              {"cluster": os.getenv("EKS_CLUSTER_NAME")})
     _svc("ECR",               bool(os.getenv("ECR_REPOSITORY_URL")),

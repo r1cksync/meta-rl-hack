@@ -1,0 +1,27 @@
+{
+  "id": "sim_advanced_cascade_users_db_001",
+  "difficulty": "hard",
+  "title": "Cascade: users_db memory-leak hides behind frontend 504s",
+  "description": "Frontend latency is 5s and the on-call dashboard screams about API Gateway. Real cause: the users_db node has a runaway memory leak that pushes it into MEMORY_LEAK status; auth + frontend cascade visibly. The agent must (a) follow the trace down the DAG, (b) pause health checks before the K8s controller restarts the leaking pod and destroys evidence, (c) capture a heap dump, and (d) failover to the replica.",
+  "preconditions": [],
+  "topology_overrides": [
+    {"kind": "set_status",    "node": "users_db", "status": "memory_leak"},
+    {"kind": "set_leak",      "node": "users_db", "rate": 0.10}
+  ],
+  "scheduled_failures": [],
+  "trolley":          {"ttr_rebuild_ticks": 15, "backup_age_hours": 2.0},
+  "k8s_controller":   true,
+  "traffic_profile":  {"period": 24, "amplitude": 1.0, "jitter": 0.10, "phase": 8.0},
+  "seed":             4242,
+  "correct_action_chain": [
+    {"id": "platform.get_logs",            "params": {"service": "frontend",  "n_lines": 30}},
+    {"id": "platform.get_trace",           "params": {"service": "frontend"}},
+    {"id": "platform.get_metrics",         "params": {"service": "users_db", "metric": "mem_pct"}},
+    {"id": "platform.search_runbook",      "params": {"query": "memory leak users_db"}},
+    {"id": "platform.pause_health_checks", "params": {"target":  "users_db"}},
+    {"id": "platform.capture_memory_dump", "params": {"target":  "users_db"}},
+    {"id": "platform.failover_replica",    "params": {"target":  "users_db"}}
+  ],
+  "target_score": 0.55,
+  "max_steps":    20
+}

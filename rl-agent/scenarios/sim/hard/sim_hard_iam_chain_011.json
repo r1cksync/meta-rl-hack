@@ -1,0 +1,104 @@
+{
+  "id": "sim_hard_iam_chain_011",
+  "difficulty": "hard",
+  "title": "checkout pipeline silent \u2014 alert says LambdaErrors",
+  "description": "Alarm name is `LambdaErrors` but Lambda has zero invocations. EventBridge rule is enabled, but the Lambda's resource policy denies events:Invoke for the bus. Need IAM simulation, then a policy fix, then re-publish.",
+  "preconditions": [
+    {
+      "path": "events/ic-checkout-bus",
+      "op": "set",
+      "value": {
+        "name": "ic-checkout-bus",
+        "rules": {
+          "ic-checkout-rule": {
+            "name": "ic-checkout-rule",
+            "state": "ENABLED",
+            "target_arn": "ic-checkout-handler"
+          }
+        }
+      }
+    },
+    {
+      "path": "lambda_/ic-checkout-handler",
+      "op": "set",
+      "value": {
+        "name": "ic-checkout-handler",
+        "state": "Active",
+        "reserved_concurrency": 10,
+        "invocations": 0,
+        "errors": 0,
+        "throttles": 0
+      }
+    },
+    {
+      "path": "iam/arn:aws:iam::000000000000:role/ic-checkout-handler-role",
+      "op": "set",
+      "value": {
+        "name": "arn:aws:iam::000000000000:role/ic-checkout-handler-role",
+        "denies": [
+          "lambda:InvokeFunction"
+        ]
+      }
+    }
+  ],
+  "scheduled_failures": [
+    {
+      "action_id": "events.publish",
+      "error": "AccessDeniedException",
+      "message": "events:Invoke denied by lambda resource policy",
+      "count": 1
+    }
+  ],
+  "correct_action_chain": [
+    {
+      "id": "events.describe",
+      "params": {
+        "bus_name": "ic-checkout-bus",
+        "rule_name": "ic-checkout-rule"
+      }
+    },
+    {
+      "id": "events.publish",
+      "params": {
+        "bus_name": "ic-checkout-bus",
+        "payload": "ping"
+      }
+    },
+    {
+      "id": "lambda.describe",
+      "params": {
+        "resource_id": "ic-checkout-handler"
+      }
+    },
+    {
+      "id": "iam.simulate_policy",
+      "params": {
+        "principal": "arn:aws:iam::000000000000:role/ic-checkout-handler-role",
+        "action_name": "lambda:InvokeFunction",
+        "resource": "ic-checkout-handler"
+      }
+    },
+    {
+      "id": "lambda.put_policy",
+      "params": {
+        "resource_id": "ic-checkout-handler",
+        "policy": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\"}]}"
+      }
+    },
+    {
+      "id": "events.publish",
+      "params": {
+        "bus_name": "ic-checkout-bus",
+        "payload": "ping"
+      }
+    },
+    {
+      "id": "lambda.invoke",
+      "params": {
+        "resource_id": "ic-checkout-handler"
+      }
+    }
+  ],
+  "target_score": 0.65,
+  "max_steps": 22
+}

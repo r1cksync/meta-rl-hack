@@ -1,0 +1,36 @@
+{
+  "id": "sim_easy_ddb_throttle_110",
+  "difficulty": "easy",
+  "title": "notifications DynamoDB throttling",
+  "description": "`ic-notifications-table` is throttling writes. Scale write capacity.",
+  "preconditions": [
+    {
+      "path": "dynamodb/ic-notifications-table",
+      "op": "set",
+      "value": {
+        "name": "ic-notifications-table",
+        "items": {},
+        "throttled": true,
+        "capacity": 5
+      }
+    }
+  ],
+  "scheduled_failures": [],
+  "correct_action_chain": [
+    {
+      "id": "dynamodb.describe",
+      "params": {
+        "resource_id": "ic-notifications-table"
+      }
+    },
+    {
+      "id": "dynamodb.scale",
+      "params": {
+        "resource_id": "ic-notifications-table",
+        "capacity": 50
+      }
+    }
+  ],
+  "target_score": 0.55,
+  "max_steps": 16
+}

@@ -1,0 +1,88 @@
+{
+  "id": "sim_gen_app_leak_catalog_017",
+  "difficulty": "medium",
+  "title": "Memory leak in catalog (aggro=0.8)",
+  "description": "Saboteur targets catalog with a slow memory leak. Slack channel is noisy. Agent must pause health checks before grabbing a heap dump, then rollback.",
+  "preconditions": [],
+  "scheduled_failures": [],
+  "topology_overrides": [
+    {
+      "kind": "set_status",
+      "node": "catalog",
+      "status": "memory_leak"
+    },
+    {
+      "kind": "set_leak",
+      "node": "catalog",
+      "rate": 0.01
+    }
+  ],
+  "saboteur": {
+    "primary_target": "catalog",
+    "failover_target": null,
+    "dependency_chain": [
+      "api_gateway",
+      "frontend"
+    ],
+    "aggressiveness": 0.8,
+    "cooldown_ticks": 2
+  },
+  "slack": {
+    "msgs_per_tick": 1.8
+  },
+  "traffic_profile": {
+    "period": 19,
+    "amplitude": 0.6,
+    "phase": 1.0,
+    "jitter": 0.1
+  },
+  "seed": 10017,
+  "k8s_controller": true,
+  "correct_action_chain": [
+    {
+      "id": "platform.read_slack",
+      "params": {
+        "last_n": 5
+      }
+    },
+    {
+      "id": "platform.get_logs",
+      "params": {
+        "service": "catalog"
+      }
+    },
+    {
+      "id": "platform.get_metrics",
+      "params": {
+        "service": "catalog",
+        "metric": "mem_pct"
+      }
+    },
+    {
+      "id": "platform.pause_health_checks",
+      "params": {
+        "target": "catalog"
+      }
+    },
+    {
+      "id": "platform.capture_memory_dump",
+      "params": {
+        "target": "catalog"
+      }
+    },
+    {
+      "id": "platform.rollback_deployment",
+      "params": {
+        "target": "catalog"
+      }
+    },
+    {
+      "id": "platform.resume_health_checks",
+      "params": {
+        "target": "catalog"
+      }
+    }
+  ],
+  "target_score": 0.55,
+  "max_steps": 16
+}

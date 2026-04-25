@@ -1,0 +1,34 @@
+{
+  "id": "sim_advanced_slack_redherring_001",
+  "difficulty": "hard",
+  "title": "Slack Red-Herring — A frontend dev claims their hotfix broke checkout",
+  "description": "Slack channel is loud. A frontend engineer announces a deploy and asks if it broke things. The actual root cause is a memory leak in `checkout` that the saboteur is exploiting. Agent must ignore the red herring, read logs, capture a heap dump (after pausing health checks), then rebuild the checkout deployment.",
+  "preconditions": [],
+  "scheduled_failures": [],
+  "topology_overrides": [
+    {"kind": "set_leak",  "node": "checkout", "rate": 0.08},
+    {"kind": "set_status","node": "checkout", "status": "memory_leak"}
+  ],
+  "saboteur": {
+    "primary_target":   "checkout",
+    "failover_target":  null,
+    "dependency_chain": ["payments", "orders_db"],
+    "aggressiveness":   0.4,
+    "cooldown_ticks":   3
+  },
+  "slack": {"msgs_per_tick": 2.0},
+  "traffic_profile": {"period": 12, "amplitude": 0.8, "phase": 0.0, "jitter": 0.15},
+  "seed": 6262,
+  "k8s_controller": true,
+  "correct_action_chain": [
+    {"id": "platform.read_slack",          "params": {"last_n": 8}},
+    {"id": "platform.get_logs",            "params": {"service": "checkout"}},
+    {"id": "platform.get_metrics",         "params": {"service": "checkout", "metric": "mem_pct"}},
+    {"id": "platform.pause_health_checks", "params": {"target": "checkout"}},
+    {"id": "platform.capture_memory_dump", "params": {"target": "checkout"}},
+    {"id": "platform.rollback_deployment", "params": {"target": "checkout"}},
+    {"id": "platform.resume_health_checks","params": {"target": "checkout"}}
+  ],
+  "target_score": 0.6,
+  "max_steps": 16
+}

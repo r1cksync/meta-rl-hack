@@ -1,0 +1,56 @@
+{
+  "id": "sim_easy_kms_disabled_072",
+  "difficulty": "easy",
+  "title": "catalog KMS key disabled",
+  "description": "Encrypt calls fail with KMSInvalidStateException. Re-enable `alias/ic-catalog-key`.",
+  "preconditions": [
+    {
+      "path": "kms/alias/ic-catalog-key",
+      "op": "set",
+      "value": {
+        "alias": "alias/ic-catalog-key",
+        "state": "Disabled",
+        "policy": "{}",
+        "pending_deletion_days": null
+      }
+    }
+  ],
+  "scheduled_failures": [
+    {
+      "action_id": "kms.encrypt",
+      "error": "KMSInvalidStateException",
+      "message": "key disabled",
+      "count": 1
+    }
+  ],
+  "correct_action_chain": [
+    {
+      "id": "kms.describe",
+      "params": {
+        "resource_id": "alias/ic-catalog-key"
+      }
+    },
+    {
+      "id": "kms.encrypt",
+      "params": {
+        "resource_id": "alias/ic-catalog-key",
+        "plaintext": "hi"
+      }
+    },
+    {
+      "id": "kms.enable",
+      "params": {
+        "resource_id": "alias/ic-catalog-key"
+      }
+    },
+    {
+      "id": "kms.encrypt",
+      "params": {
+        "resource_id": "alias/ic-catalog-key",
+        "plaintext": "hi"
+      }
+    }
+  ],
+  "target_score": 0.55,
+  "max_steps": 16
+}

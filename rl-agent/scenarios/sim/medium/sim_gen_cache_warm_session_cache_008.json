@@ -1,0 +1,74 @@
+{
+  "id": "sim_gen_cache_warm_session_cache_008",
+  "difficulty": "medium",
+  "title": "Cache outage on session_cache during 1.0x peak",
+  "description": "session_cache is degraded; sine-wave traffic peak is amplifying the stampede. Agent must enable request coalescing AND warm the cache before the next peak.",
+  "preconditions": [],
+  "scheduled_failures": [],
+  "topology_overrides": [
+    {
+      "kind": "set_status",
+      "node": "session_cache",
+      "status": "degraded"
+    }
+  ],
+  "saboteur": {
+    "primary_target": "session_cache",
+    "failover_target": null,
+    "dependency_chain": [
+      "catalog",
+      "api_gateway"
+    ],
+    "aggressiveness": 0.7,
+    "cooldown_ticks": 2
+  },
+  "slack": {
+    "msgs_per_tick": 1.2
+  },
+  "traffic_profile": {
+    "period": 10,
+    "amplitude": 1.0,
+    "phase": 3.0,
+    "jitter": 0.15
+  },
+  "seed": 20008,
+  "k8s_controller": true,
+  "correct_action_chain": [
+    {
+      "id": "platform.read_slack",
+      "params": {
+        "last_n": 6
+      }
+    },
+    {
+      "id": "platform.get_traffic",
+      "params": {}
+    },
+    {
+      "id": "platform.get_logs",
+      "params": {
+        "service": "catalog"
+      }
+    },
+    {
+      "id": "platform.search_runbook",
+      "params": {
+        "query": "cache stampede"
+      }
+    },
+    {
+      "id": "platform.enable_request_coalescing",
+      "params": {
+        "target": "catalog"
+      }
+    },
+    {
+      "id": "platform.warm_cache",
+      "params": {
+        "target": "session_cache"
+      }
+    }
+  ],
+  "target_score": 0.6,
+  "max_steps": 14
+}

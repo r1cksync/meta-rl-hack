@@ -1,0 +1,14 @@
+{
+  "task_id": "task19",
+  "difficulty": "easy",
+  "target_score": 0.65,
+  "fault_type": "cloudwatch_alarm_storm",
+  "chaos_experiment_name": "alarm-storm-inject",
+  "ground_truth_root_cause": "cloudwatch_alarm_storm_from_chaos_inject",
+  "correct_mitigation_action": "delete_chaos_experiment",
+  "correct_mitigation_target": "alarm-storm-inject",
+  "wrong_mitigation_penalty_services": ["payments-api", "inventory-service", "order-worker", "checkout-frontend"],
+  "useful_log_keywords": ["CloudWatch", "ALARM", "AlarmName", "StateChangeReason", "MetricName", "Threshold"],
+  "red_herrings": [],
+  "reference_postmortem": "Chaos experiment alarm-storm-inject is firing 47 fake CloudWatch alarms per minute via the PutMetricAlarm API, all of which fan out to the SNS alerts topic and PagerDuty, drowning out real signal. No actual service degradation. Mitigation: delete_chaos_experiment alarm-storm-inject. Follow-up: add an SNS subscription filter on AlarmName != 'chaos-*' so chaos noise never reaches PagerDuty, and a CloudWatch metric on AlarmsCreated/min."
+}

@@ -47,6 +47,25 @@ class ActionType(str, Enum):
     DELETE_CHAOS_EXPERIMENT = "delete_chaos_experiment"
     SUBMIT_POSTMORTEM = "submit_postmortem"
     EXEC_KUBECTL = "exec_kubectl"
+    # ---- AWS-flavoured forensic / non-obvious investigation actions ----
+    CHECK_CLOUDTRAIL_EVENTS    = "check_cloudtrail_events"
+    DESCRIBE_RESOURCE_POLICY   = "describe_resource_policy"
+    GET_QUOTA_USAGE            = "get_quota_usage"
+    CHECK_SECRET_ROTATION      = "check_secret_rotation"
+    VALIDATE_IAM_PERMISSION    = "validate_iam_permission"
+    ANALYZE_CLOUDWATCH_INSIGHTS = "analyze_cloudwatch_insights"
+    INSPECT_DLQ_MESSAGES       = "inspect_dlq_messages"
+    DIFF_CONFIG_VERSIONS       = "diff_config_versions"
+    DESCRIBE_STATE_MACHINE_EXEC = "describe_state_machine_execution"
+    # ---- AWS-flavoured remediation actions ----
+    INVOKE_LAMBDA              = "invoke_lambda"
+    ROTATE_SECRET              = "rotate_secret"
+    PURGE_QUEUE                = "purge_queue"
+    ENABLE_EVENTBRIDGE_RULE    = "enable_eventbridge_rule"
+    # ---- Generic AWS API call (simulator-only) ----
+    # Allows the agent to hit any of the 8500+ catalog actions via
+    # params={"service": <slug>, "verb": <verb>, ...other_kwargs}.
+    AWS_API_CALL               = "aws_api_call"
 
 
 WRITE_ACTIONS = {
@@ -55,6 +74,11 @@ WRITE_ACTIONS = {
     ActionType.SCALE_DEPLOYMENT,
     ActionType.APPLY_CONFIG_PATCH,
     ActionType.DELETE_CHAOS_EXPERIMENT,
+    ActionType.INVOKE_LAMBDA,
+    ActionType.ROTATE_SECRET,
+    ActionType.PURGE_QUEUE,
+    ActionType.ENABLE_EVENTBRIDGE_RULE,
+    ActionType.AWS_API_CALL,
 }
 
 READ_ACTIONS = {
@@ -62,6 +86,15 @@ READ_ACTIONS = {
     ActionType.QUERY_METRICS,
     ActionType.GET_SERVICE_DEPENDENCIES,
     ActionType.GET_TRACE,
+    ActionType.CHECK_CLOUDTRAIL_EVENTS,
+    ActionType.DESCRIBE_RESOURCE_POLICY,
+    ActionType.GET_QUOTA_USAGE,
+    ActionType.CHECK_SECRET_ROTATION,
+    ActionType.VALIDATE_IAM_PERMISSION,
+    ActionType.ANALYZE_CLOUDWATCH_INSIGHTS,
+    ActionType.INSPECT_DLQ_MESSAGES,
+    ActionType.DIFF_CONFIG_VERSIONS,
+    ActionType.DESCRIBE_STATE_MACHINE_EXEC,
 }
 
 # ---------------------------------------------------------------------------

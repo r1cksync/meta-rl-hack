@@ -1,0 +1,60 @@
+{
+  "id": "sim_med_eb_lambda_016",
+  "difficulty": "medium",
+  "title": "checkout pipeline silent",
+  "description": "Events are being published to `ic-checkout-bus` but `ic-checkout-handler` is not invoked. Rule was disabled during a deploy.",
+  "preconditions": [
+    {
+      "path": "events/ic-checkout-bus",
+      "op": "set",
+      "value": {
+        "name": "ic-checkout-bus",
+        "rules": {
+          "ic-checkout-rule": {
+            "name": "ic-checkout-rule",
+            "state": "DISABLED",
+            "target_arn": "ic-checkout-handler"
+          }
+        }
+      }
+    },
+    {
+      "path": "lambda_/ic-checkout-handler",
+      "op": "set",
+      "value": {
+        "name": "ic-checkout-handler",
+        "state": "Active",
+        "reserved_concurrency": 10,
+        "invocations": 0,
+        "errors": 0,
+        "throttles": 0
+      }
+    }
+  ],
+  "scheduled_failures": [],
+  "correct_action_chain": [
+    {
+      "id": "events.describe",
+      "params": {
+        "bus_name": "ic-checkout-bus",
+        "rule_name": "ic-checkout-rule"
+      }
+    },
+    {
+      "id": "events.enable",
+      "params": {
+        "bus_name": "ic-checkout-bus",
+        "rule_name": "ic-checkout-rule"
+      }
+    },
+    {
+      "id": "events.publish",
+      "params": {
+        "bus_name": "ic-checkout-bus",
+        "payload": "ping"
+      }
+    }
+  ],
+  "target_score": 0.55,
+  "max_steps": 16
+}

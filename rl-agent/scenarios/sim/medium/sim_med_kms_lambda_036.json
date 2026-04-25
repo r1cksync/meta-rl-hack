@@ -1,0 +1,72 @@
+{
+  "id": "sim_med_kms_lambda_036",
+  "difficulty": "medium",
+  "title": "recommendations Lambda 5xx after KMS change",
+  "description": "`ic-recommendations` invocations fail. Logs show KMS pending deletion on `alias/ic-recommendations-data`.",
+  "preconditions": [
+    {
+      "path": "lambda_/ic-recommendations",
+      "op": "set",
+      "value": {
+        "name": "ic-recommendations",
+        "state": "Active",
+        "reserved_concurrency": 10,
+        "invocations": 0,
+        "errors": 3,
+        "throttles": 0
+      }
+    },
+    {
+      "path": "kms/alias/ic-recommendations-data",
+      "op": "set",
+      "value": {
+        "alias": "alias/ic-recommendations-data",
+        "state": "PendingDeletion",
+        "policy": "{}",
+        "pending_deletion_days": 7
+      }
+    }
+  ],
+  "scheduled_failures": [
+    {
+      "action_id": "lambda.invoke",
+      "error": "KMSInvalidStateException",
+      "message": "key alias/ic-recommendations-data pending deletion",
+      "count": 1
+    }
+  ],
+  "correct_action_chain": [
+    {
+      "id": "lambda.describe",
+      "params": {
+        "resource_id": "ic-recommendations"
+      }
+    },
+    {
+      "id": "lambda.invoke",
+      "params": {
+        "resource_id": "ic-recommendations"
+      }
+    },
+    {
+      "id": "kms.describe",
+      "params": {
+        "resource_id": "alias/ic-recommendations-data"
+      }
+    },
+    {
+      "id": "kms.enable",
+      "params": {
+        "resource_id": "alias/ic-recommendations-data"
+      }
+    },
+    {
+      "id": "lambda.invoke",
+      "params": {
+        "resource_id": "ic-recommendations"
+      }
+    }
+  ],
+  "target_score": 0.6,
+  "max_steps": 18
+}

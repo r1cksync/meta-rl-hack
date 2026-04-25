@@ -1,0 +1,72 @@
+{
+  "id": "sim_med_kms_lambda_035",
+  "difficulty": "medium",
+  "title": "search Lambda 5xx after KMS change",
+  "description": "`ic-search` invocations fail. Logs show KMS pending deletion on `alias/ic-search-data`.",
+  "preconditions": [
+    {
+      "path": "lambda_/ic-search",
+      "op": "set",
+      "value": {
+        "name": "ic-search",
+        "state": "Active",
+        "reserved_concurrency": 10,
+        "invocations": 0,
+        "errors": 3,
+        "throttles": 0
+      }
+    },
+    {
+      "path": "kms/alias/ic-search-data",
+      "op": "set",
+      "value": {
+        "alias": "alias/ic-search-data",
+        "state": "PendingDeletion",
+        "policy": "{}",
+        "pending_deletion_days": 7
+      }
+    }
+  ],
+  "scheduled_failures": [
+    {
+      "action_id": "lambda.invoke",
+      "error": "KMSInvalidStateException",
+      "message": "key alias/ic-search-data pending deletion",
+      "count": 1
+    }
+  ],
+  "correct_action_chain": [
+    {
+      "id": "lambda.describe",
+      "params": {
+        "resource_id": "ic-search"
+      }
+    },
+    {
+      "id": "lambda.invoke",
+      "params": {
+        "resource_id": "ic-search"
+      }
+    },
+    {
+      "id": "kms.describe",
+      "params": {
+        "resource_id": "alias/ic-search-data"
+      }
+    },
+    {
+      "id": "kms.enable",
+      "params": {
+        "resource_id": "alias/ic-search-data"
+      }
+    },
+    {
+      "id": "lambda.invoke",
+      "params": {
+        "resource_id": "ic-search"
+      }
+    }
+  ],
+  "target_score": 0.6,
+  "max_steps": 18
+}

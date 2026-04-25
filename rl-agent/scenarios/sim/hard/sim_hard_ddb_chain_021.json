@@ -1,0 +1,112 @@
+{
+  "id": "sim_hard_ddb_chain_021",
+  "difficulty": "hard",
+  "title": "checkout latency spike \u2014 alert says DDB throttle",
+  "description": "DynamoDB throttle alarm fires, but root cause is an SSM parameter drift that pinned a tiny pool size on the writer Lambda \u2014 which retries faster than DDB can absorb. Need to roll back SSM, then scale DDB, then verify the writer.",
+  "preconditions": [
+    {
+      "path": "dynamodb/ic-checkout-table",
+      "op": "set",
+      "value": {
+        "name": "ic-checkout-table",
+        "items": {},
+        "throttled": true,
+        "capacity": 5
+      }
+    },
+    {
+      "path": "ssm//ic/checkout/db-pool-size",
+      "op": "set",
+      "value": {
+        "name": "/ic/checkout/db-pool-size",
+        "value": "1",
+        "version": 3,
+        "history": [
+          {
+            "v": 1,
+            "value": "50",
+            "ts": 0
+          },
+          {
+            "v": 2,
+            "value": "10",
+            "ts": 1
+          },
+          {
+            "v": 3,
+            "value": "1",
+            "ts": 2
+          }
+        ]
+      }
+    },
+    {
+      "path": "lambda_/ic-checkout-writer",
+      "op": "set",
+      "value": {
+        "name": "ic-checkout-writer",
+        "state": "Active",
+        "reserved_concurrency": 50,
+        "invocations": 0,
+        "errors": 6,
+        "throttles": 0
+      }
+    }
+  ],
+  "scheduled_failures": [
+    {
+      "action_id": "dynamodb.send",
+      "error": "ProvisionedThroughputExceededException",
+      "message": "ddb capacity exceeded",
+      "count": 1
+    }
+  ],
+  "correct_action_chain": [
+    {
+      "id": "cloudwatch.get_logs",
+      "params": {
+        "log_group": "/aws/lambda/ic-checkout-writer",
+        "filter": "throttle"
+      }
+    },
+    {
+      "id": "dynamodb.send",
+      "params": {
+        "resource_id": "ic-checkout-table",
+        "payload": {
+          "pk": "x"
+        }
+      }
+    },
+    {
+      "id": "ssm.diff_versions",
+      "params": {
+        "resource_id": "/ic/checkout/db-pool-size",
+        "v1": 1,
+        "v2": 3
+      }
+    },
+    {
+      "id": "ssm.rollback",
+      "params": {
+        "resource_id": "/ic/checkout/db-pool-size",
+        "version": 1
+      }
+    },
+    {
+      "id": "dynamodb.scale",
+      "params": {
+        "resource_id": "ic-checkout-table",
+        "capacity": 50
+      }
+    },
+    {
+      "id": "lambda.invoke",
+      "params": {
+        "resource_id": "ic-checkout-writer"
+      }
+    }
+  ],
+  "target_score": 0.65,
+  "max_steps": 22
+}

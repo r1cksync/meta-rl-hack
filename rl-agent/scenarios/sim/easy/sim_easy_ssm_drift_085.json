@@ -1,0 +1,55 @@
+{
+  "id": "sim_easy_ssm_drift_085",
+  "difficulty": "easy",
+  "title": "search pool size dropped",
+  "description": "`/ic/search/db-pool-size` was changed from 50 to 5 \u2014 DB connection storm. Roll back.",
+  "preconditions": [
+    {
+      "path": "ssm//ic/search/db-pool-size",
+      "op": "set",
+      "value": {
+        "name": "/ic/search/db-pool-size",
+        "value": "5",
+        "version": 2,
+        "history": [
+          {
+            "v": 1,
+            "value": "50",
+            "ts": 0
+          },
+          {
+            "v": 2,
+            "value": "5",
+            "ts": 1
+          }
+        ]
+      }
+    }
+  ],
+  "scheduled_failures": [],
+  "correct_action_chain": [
+    {
+      "id": "ssm.describe",
+      "params": {
+        "resource_id": "/ic/search/db-pool-size"
+      }
+    },
+    {
+      "id": "ssm.diff_versions",
+      "params": {
+        "resource_id": "/ic/search/db-pool-size",
+        "v1": 1,
+        "v2": 2
+      }
+    },
+    {
+      "id": "ssm.rollback",
+      "params": {
+        "resource_id": "/ic/search/db-pool-size",
+        "version": 1
+      }
+    }
+  ],
+  "target_score": 0.55,
+  "max_steps": 16
+}

@@ -1,0 +1,60 @@
+{
+  "id": "sim_med_eb_lambda_025",
+  "difficulty": "medium",
+  "title": "notifications pipeline silent",
+  "description": "Events are being published to `ic-notifications-bus` but `ic-notifications-handler` is not invoked. Rule was disabled during a deploy.",
+  "preconditions": [
+    {
+      "path": "events/ic-notifications-bus",
+      "op": "set",
+      "value": {
+        "name": "ic-notifications-bus",
+        "rules": {
+          "ic-notifications-rule": {
+            "name": "ic-notifications-rule",
+            "state": "DISABLED",
+            "target_arn": "ic-notifications-handler"
+          }
+        }
+      }
+    },
+    {
+      "path": "lambda_/ic-notifications-handler",
+      "op": "set",
+      "value": {
+        "name": "ic-notifications-handler",
+        "state": "Active",
+        "reserved_concurrency": 10,
+        "invocations": 0,
+        "errors": 0,
+        "throttles": 0
+      }
+    }
+  ],
+  "scheduled_failures": [],
+  "correct_action_chain": [
+    {
+      "id": "events.describe",
+      "params": {
+        "bus_name": "ic-notifications-bus",
+        "rule_name": "ic-notifications-rule"
+      }
+    },
+    {
+      "id": "events.enable",
+      "params": {
+        "bus_name": "ic-notifications-bus",
+        "rule_name": "ic-notifications-rule"
+      }
+    },
+    {
+      "id": "events.publish",
+      "params": {
+        "bus_name": "ic-notifications-bus",
+        "payload": "ping"
+      }
+    }
+  ],
+  "target_score": 0.55,
+  "max_steps": 16
+}

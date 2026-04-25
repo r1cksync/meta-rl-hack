@@ -1,0 +1,60 @@
+{
+  "id": "sim_med_eb_lambda_030",
+  "difficulty": "medium",
+  "title": "analytics pipeline silent",
+  "description": "Events are being published to `ic-analytics-bus` but `ic-analytics-handler` is not invoked. Rule was disabled during a deploy.",
+  "preconditions": [
+    {
+      "path": "events/ic-analytics-bus",
+      "op": "set",
+      "value": {
+        "name": "ic-analytics-bus",
+        "rules": {
+          "ic-analytics-rule": {
+            "name": "ic-analytics-rule",
+            "state": "DISABLED",
+            "target_arn": "ic-analytics-handler"
+          }
+        }
+      }
+    },
+    {
+      "path": "lambda_/ic-analytics-handler",
+      "op": "set",
+      "value": {
+        "name": "ic-analytics-handler",
+        "state": "Active",
+        "reserved_concurrency": 10,
+        "invocations": 0,
+        "errors": 0,
+        "throttles": 0
+      }
+    }
+  ],
+  "scheduled_failures": [],
+  "correct_action_chain": [
+    {
+      "id": "events.describe",
+      "params": {
+        "bus_name": "ic-analytics-bus",
+        "rule_name": "ic-analytics-rule"
+      }
+    },
+    {
+      "id": "events.enable",
+      "params": {
+        "bus_name": "ic-analytics-bus",
+        "rule_name": "ic-analytics-rule"
+      }
+    },
+    {
+      "id": "events.publish",
+      "params": {
+        "bus_name": "ic-analytics-bus",
+        "payload": "ping"
+      }
+    }
+  ],
+  "target_score": 0.55,
+  "max_steps": 16
+}

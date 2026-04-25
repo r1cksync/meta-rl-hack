@@ -1,0 +1,14 @@
+{
+  "task_id": "task18",
+  "difficulty": "hard",
+  "target_score": 0.40,
+  "fault_type": "bedrock_throttling",
+  "chaos_experiment_name": "",
+  "ground_truth_root_cause": "bedrock_invokemodel_throttled_by_account_quota",
+  "correct_mitigation_action": "scale_deployment",
+  "correct_mitigation_target": "notification-service",
+  "wrong_mitigation_penalty_services": ["payments-api", "inventory-service"],
+  "useful_log_keywords": ["ThrottlingException", "Bedrock", "InvokeModel", "anthropic.claude", "TooManyRequestsException", "RetryAfter"],
+  "red_herrings": ["smtp"],
+  "reference_postmortem": "AWS Bedrock returned ThrottlingException on InvokeModel for anthropic.claude-3-haiku used by notification-service to summarise alerts. Account-level RPM quota = 60, the service was issuing 220 RPM during a marketing campaign. Mitigation: scale_deployment notification-service to fewer replicas (concurrency dropped) so per-instance request rate falls under the bucket; longer-term raise the quota. Follow-up: switch summarisation to a queue-batched async path with token-bucket rate limit, add a CloudWatch alarm on Bedrock-InvocationThrottles > 0, request a quota increase. Cost-awareness: smaller cheaper model (claude-3-haiku) at higher batch size is cheaper than claude-3-sonnet."
+}

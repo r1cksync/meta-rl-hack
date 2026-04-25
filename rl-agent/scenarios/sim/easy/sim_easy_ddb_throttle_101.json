@@ -1,0 +1,36 @@
+{
+  "id": "sim_easy_ddb_throttle_101",
+  "difficulty": "easy",
+  "title": "checkout DynamoDB throttling",
+  "description": "`ic-checkout-table` is throttling writes. Scale write capacity.",
+  "preconditions": [
+    {
+      "path": "dynamodb/ic-checkout-table",
+      "op": "set",
+      "value": {
+        "name": "ic-checkout-table",
+        "items": {},
+        "throttled": true,
+        "capacity": 5
+      }
+    }
+  ],
+  "scheduled_failures": [],
+  "correct_action_chain": [
+    {
+      "id": "dynamodb.describe",
+      "params": {
+        "resource_id": "ic-checkout-table"
+      }
+    },
+    {
+      "id": "dynamodb.scale",
+      "params": {
+        "resource_id": "ic-checkout-table",
+        "capacity": 50
+      }
+    }
+  ],
+  "target_score": 0.55,
+  "max_steps": 16
+}

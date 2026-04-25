@@ -1,0 +1,74 @@
+{
+  "id": "sim_gen_peak_api_gateway_005",
+  "difficulty": "medium",
+  "title": "Sine-wave peak hammers api_gateway (x1.5)",
+  "description": "Sine-wave traffic at 1.5x amplitude is saturating api_gateway. Agent must read traffic, enable coalescing, and warm caches BEFORE the next peak.",
+  "preconditions": [],
+  "scheduled_failures": [],
+  "topology_overrides": [
+    {
+      "kind": "set_status",
+      "node": "api_gateway",
+      "status": "degraded"
+    },
+    {
+      "kind": "set_cpu_drift",
+      "node": "api_gateway",
+      "rate": 0.02
+    }
+  ],
+  "saboteur": {
+    "primary_target": "api_gateway",
+    "failover_target": null,
+    "dependency_chain": [
+      "api_gateway",
+      "frontend"
+    ],
+    "aggressiveness": 0.5,
+    "cooldown_ticks": 2
+  },
+  "slack": {
+    "msgs_per_tick": 1.6
+  },
+  "traffic_profile": {
+    "period": 8,
+    "amplitude": 1.5,
+    "phase": 1.0,
+    "jitter": 0.18
+  },
+  "seed": 30005,
+  "k8s_controller": true,
+  "correct_action_chain": [
+    {
+      "id": "platform.read_slack",
+      "params": {
+        "last_n": 5
+      }
+    },
+    {
+      "id": "platform.get_traffic",
+      "params": {}
+    },
+    {
+      "id": "platform.get_metrics",
+      "params": {
+        "service": "api_gateway",
+        "metric": "cpu_pct"
+      }
+    },
+    {
+      "id": "platform.enable_request_coalescing",
+      "params": {
+        "target": "api_gateway"
+      }
+    },
+    {
+      "id": "platform.warm_cache",
+      "params": {
+        "target": "session_cache"
+      }
+    }
+  ],
+  "target_score": 0.55,
+  "max_steps": 14
+}

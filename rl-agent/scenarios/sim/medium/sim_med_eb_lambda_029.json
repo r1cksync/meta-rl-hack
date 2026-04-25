@@ -1,0 +1,60 @@
+{
+  "id": "sim_med_eb_lambda_029",
+  "difficulty": "medium",
+  "title": "telemetry pipeline silent",
+  "description": "Events are being published to `ic-telemetry-bus` but `ic-telemetry-handler` is not invoked. Rule was disabled during a deploy.",
+  "preconditions": [
+    {
+      "path": "events/ic-telemetry-bus",
+      "op": "set",
+      "value": {
+        "name": "ic-telemetry-bus",
+        "rules": {
+          "ic-telemetry-rule": {
+            "name": "ic-telemetry-rule",
+            "state": "DISABLED",
+            "target_arn": "ic-telemetry-handler"
+          }
+        }
+      }
+    },
+    {
+      "path": "lambda_/ic-telemetry-handler",
+      "op": "set",
+      "value": {
+        "name": "ic-telemetry-handler",
+        "state": "Active",
+        "reserved_concurrency": 10,
+        "invocations": 0,
+        "errors": 0,
+        "throttles": 0
+      }
+    }
+  ],
+  "scheduled_failures": [],
+  "correct_action_chain": [
+    {
+      "id": "events.describe",
+      "params": {
+        "bus_name": "ic-telemetry-bus",
+        "rule_name": "ic-telemetry-rule"
+      }
+    },
+    {
+      "id": "events.enable",
+      "params": {
+        "bus_name": "ic-telemetry-bus",
+        "rule_name": "ic-telemetry-rule"
+      }
+    },
+    {
+      "id": "events.publish",
+      "params": {
+        "bus_name": "ic-telemetry-bus",
+        "payload": "ping"
+      }
+    }
+  ],
+  "target_score": 0.55,
+  "max_steps": 16
+}

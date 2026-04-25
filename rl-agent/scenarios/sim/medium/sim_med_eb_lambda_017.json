@@ -1,0 +1,60 @@
+{
+  "id": "sim_med_eb_lambda_017",
+  "difficulty": "medium",
+  "title": "orders pipeline silent",
+  "description": "Events are being published to `ic-orders-bus` but `ic-orders-handler` is not invoked. Rule was disabled during a deploy.",
+  "preconditions": [
+    {
+      "path": "events/ic-orders-bus",
+      "op": "set",
+      "value": {
+        "name": "ic-orders-bus",
+        "rules": {
+          "ic-orders-rule": {
+            "name": "ic-orders-rule",
+            "state": "DISABLED",
+            "target_arn": "ic-orders-handler"
+          }
+        }
+      }
+    },
+    {
+      "path": "lambda_/ic-orders-handler",
+      "op": "set",
+      "value": {
+        "name": "ic-orders-handler",
+        "state": "Active",
+        "reserved_concurrency": 10,
+        "invocations": 0,
+        "errors": 0,
+        "throttles": 0
+      }
+    }
+  ],
+  "scheduled_failures": [],
+  "correct_action_chain": [
+    {
+      "id": "events.describe",
+      "params": {
+        "bus_name": "ic-orders-bus",
+        "rule_name": "ic-orders-rule"
+      }
+    },
+    {
+      "id": "events.enable",
+      "params": {
+        "bus_name": "ic-orders-bus",
+        "rule_name": "ic-orders-rule"
+      }
+    },
+    {
+      "id": "events.publish",
+      "params": {
+        "bus_name": "ic-orders-bus",
+        "payload": "ping"
+      }
+    }
+  ],
+  "target_score": 0.55,
+  "max_steps": 16
+}

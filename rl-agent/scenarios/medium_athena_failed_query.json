@@ -1,0 +1,14 @@
+{
+  "task_id": "task22",
+  "difficulty": "medium",
+  "target_score": 0.45,
+  "fault_type": "athena_failed_query",
+  "chaos_experiment_name": "",
+  "ground_truth_root_cause": "athena_query_failed_due_to_missing_glue_database_schema",
+  "correct_mitigation_action": "apply_config_patch",
+  "correct_mitigation_target": "inventory-service",
+  "wrong_mitigation_penalty_services": ["payments-api", "order-worker"],
+  "useful_log_keywords": ["SCHEMA_NOT_FOUND", "Athena", "QueryExecution", "FAILED", "ic_chaos_nonexistent_db", "Glue"],
+  "red_herrings": ["s3", "kafka"],
+  "reference_postmortem": "Athena query submitted by inventory-service against ic_chaos_nonexistent_db landed in FAILED state with SCHEMA_NOT_FOUND from the Glue Data Catalog. Mitigation: apply_config_patch on inventory-service to point ATHENA_DATABASE to the canonical 'ic_inventory_metrics' database and add a pre-query Glue catalog presence check. Follow-up: add a CloudWatch alarm on Athena/QueryFailed metrics, IAM-scope inventory-service to glue:GetDatabase only on the canonical schema, audit s3://athena-results/ retention. Cost-awareness: workgroup-level data-scanned limits prevent runaway-cost queries; provisioned capacity pricing only when sustained QPS warrants it."
+}

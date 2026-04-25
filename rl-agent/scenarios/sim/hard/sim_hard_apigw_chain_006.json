@@ -1,0 +1,104 @@
+{
+  "id": "sim_hard_apigw_chain_006",
+  "difficulty": "hard",
+  "title": "recommendations 5xx \u2014 alert says ApiGateway",
+  "description": "Pager fires for `ApiGateway-5xx`. Real cause: a config-change ticket rotated a secret that still references a KMS key now scheduled for deletion. Fixing only the secret won't help \u2014 the underlying KMS key must be re-enabled, the secret rotated, and the Lambda invoked to clear the cached error.",
+  "preconditions": [
+    {
+      "path": "lambda_/ic-recommendations",
+      "op": "set",
+      "value": {
+        "name": "ic-recommendations",
+        "state": "Active",
+        "reserved_concurrency": 10,
+        "invocations": 0,
+        "errors": 9,
+        "throttles": 0,
+        "last_error": "AccessDeniedException"
+      }
+    },
+    {
+      "path": "kms/alias/ic-recommendations-data",
+      "op": "set",
+      "value": {
+        "alias": "alias/ic-recommendations-data",
+        "state": "PendingDeletion",
+        "policy": "{}",
+        "pending_deletion_days": 6
+      }
+    },
+    {
+      "path": "secrets/ic-recommendations-config",
+      "op": "set",
+      "value": {
+        "name": "ic-recommendations-config",
+        "value": "broken",
+        "versions": [
+          "v1"
+        ],
+        "rotation_enabled": true,
+        "last_rotated_s": null,
+        "tags": {
+          "RotationStatus": "FAILED",
+          "LastRotatedDays": "10",
+          "KmsKeyAlias": "alias/ic-recommendations-data"
+        }
+      }
+    }
+  ],
+  "scheduled_failures": [
+    {
+      "action_id": "lambda.invoke",
+      "error": "AccessDeniedException",
+      "message": "kms decryption failed because key disabled",
+      "count": 1
+    }
+  ],
+  "correct_action_chain": [
+    {
+      "id": "cloudwatch.get_logs",
+      "params": {
+        "log_group": "/aws/lambda/ic-recommendations",
+        "filter": "kms"
+      }
+    },
+    {
+      "id": "lambda.invoke",
+      "params": {
+        "resource_id": "ic-recommendations"
+      }
+    },
+    {
+      "id": "kms.describe",
+      "params": {
+        "resource_id": "alias/ic-recommendations-data"
+      }
+    },
+    {
+      "id": "kms.enable",
+      "params": {
+        "resource_id": "alias/ic-recommendations-data"
+      }
+    },
+    {
+      "id": "secretsmanager.describe",
+      "params": {
+        "resource_id": "ic-recommendations-config"
+      }
+    },
+    {
+      "id": "secretsmanager.rotate",
+      "params": {
+        "resource_id": "ic-recommendations-config"
+      }
+    },
+    {
+      "id": "lambda.invoke",
+      "params": {
+        "resource_id": "ic-recommendations"
+      }
+    }
+  ],
+  "target_score": 0.65,
+  "max_steps": 22
+}

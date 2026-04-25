@@ -1,0 +1,3527 @@
+{
+  "amplify": {
+    "slug": "amplify",
+    "name": "AWS Amplify",
+    "category": "frontend",
+    "resources": [
+      "apps",
+      "branches",
+      "domains",
+      "backend_environments"
+    ],
+    "errors": [
+      "ThrottlingException",
+      "BadRequestException",
+      "ResourceNotFoundException",
+      "NotFoundException",
+      "UnauthorizedException",
+      "AccessDeniedException"
+    ]
+  },
+  "appmesh": {
+    "slug": "appmesh",
+    "name": "AWS App Mesh",
+    "category": "networking",
+    "resources": [
+      "meshes",
+      "virtual_nodes",
+      "virtual_routers",
+      "routes"
+    ],
+    "errors": [
+      "ConflictException",
+      "ThrottlingException",
+      "ResourceNotFoundException",
+      "NotFoundException",
+      "AccessDeniedException"
+    ]
+  },
+  "apprunner": {
+    "slug": "apprunner",
+    "name": "AWS App Runner",
+    "category": "compute",
+    "resources": [
+      "services",
+      "connections",
+      "auto_scaling_configurations"
+    ],
+    "errors": [
+      "ThrottlingException",
+      "ServiceQuotaExceededException",
+      "InvalidStateException",
+      "ResourceNotFoundException",
+      "AccessDeniedException"
+    ]
+  },
+  "appsync": {
+    "slug": "appsync",
+    "name": "AWS AppSync",
+    "category": "integration",
+    "resources": [
+      "graphql_apis",
+      "data_sources",
+      "resolvers",
+      "functions"
+    ],
+    "errors": [
+      "ConflictException",
+      "ThrottlingException",
+      "ResourceNotFoundException",
+      "NotFoundException",
+      "AccessDeniedException"
+    ]
+  },
+  "appautoscaling": {
+    "slug": "appautoscaling",
+    "name": "AWS Application Auto Scaling",
+    "category": "management",
+    "resources": [
+      "targets",
+      "policies",
+      "scheduled_actions"
+    ],
+    "errors": [
+      "AccessDeniedException",
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "ObjectNotFoundException"
+    ]
+  },
+  "applicationcostprofiler": {
+    "slug": "applicationcostprofiler",
+    "name": "AWS Application Cost Profiler",
+    "category": "billing",
+    "resources": [
+      "report_definitions"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "discovery": {
+    "slug": "discovery",
+    "name": "AWS Application Discovery Service",
+    "category": "migration",
+    "resources": [
+      "agents",
+      "applications",
+      "configurations"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "mgn": {
+    "slug": "mgn",
+    "name": "AWS Application Migration Service",
+    "category": "migration",
+    "resources": [
+      "source_servers",
+      "jobs",
+      "launch_configurations"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "artifact": {
+    "slug": "artifact",
+    "name": "AWS Artifact",
+    "category": "compliance",
+    "resources": [
+      "reports",
+      "agreements"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "auditmanager": {
+    "slug": "auditmanager",
+    "name": "AWS Audit Manager",
+    "category": "security",
+    "resources": [
+      "assessments",
+      "frameworks",
+      "controls"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "applicationautoscaling": {
+    "slug": "applicationautoscaling",
+    "name": "AWS Auto Scaling",
+    "category": "management",
+    "resources": [
+      "targets",
+      "policies"
+    ],
+    "errors": [
+      "ObjectNotFoundException",
+      "ThrottlingException",
+      "ResourceNotFoundException",
+      "LimitExceededException",
+      "AccessDeniedException"
+    ]
+  },
+  "backup": {
+    "slug": "backup",
+    "name": "AWS Backup",
+    "category": "storage",
+    "resources": [
+      "plans",
+      "vaults",
+      "jobs"
+    ],
+    "errors": [
+      "InvalidParameterValueException",
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "batch": {
+    "slug": "batch",
+    "name": "AWS Batch",
+    "category": "compute",
+    "resources": [
+      "job_queues",
+      "job_definitions",
+      "jobs",
+      "compute_environments"
+    ],
+    "errors": [
+      "ClientException",
+      "ThrottlingException",
+      "ResourceNotFoundException",
+      "ServerException",
+      "AccessDeniedException"
+    ]
+  },
+  "billing": {
+    "slug": "billing",
+    "name": "AWS Billing and Cost Management",
+    "category": "billing",
+    "resources": [
+      "bills",
+      "payments",
+      "tax_settings"
+    ],
+    "errors": [
+      "ValidationException",
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "acm": {
+    "slug": "acm",
+    "name": "AWS Certificate Manager",
+    "category": "security",
+    "resources": [
+      "certificates"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "RequestInProgressException",
+      "AccessDeniedException"
+    ]
+  },
+  "chatbot": {
+    "slug": "chatbot",
+    "name": "AWS Chatbot",
+    "category": "engagement",
+    "resources": [
+      "chime_webhooks",
+      "slack_channels"
+    ],
+    "errors": [
+      "DescribeChimeWebhookConfigurationsException",
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "cleanrooms": {
+    "slug": "cleanrooms",
+    "name": "AWS Clean Rooms",
+    "category": "analytics",
+    "resources": [
+      "collaborations",
+      "memberships",
+      "configured_tables"
+    ],
+    "errors": [
+      "AccessDeniedException",
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "ConflictException"
+    ]
+  },
+  "servicediscovery": {
+    "slug": "servicediscovery",
+    "name": "AWS Cloud Map",
+    "category": "networking",
+    "resources": [
+      "namespaces",
+      "services",
+      "instances"
+    ],
+    "errors": [
+      "ThrottlingException",
+      "NamespaceNotFound",
+      "ResourceNotFoundException",
+      "ServiceNotFound",
+      "AccessDeniedException"
+    ]
+  },
+  "cloud9": {
+    "slug": "cloud9",
+    "name": "AWS Cloud9",
+    "category": "devtools",
+    "resources": [
+      "environments",
+      "memberships"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "NotFoundException",
+      "AccessDeniedException"
+    ]
+  },
+  "cloudformation": {
+    "slug": "cloudformation",
+    "name": "AWS CloudFormation",
+    "category": "management",
+    "resources": [
+      "stacks",
+      "change_sets",
+      "stack_sets",
+      "templates",
+      "resources"
+    ],
+    "errors": [
+      "AlreadyExistsException",
+      "ThrottlingException",
+      "ChangeSetNotFound",
+      "ResourceNotFoundException",
+      "InsufficientCapabilitiesException",
+      "StackInstanceNotFoundException",
+      "AccessDeniedException"
+    ]
+  },
+  "cloudhsm": {
+    "slug": "cloudhsm",
+    "name": "AWS CloudHSM",
+    "category": "security",
+    "resources": [
+      "clusters",
+      "hsms"
+    ],
+    "errors": [
+      "CloudHsmResourceNotFoundException",
+      "ThrottlingException",
+      "ResourceNotFoundException",
+      "CloudHsmInternalFailureException",
+      "AccessDeniedException"
+    ]
+  },
+  "cloudshell": {
+    "slug": "cloudshell",
+    "name": "AWS CloudShell",
+    "category": "devtools",
+    "resources": [
+      "sessions"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "cloudtrail": {
+    "slug": "cloudtrail",
+    "name": "AWS CloudTrail",
+    "category": "monitoring",
+    "resources": [
+      "trails",
+      "event_data_stores",
+      "channels"
+    ],
+    "errors": [
+      "TrailNotFoundException",
+      "ThrottlingException",
+      "InsufficientS3BucketPolicyException",
+      "ResourceNotFoundException",
+      "AccessDeniedException"
+    ]
+  },
+  "codeartifact": {
+    "slug": "codeartifact",
+    "name": "AWS CodeArtifact",
+    "category": "devtools",
+    "resources": [
+      "domains",
+      "repositories",
+      "packages"
+    ],
+    "errors": [
+      "AccessDeniedException",
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "ConflictException"
+    ]
+  },
+  "codebuild": {
+    "slug": "codebuild",
+    "name": "AWS CodeBuild",
+    "category": "devtools",
+    "resources": [
+      "projects",
+      "builds",
+      "build_batches",
+      "reports"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "InvalidInputException",
+      "AccessDeniedException"
+    ]
+  },
+  "codecommit": {
+    "slug": "codecommit",
+    "name": "AWS CodeCommit",
+    "category": "devtools",
+    "resources": [
+      "repositories",
+      "branches",
+      "commits",
+      "pull_requests"
+    ],
+    "errors": [
+      "BranchDoesNotExistException",
+      "ThrottlingException",
+      "ResourceNotFoundException",
+      "RepositoryDoesNotExistException",
+      "AccessDeniedException"
+    ]
+  },
+  "codedeploy": {
+    "slug": "codedeploy",
+    "name": "AWS CodeDeploy",
+    "category": "devtools",
+    "resources": [
+      "applications",
+      "deployment_groups",
+      "deployments"
+    ],
+    "errors": [
+      "ThrottlingException",
+      "ResourceNotFoundException",
+      "DeploymentDoesNotExistException",
+      "ApplicationDoesNotExistException",
+      "AccessDeniedException"
+    ]
+  },
+  "codepipeline": {
+    "slug": "codepipeline",
+    "name": "AWS CodePipeline",
+    "category": "devtools",
+    "resources": [
+      "pipelines",
+      "actions",
+      "stages",
+      "webhooks"
+    ],
+    "errors": [
+      "ThrottlingException",
+      "PipelineNotFoundException",
+      "StageNotFoundException",
+      "ResourceNotFoundException",
+      "AccessDeniedException"
+    ]
+  },
+  "codestar": {
+    "slug": "codestar",
+    "name": "AWS CodeStar",
+    "category": "devtools",
+    "resources": [
+      "projects",
+      "team_members",
+      "user_profiles"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ProjectNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "computeoptimizer": {
+    "slug": "computeoptimizer",
+    "name": "AWS Compute Optimizer",
+    "category": "monitoring",
+    "resources": [
+      "recommendations"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "config": {
+    "slug": "config",
+    "name": "AWS Config",
+    "category": "monitoring",
+    "resources": [
+      "rules",
+      "resources",
+      "remediation_configurations"
+    ],
+    "errors": [
+      "ThrottlingException",
+      "NoSuchBucketException",
+      "ResourceNotFoundException",
+      "NoSuchConfigRuleException",
+      "AccessDeniedException"
+    ]
+  },
+  "controltower": {
+    "slug": "controltower",
+    "name": "AWS Control Tower",
+    "category": "management",
+    "resources": [
+      "landing_zones",
+      "controls",
+      "baselines"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "ce": {
+    "slug": "ce",
+    "name": "AWS Cost Explorer",
+    "category": "billing",
+    "resources": [
+      "cost_and_usage",
+      "forecasts",
+      "savings_plans"
+    ],
+    "errors": [
+      "DataUnavailableException",
+      "ThrottlingException",
+      "ResourceNotFoundException",
+      "LimitExceededException",
+      "AccessDeniedException"
+    ]
+  },
+  "dataexchange": {
+    "slug": "dataexchange",
+    "name": "AWS Data Exchange",
+    "category": "analytics",
+    "resources": [
+      "data_sets",
+      "revisions",
+      "jobs"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "datapipeline": {
+    "slug": "datapipeline",
+    "name": "AWS Data Pipeline",
+    "category": "integration",
+    "resources": [
+      "pipelines",
+      "tasks"
+    ],
+    "errors": [
+      "AccessDeniedException",
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "PipelineNotFoundException"
+    ]
+  },
+  "datasync": {
+    "slug": "datasync",
+    "name": "AWS DataSync",
+    "category": "storage",
+    "resources": [
+      "tasks",
+      "locations",
+      "executions"
+    ],
+    "errors": [
+      "InternalException",
+      "InvalidRequestException",
+      "ThrottlingException",
+      "ResourceNotFoundException",
+      "AccessDeniedException"
+    ]
+  },
+  "dms": {
+    "slug": "dms",
+    "name": "AWS Database Migration Service",
+    "category": "migration",
+    "resources": [
+      "replication_instances",
+      "replication_tasks",
+      "endpoints"
+    ],
+    "errors": [
+      "ThrottlingException",
+      "ResourceNotFoundException",
+      "InvalidResourceStateFault",
+      "ResourceNotFoundFault",
+      "AccessDeniedException"
+    ]
+  },
+  "deepcomposer": {
+    "slug": "deepcomposer",
+    "name": "AWS DeepComposer",
+    "category": "ai_ml",
+    "resources": [
+      "compositions",
+      "models"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "deeplens": {
+    "slug": "deeplens",
+    "name": "AWS DeepLens",
+    "category": "ai_ml",
+    "resources": [
+      "devices",
+      "projects",
+      "models"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "deepracer": {
+    "slug": "deepracer",
+    "name": "AWS DeepRacer",
+    "category": "ai_ml",
+    "resources": [
+      "models",
+      "tracks",
+      "leaderboards"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "devicefarm": {
+    "slug": "devicefarm",
+    "name": "AWS Device Farm",
+    "category": "devtools",
+    "resources": [
+      "projects",
+      "runs",
+      "tests",
+      "jobs"
+    ],
+    "errors": [
+      "ThrottlingException",
+      "ResourceNotFoundException",
+      "ServiceAccountException",
+      "NotFoundException",
+      "AccessDeniedException"
+    ]
+  },
+  "directconnect": {
+    "slug": "directconnect",
+    "name": "AWS Direct Connect",
+    "category": "networking",
+    "resources": [
+      "connections",
+      "virtual_interfaces",
+      "gateways"
+    ],
+    "errors": [
+      "ThrottlingException",
+      "DirectConnectClientException",
+      "ResourceNotFoundException",
+      "DirectConnectServerException",
+      "AccessDeniedException"
+    ]
+  },
+  "ds": {
+    "slug": "ds",
+    "name": "AWS Directory Service",
+    "category": "security",
+    "resources": [
+      "directories",
+      "trusts",
+      "conditional_forwarders"
+    ],
+    "errors": [
+      "ThrottlingException",
+      "ResourceNotFoundException",
+      "EntityDoesNotExistException",
+      "DirectoryNotShared",
+      "AccessDeniedException"
+    ]
+  },
+  "elasticbeanstalk": {
+    "slug": "elasticbeanstalk",
+    "name": "AWS Elastic Beanstalk",
+    "category": "compute",
+    "resources": [
+      "applications",
+      "environments",
+      "versions"
+    ],
+    "errors": [
+      "TooManyEnvironmentsException",
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "drs": {
+    "slug": "drs",
+    "name": "AWS Elastic Disaster Recovery",
+    "category": "migration",
+    "resources": [
+      "source_servers",
+      "recovery_instances",
+      "jobs"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "mediaconnect": {
+    "slug": "mediaconnect",
+    "name": "AWS Elemental MediaConnect",
+    "category": "media",
+    "resources": [
+      "flows",
+      "outputs",
+      "sources"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "NotFoundException",
+      "AccessDeniedException"
+    ]
+  },
+  "mediaconvert": {
+    "slug": "mediaconvert",
+    "name": "AWS Elemental MediaConvert",
+    "category": "media",
+    "resources": [
+      "jobs",
+      "queues",
+      "presets",
+      "templates"
+    ],
+    "errors": [
+      "ConflictException",
+      "ThrottlingException",
+      "ResourceNotFoundException",
+      "NotFoundException",
+      "AccessDeniedException"
+    ]
+  },
+  "medialive": {
+    "slug": "medialive",
+    "name": "AWS Elemental MediaLive",
+    "category": "media",
+    "resources": [
+      "channels",
+      "inputs",
+      "schedules"
+    ],
+    "errors": [
+      "UnprocessableEntityException",
+      "ThrottlingException",
+      "ResourceNotFoundException",
+      "NotFoundException",
+      "AccessDeniedException"
+    ]
+  },
+  "mediapackage": {
+    "slug": "mediapackage",
+    "name": "AWS Elemental MediaPackage",
+    "category": "media",
+    "resources": [
+      "channels",
+      "origin_endpoints"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "NotFoundException",
+      "AccessDeniedException"
+    ]
+  },
+  "mediastore": {
+    "slug": "mediastore",
+    "name": "AWS Elemental MediaStore",
+    "category": "media",
+    "resources": [
+      "containers",
+      "items"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "ContainerNotFoundException",
+      "AccessDeniedException"
+    ]
+  },
+  "mediatailor": {
+    "slug": "mediatailor",
+    "name": "AWS Elemental MediaTailor",
+    "category": "media",
+    "resources": [
+      "playback_configurations",
+      "channels"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "BadRequestException",
+      "AccessDeniedException"
+    ]
+  },
+  "entityresolution": {
+    "slug": "entityresolution",
+    "name": "AWS Entity Resolution",
+    "category": "ai_ml",
+    "resources": [
+      "matching_workflows",
+      "schema_mappings"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "fargate": {
+    "slug": "fargate",
+    "name": "AWS Fargate",
+    "category": "compute",
+    "resources": [
+      "tasks",
+      "capacity_providers"
+    ],
+    "errors": [
+      "ThrottlingException",
+      "TaskStoppedException",
+      "ResourceNotFoundException",
+      "InvalidParameterException",
+      "ClusterNotFoundException",
+      "AccessDeniedException"
+    ]
+  },
+  "fis": {
+    "slug": "fis",
+    "name": "AWS Fault Injection Simulator",
+    "category": "monitoring",
+    "resources": [
+      "experiments",
+      "experiment_templates",
+      "actions"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "fms": {
+    "slug": "fms",
+    "name": "AWS Firewall Manager",
+    "category": "security",
+    "resources": [
+      "policies",
+      "admin_accounts"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "InvalidOperationException",
+      "AccessDeniedException"
+    ]
+  },
+  "globalaccelerator": {
+    "slug": "globalaccelerator",
+    "name": "AWS Global Accelerator",
+    "category": "networking",
+    "resources": [
+      "accelerators",
+      "listeners",
+      "endpoint_groups"
+    ],
+    "errors": [
+      "ThrottlingException",
+      "AcceleratorNotFoundException",
+      "ResourceNotFoundException",
+      "ListenerNotFoundException",
+      "AccessDeniedException"
+    ]
+  },
+  "glue": {
+    "slug": "glue",
+    "name": "AWS Glue",
+    "category": "analytics",
+    "resources": [
+      "databases",
+      "tables",
+      "crawlers",
+      "jobs",
+      "triggers",
+      "workflows"
+    ],
+    "errors": [
+      "ThrottlingException",
+      "ConcurrentRunsExceededException",
+      "EntityNotFoundException",
+      "ResourceNumberLimitExceededException",
+      "ResourceNotFoundException",
+      "AccessDeniedException"
+    ]
+  },
+  "groundstation": {
+    "slug": "groundstation",
+    "name": "AWS Ground Station",
+    "category": "satellite",
+    "resources": [
+      "mission_profiles",
+      "contacts",
+      "data_flow_endpoint_groups"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "healthimaging": {
+    "slug": "healthimaging",
+    "name": "AWS HealthImaging",
+    "category": "healthcare",
+    "resources": [
+      "data_stores",
+      "import_jobs"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "sso": {
+    "slug": "sso",
+    "name": "AWS IAM Identity Center",
+    "category": "security",
+    "resources": [
+      "instances",
+      "permission_sets",
+      "accounts",
+      "groups"
+    ],
+    "errors": [
+      "AccessDeniedException",
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "ConflictException"
+    ]
+  },
+  "iam": {
+    "slug": "iam",
+    "name": "AWS Identity and Access Management (IAM)",
+    "category": "security",
+    "resources": [
+      "users",
+      "roles",
+      "policies",
+      "groups",
+      "instance_profiles",
+      "access_keys"
+    ],
+    "errors": [
+      "DeleteConflict",
+      "LimitExceeded",
+      "AccessDeniedException",
+      "ThrottlingException",
+      "UnmodifiableEntity",
+      "ResourceNotFoundException",
+      "NoSuchEntity",
+      "EntityAlreadyExists",
+      "MalformedPolicyDocument"
+    ]
+  },
+  "iotanalytics": {
+    "slug": "iotanalytics",
+    "name": "AWS IoT Analytics",
+    "category": "iot",
+    "resources": [
+      "channels",
+      "datastores",
+      "pipelines",
+      "datasets"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "iot": {
+    "slug": "iot",
+    "name": "AWS IoT Core",
+    "category": "iot",
+    "resources": [
+      "things",
+      "certificates",
+      "policies",
+      "topics",
+      "jobs"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "iotdevicedefender": {
+    "slug": "iotdevicedefender",
+    "name": "AWS IoT Device Defender",
+    "category": "iot",
+    "resources": [
+      "audit_findings",
+      "scheduled_audits"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "iotdevicemanagement": {
+    "slug": "iotdevicemanagement",
+    "name": "AWS IoT Device Management",
+    "category": "iot",
+    "resources": [
+      "fleets",
+      "jobs",
+      "groups"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "iotevents": {
+    "slug": "iotevents",
+    "name": "AWS IoT Events",
+    "category": "iot",
+    "resources": [
+      "detector_models",
+      "alarms",
+      "inputs"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "iotfleetwise": {
+    "slug": "iotfleetwise",
+    "name": "AWS IoT FleetWise",
+    "category": "iot",
+    "resources": [
+      "fleets",
+      "vehicles",
+      "campaigns"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "greengrass": {
+    "slug": "greengrass",
+    "name": "AWS IoT Greengrass",
+    "category": "iot",
+    "resources": [
+      "core_devices",
+      "components",
+      "deployments"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "iotsitewise": {
+    "slug": "iotsitewise",
+    "name": "AWS IoT SiteWise",
+    "category": "iot",
+    "resources": [
+      "assets",
+      "models",
+      "gateways",
+      "portals"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "iottwinmaker": {
+    "slug": "iottwinmaker",
+    "name": "AWS IoT TwinMaker",
+    "category": "iot",
+    "resources": [
+      "workspaces",
+      "scenes",
+      "entities"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "kms": {
+    "slug": "kms",
+    "name": "AWS Key Management Service (KMS)",
+    "category": "security",
+    "resources": [
+      "keys",
+      "aliases",
+      "grants"
+    ],
+    "errors": [
+      "DisabledException",
+      "KMSInternalException",
+      "ThrottlingException",
+      "ResourceNotFoundException",
+      "KeyUnavailableException",
+      "NotFoundException",
+      "KMSInvalidStateException",
+      "AccessDeniedException"
+    ]
+  },
+  "lakeformation": {
+    "slug": "lakeformation",
+    "name": "AWS Lake Formation",
+    "category": "analytics",
+    "resources": [
+      "resources",
+      "permissions",
+      "data_lake_settings"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "EntityNotFoundException",
+      "AccessDeniedException"
+    ]
+  },
+  "lambda": {
+    "slug": "lambda",
+    "name": "AWS Lambda",
+    "category": "compute",
+    "resources": [
+      "functions",
+      "layers",
+      "aliases",
+      "versions",
+      "event_source_mappings",
+      "permissions"
+    ],
+    "errors": [
+      "KMSAccessDeniedException",
+      "ResourceConflictException",
+      "CodeStorageExceededException",
+      "ThrottlingException",
+      "AccessDeniedException",
+      "UnsupportedMediaTypeException",
+      "ResourceNotFoundException",
+      "InvalidParameterValueException",
+      "TooManyRequestsException",
+      "ServiceException",
+      "RequestEntityTooLargeException"
+    ]
+  },
+  "launchwizard": {
+    "slug": "launchwizard",
+    "name": "AWS Launch Wizard",
+    "category": "management",
+    "resources": [
+      "deployments"
+    ],
+    "errors": [
+      "ValidationException",
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "licensemanager": {
+    "slug": "licensemanager",
+    "name": "AWS License Manager",
+    "category": "management",
+    "resources": [
+      "license_configurations",
+      "licenses"
+    ],
+    "errors": [
+      "InvalidParameterValueException",
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "localzones": {
+    "slug": "localzones",
+    "name": "AWS Local Zones",
+    "category": "edge",
+    "resources": [
+      "zones"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "NotFoundException",
+      "AccessDeniedException"
+    ]
+  },
+  "mainframe": {
+    "slug": "mainframe",
+    "name": "AWS Mainframe Modernization",
+    "category": "migration",
+    "resources": [
+      "applications",
+      "environments"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "ams": {
+    "slug": "ams",
+    "name": "AWS Managed Services",
+    "category": "management",
+    "resources": [
+      "stacks",
+      "change_requests"
+    ],
+    "errors": [
+      "ValidationException",
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "migrationhub": {
+    "slug": "migrationhub",
+    "name": "AWS Migration Hub",
+    "category": "management",
+    "resources": [
+      "progress_updates",
+      "migration_tasks"
+    ],
+    "errors": [
+      "UnauthorizedOperation",
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "networkfirewall": {
+    "slug": "networkfirewall",
+    "name": "AWS Network Firewall",
+    "category": "networking",
+    "resources": [
+      "firewalls",
+      "rule_groups",
+      "policies"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "opsworks": {
+    "slug": "opsworks",
+    "name": "AWS OpsWorks",
+    "category": "management",
+    "resources": [
+      "stacks",
+      "layers",
+      "instances",
+      "apps"
+    ],
+    "errors": [
+      "AccessDeniedException",
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "ValidationException"
+    ]
+  },
+  "organizations": {
+    "slug": "organizations",
+    "name": "AWS Organizations",
+    "category": "management",
+    "resources": [
+      "accounts",
+      "organizational_units",
+      "policies",
+      "roots"
+    ],
+    "errors": [
+      "ThrottlingException",
+      "ConcurrentModificationException",
+      "ResourceNotFoundException",
+      "AccountNotFoundException",
+      "AccessDeniedException"
+    ]
+  },
+  "outposts": {
+    "slug": "outposts",
+    "name": "AWS Outposts",
+    "category": "edge",
+    "resources": [
+      "sites",
+      "outposts",
+      "orders"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "NotFoundException",
+      "AccessDeniedException"
+    ]
+  },
+  "panorama": {
+    "slug": "panorama",
+    "name": "AWS Panorama",
+    "category": "ai_ml",
+    "resources": [
+      "devices",
+      "application_instances"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "paymentcryptography": {
+    "slug": "paymentcryptography",
+    "name": "AWS Payment Cryptography",
+    "category": "security",
+    "resources": [
+      "keys",
+      "aliases"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "acmpca": {
+    "slug": "acmpca",
+    "name": "AWS Private CA",
+    "category": "security",
+    "resources": [
+      "certificate_authorities",
+      "certificates"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "RequestInProgressException",
+      "AccessDeniedException"
+    ]
+  },
+  "privatelink": {
+    "slug": "privatelink",
+    "name": "AWS PrivateLink",
+    "category": "networking",
+    "resources": [
+      "endpoints",
+      "endpoint_services"
+    ],
+    "errors": [
+      "ThrottlingException",
+      "InvalidServiceName",
+      "ResourceNotFoundException",
+      "VpcEndpointLimitExceeded",
+      "AccessDeniedException"
+    ]
+  },
+  "proton": {
+    "slug": "proton",
+    "name": "AWS Proton",
+    "category": "management",
+    "resources": [
+      "templates",
+      "environments",
+      "services"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "resiliencehub": {
+    "slug": "resiliencehub",
+    "name": "AWS Resilience Hub",
+    "category": "management",
+    "resources": [
+      "apps",
+      "resiliency_policies",
+      "assessments"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "ram": {
+    "slug": "ram",
+    "name": "AWS Resource Access Manager (RAM)",
+    "category": "management",
+    "resources": [
+      "resource_shares",
+      "invitations",
+      "permissions"
+    ],
+    "errors": [
+      "UnknownResourceException",
+      "ThrottlingException",
+      "ResourceNotFoundException",
+      "ResourceShareLimitExceededException",
+      "AccessDeniedException"
+    ]
+  },
+  "robomaker": {
+    "slug": "robomaker",
+    "name": "AWS RoboMaker",
+    "category": "robotics",
+    "resources": [
+      "robots",
+      "fleets",
+      "simulations",
+      "worlds"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "secretsmanager": {
+    "slug": "secretsmanager",
+    "name": "AWS Secrets Manager",
+    "category": "security",
+    "resources": [
+      "secrets",
+      "rotation_lambdas"
+    ],
+    "errors": [
+      "InvalidRequestException",
+      "ThrottlingException",
+      "AccessDeniedException",
+      "ResourceNotFoundException",
+      "DecryptionFailure",
+      "ResourceExistsException"
+    ]
+  },
+  "securityhub": {
+    "slug": "securityhub",
+    "name": "AWS Security Hub",
+    "category": "security",
+    "resources": [
+      "standards",
+      "controls",
+      "findings",
+      "insights"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "InvalidAccessException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "serverlessrepo": {
+    "slug": "serverlessrepo",
+    "name": "AWS Serverless Application Repository",
+    "category": "compute",
+    "resources": [
+      "applications",
+      "versions"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "NotFoundException",
+      "AccessDeniedException"
+    ]
+  },
+  "servicecatalog": {
+    "slug": "servicecatalog",
+    "name": "AWS Service Catalog",
+    "category": "management",
+    "resources": [
+      "portfolios",
+      "products",
+      "provisioned_products"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "InvalidParametersException",
+      "AccessDeniedException"
+    ]
+  },
+  "shield": {
+    "slug": "shield",
+    "name": "AWS Shield",
+    "category": "security",
+    "resources": [
+      "protections",
+      "subscriptions"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "InvalidPaginationTokenException",
+      "AccessDeniedException"
+    ]
+  },
+  "simspaceweaver": {
+    "slug": "simspaceweaver",
+    "name": "AWS SimSpace Weaver",
+    "category": "gametech",
+    "resources": [
+      "simulations"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "snow": {
+    "slug": "snow",
+    "name": "AWS Snow Family",
+    "category": "edge",
+    "resources": [
+      "jobs",
+      "clusters"
+    ],
+    "errors": [
+      "InvalidJobStateException",
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "snowball": {
+    "slug": "snowball",
+    "name": "AWS Snowball",
+    "category": "edge",
+    "resources": [
+      "jobs"
+    ],
+    "errors": [
+      "InvalidJobStateException",
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "snowcone": {
+    "slug": "snowcone",
+    "name": "AWS Snowcone",
+    "category": "edge",
+    "resources": [
+      "jobs"
+    ],
+    "errors": [
+      "InvalidJobStateException",
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "snowmobile": {
+    "slug": "snowmobile",
+    "name": "AWS Snowmobile",
+    "category": "edge",
+    "resources": [
+      "jobs"
+    ],
+    "errors": [
+      "InvalidJobStateException",
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "stepfunctions": {
+    "slug": "stepfunctions",
+    "name": "AWS Step Functions",
+    "category": "integration",
+    "resources": [
+      "state_machines",
+      "executions",
+      "activities"
+    ],
+    "errors": [
+      "StateMachineDoesNotExist",
+      "States.TaskFailed",
+      "AccessDeniedException",
+      "ThrottlingException",
+      "StateMachineLimitExceeded",
+      "ResourceNotFoundException",
+      "States.Timeout",
+      "ExecutionDoesNotExist"
+    ]
+  },
+  "storagegateway": {
+    "slug": "storagegateway",
+    "name": "AWS Storage Gateway",
+    "category": "storage",
+    "resources": [
+      "gateways",
+      "volumes",
+      "tapes"
+    ],
+    "errors": [
+      "InternalServerError",
+      "ThrottlingException",
+      "ResourceNotFoundException",
+      "InvalidGatewayRequestException",
+      "AccessDeniedException"
+    ]
+  },
+  "supplychain": {
+    "slug": "supplychain",
+    "name": "AWS Supply Chain",
+    "category": "industry",
+    "resources": [
+      "instances",
+      "data_lake_datasets"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "ssm": {
+    "slug": "ssm",
+    "name": "AWS Systems Manager",
+    "category": "management",
+    "resources": [
+      "parameters",
+      "documents",
+      "run_commands",
+      "sessions",
+      "patches",
+      "automations"
+    ],
+    "errors": [
+      "InvalidInstanceId",
+      "ParameterAlreadyExists",
+      "TooManyUpdates",
+      "ThrottlingException",
+      "AccessDeniedException",
+      "ResourceNotFoundException",
+      "InvalidDocument",
+      "ParameterNotFound"
+    ]
+  },
+  "tnb": {
+    "slug": "tnb",
+    "name": "AWS Telco Network Builder",
+    "category": "networking",
+    "resources": [
+      "sol_function_packages",
+      "sol_network_packages",
+      "instances"
+    ],
+    "errors": [
+      "ValidationException",
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "transfer": {
+    "slug": "transfer",
+    "name": "AWS Transfer Family",
+    "category": "storage",
+    "resources": [
+      "servers",
+      "users",
+      "workflows"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "InvalidRequestException",
+      "AccessDeniedException"
+    ]
+  },
+  "transitgateway": {
+    "slug": "transitgateway",
+    "name": "AWS Transit Gateway",
+    "category": "networking",
+    "resources": [
+      "transit_gateways",
+      "attachments",
+      "route_tables"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "TransitGatewayLimitExceeded",
+      "AccessDeniedException"
+    ]
+  },
+  "trustedadvisor": {
+    "slug": "trustedadvisor",
+    "name": "AWS Trusted Advisor",
+    "category": "monitoring",
+    "resources": [
+      "checks",
+      "check_results"
+    ],
+    "errors": [
+      "InvalidParameterValueException",
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "vpn": {
+    "slug": "vpn",
+    "name": "AWS VPN",
+    "category": "networking",
+    "resources": [
+      "connections",
+      "gateways"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "VpnConnectionLimitExceeded",
+      "AccessDeniedException"
+    ]
+  },
+  "verifiedaccess": {
+    "slug": "verifiedaccess",
+    "name": "AWS Verified Access",
+    "category": "security",
+    "resources": [
+      "instances",
+      "groups",
+      "endpoints"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "verifiedpermissions": {
+    "slug": "verifiedpermissions",
+    "name": "AWS Verified Permissions",
+    "category": "security",
+    "resources": [
+      "policy_stores",
+      "policies",
+      "schemas"
+    ],
+    "errors": [
+      "AccessDeniedException",
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "ConflictException"
+    ]
+  },
+  "waf": {
+    "slug": "waf",
+    "name": "AWS WAF",
+    "category": "security",
+    "resources": [
+      "web_acls",
+      "rules",
+      "rule_groups",
+      "ip_sets"
+    ],
+    "errors": [
+      "WAFLimitsExceededException",
+      "ThrottlingException",
+      "ResourceNotFoundException",
+      "WAFNonexistentItemException",
+      "AccessDeniedException"
+    ]
+  },
+  "wavelength": {
+    "slug": "wavelength",
+    "name": "AWS Wavelength",
+    "category": "edge",
+    "resources": [
+      "zones",
+      "carrier_gateways"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "NotFoundException",
+      "AccessDeniedException"
+    ]
+  },
+  "wellarchitected": {
+    "slug": "wellarchitected",
+    "name": "AWS Well-Architected Tool",
+    "category": "management",
+    "resources": [
+      "workloads",
+      "lenses",
+      "reviews"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "wickr": {
+    "slug": "wickr",
+    "name": "AWS Wickr",
+    "category": "engagement",
+    "resources": [
+      "networks"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "xray": {
+    "slug": "xray",
+    "name": "AWS X-Ray",
+    "category": "monitoring",
+    "resources": [
+      "traces",
+      "groups",
+      "sampling_rules"
+    ],
+    "errors": [
+      "InvalidRequestException",
+      "ThrottlingException",
+      "RuleLimitExceededException",
+      "ResourceNotFoundException",
+      "AccessDeniedException"
+    ]
+  },
+  "apigateway": {
+    "slug": "apigateway",
+    "name": "Amazon API Gateway",
+    "category": "networking",
+    "resources": [
+      "rest_apis",
+      "resources",
+      "methods",
+      "stages",
+      "deployments",
+      "authorizers",
+      "usage_plans"
+    ],
+    "errors": [
+      "ConflictException",
+      "ThrottlingException",
+      "ResourceNotFoundException",
+      "NotFoundException",
+      "TooManyRequestsException",
+      "UnauthorizedException",
+      "AccessDeniedException"
+    ]
+  },
+  "appflow": {
+    "slug": "appflow",
+    "name": "Amazon AppFlow",
+    "category": "integration",
+    "resources": [
+      "flows",
+      "connector_profiles",
+      "executions"
+    ],
+    "errors": [
+      "AccessDeniedException",
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "ConflictException"
+    ]
+  },
+  "appstream": {
+    "slug": "appstream",
+    "name": "Amazon AppStream 2.0",
+    "category": "frontend",
+    "resources": [
+      "fleets",
+      "stacks",
+      "sessions",
+      "images"
+    ],
+    "errors": [
+      "AccessDeniedException",
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "OperationNotPermittedException"
+    ]
+  },
+  "athena": {
+    "slug": "athena",
+    "name": "Amazon Athena",
+    "category": "analytics",
+    "resources": [
+      "workgroups",
+      "named_queries",
+      "query_executions",
+      "data_catalogs"
+    ],
+    "errors": [
+      "InvalidRequestException",
+      "ThrottlingException",
+      "ResourceNotFoundException",
+      "TooManyRequestsException",
+      "InternalServerException",
+      "AccessDeniedException"
+    ]
+  },
+  "aurora": {
+    "slug": "aurora",
+    "name": "Amazon Aurora",
+    "category": "database",
+    "resources": [
+      "db_clusters",
+      "snapshots",
+      "global_clusters"
+    ],
+    "errors": [
+      "StorageQuotaExceeded",
+      "ThrottlingException",
+      "ResourceNotFoundException",
+      "DBClusterNotFoundFault",
+      "InvalidDBClusterStateFault",
+      "AccessDeniedException"
+    ]
+  },
+  "bedrock": {
+    "slug": "bedrock",
+    "name": "Amazon Bedrock",
+    "category": "ai_ml",
+    "resources": [
+      "foundation_models",
+      "custom_models",
+      "model_invocations",
+      "guardrails",
+      "agents"
+    ],
+    "errors": [
+      "ModelTimeoutException",
+      "ValidationException",
+      "ThrottlingException",
+      "ResourceNotFoundException",
+      "AccessDeniedException"
+    ]
+  },
+  "braket": {
+    "slug": "braket",
+    "name": "Amazon Braket",
+    "category": "quantum",
+    "resources": [
+      "devices",
+      "quantum_tasks"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "ServiceQuotaExceededException",
+      "AccessDeniedException"
+    ]
+  },
+  "chime": {
+    "slug": "chime",
+    "name": "Amazon Chime",
+    "category": "engagement",
+    "resources": [
+      "meetings",
+      "attendees",
+      "accounts"
+    ],
+    "errors": [
+      "ForbiddenException",
+      "ThrottlingException",
+      "ResourceNotFoundException",
+      "NotFoundException",
+      "AccessDeniedException"
+    ]
+  },
+  "chimesdk": {
+    "slug": "chimesdk",
+    "name": "Amazon Chime SDK",
+    "category": "engagement",
+    "resources": [
+      "meetings",
+      "media_pipelines",
+      "voice_connectors"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "NotFoundException",
+      "AccessDeniedException"
+    ]
+  },
+  "cloudfront": {
+    "slug": "cloudfront",
+    "name": "Amazon CloudFront",
+    "category": "networking",
+    "resources": [
+      "distributions",
+      "origin_access_identities",
+      "cache_policies",
+      "functions"
+    ],
+    "errors": [
+      "AccessDeniedException",
+      "ThrottlingException",
+      "InvalidArgument",
+      "DistributionNotDisabled",
+      "ResourceNotFoundException",
+      "NoSuchDistribution",
+      "TooManyDistributions"
+    ]
+  },
+  "cloudsearch": {
+    "slug": "cloudsearch",
+    "name": "Amazon CloudSearch",
+    "category": "analytics",
+    "resources": [
+      "domains",
+      "analysis_schemes"
+    ],
+    "errors": [
+      "ResourceNotFound",
+      "ThrottlingException",
+      "BaseException",
+      "ResourceNotFoundException",
+      "AccessDeniedException"
+    ]
+  },
+  "cloudwatch": {
+    "slug": "cloudwatch",
+    "name": "Amazon CloudWatch",
+    "category": "monitoring",
+    "resources": [
+      "alarms",
+      "metrics",
+      "dashboards",
+      "log_groups",
+      "log_streams",
+      "insights_queries"
+    ],
+    "errors": [
+      "ResourceNotFound",
+      "ThrottlingException",
+      "ResourceNotFoundException",
+      "LimitExceededException",
+      "InvalidParameterValueException",
+      "AccessDeniedException"
+    ]
+  },
+  "cognito": {
+    "slug": "cognito",
+    "name": "Amazon Cognito",
+    "category": "security",
+    "resources": [
+      "user_pools",
+      "identity_pools",
+      "clients"
+    ],
+    "errors": [
+      "ThrottlingException",
+      "ResourceNotFoundException",
+      "NotAuthorizedException",
+      "TooManyRequestsException",
+      "UserNotFoundException",
+      "AccessDeniedException"
+    ]
+  },
+  "comprehend": {
+    "slug": "comprehend",
+    "name": "Amazon Comprehend",
+    "category": "ai_ml",
+    "resources": [
+      "entities_detection_jobs",
+      "key_phrases_jobs",
+      "classifiers"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "TooManyRequestsException",
+      "AccessDeniedException"
+    ]
+  },
+  "comprehendmedical": {
+    "slug": "comprehendmedical",
+    "name": "Amazon Comprehend Medical",
+    "category": "ai_ml",
+    "resources": [
+      "entities_detection",
+      "icd10cm_inference"
+    ],
+    "errors": [
+      "TooManyRequestsException",
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "connect": {
+    "slug": "connect",
+    "name": "Amazon Connect",
+    "category": "engagement",
+    "resources": [
+      "instances",
+      "contact_flows",
+      "queues",
+      "users"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "DuplicateResourceException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "dlm": {
+    "slug": "dlm",
+    "name": "Amazon Data Lifecycle Manager",
+    "category": "storage",
+    "resources": [
+      "lifecycle_policies"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "datazone": {
+    "slug": "datazone",
+    "name": "Amazon DataZone",
+    "category": "analytics",
+    "resources": [
+      "domains",
+      "projects",
+      "environments"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "detective": {
+    "slug": "detective",
+    "name": "Amazon Detective",
+    "category": "security",
+    "resources": [
+      "graphs",
+      "members"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "devopsguru": {
+    "slug": "devopsguru",
+    "name": "Amazon DevOps Guru",
+    "category": "monitoring",
+    "resources": [
+      "insights",
+      "anomalies",
+      "resources"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "docdb": {
+    "slug": "docdb",
+    "name": "Amazon DocumentDB",
+    "category": "database",
+    "resources": [
+      "clusters",
+      "instances"
+    ],
+    "errors": [
+      "ThrottlingException",
+      "ResourceNotFoundException",
+      "DBClusterNotFoundFault",
+      "InvalidDBClusterStateFault",
+      "AccessDeniedException"
+    ]
+  },
+  "dynamodb": {
+    "slug": "dynamodb",
+    "name": "Amazon DynamoDB",
+    "category": "database",
+    "resources": [
+      "tables",
+      "global_secondary_indexes",
+      "streams",
+      "backups"
+    ],
+    "errors": [
+      "ConditionalCheckFailedException",
+      "ThrottlingException",
+      "ValidationException",
+      "TransactionConflictException",
+      "ProvisionedThroughputExceededException",
+      "ResourceNotFoundException",
+      "RequestLimitExceeded",
+      "AccessDeniedException"
+    ]
+  },
+  "ec2": {
+    "slug": "ec2",
+    "name": "Amazon EC2",
+    "category": "compute",
+    "resources": [
+      "instances",
+      "volumes",
+      "security_groups",
+      "subnets",
+      "amis",
+      "snapshots",
+      "key_pairs"
+    ],
+    "errors": [
+      "InstanceLimitExceeded",
+      "UnauthorizedOperation",
+      "ThrottlingException",
+      "ResourceNotFoundException",
+      "InsufficientInstanceCapacity",
+      "InvalidInstanceID.NotFound",
+      "Client.RequestLimitExceeded",
+      "AccessDeniedException"
+    ]
+  },
+  "autoscaling": {
+    "slug": "autoscaling",
+    "name": "Amazon EC2 Auto Scaling",
+    "category": "compute",
+    "resources": [
+      "groups",
+      "launch_configurations",
+      "scaling_policies",
+      "scheduled_actions"
+    ],
+    "errors": [
+      "AlreadyExists",
+      "LimitExceeded",
+      "ThrottlingException",
+      "ResourceNotFoundException",
+      "ResourceInUse",
+      "ScalingActivityInProgress",
+      "AccessDeniedException"
+    ]
+  },
+  "ec2imagebuilder": {
+    "slug": "ec2imagebuilder",
+    "name": "Amazon EC2 Image Builder",
+    "category": "other",
+    "resources": [
+      "resources"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "ec2spotinstances": {
+    "slug": "ec2spotinstances",
+    "name": "Amazon EC2 Spot Instances",
+    "category": "other",
+    "resources": [
+      "resources"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "emr": {
+    "slug": "emr",
+    "name": "Amazon EMR",
+    "category": "analytics",
+    "resources": [
+      "clusters",
+      "instance_groups",
+      "steps"
+    ],
+    "errors": [
+      "InvalidRequestException",
+      "ThrottlingException",
+      "ResourceNotFoundException",
+      "InternalServerException",
+      "AccessDeniedException"
+    ]
+  },
+  "elasticache": {
+    "slug": "elasticache",
+    "name": "Amazon ElastiCache",
+    "category": "database",
+    "resources": [
+      "clusters",
+      "replication_groups",
+      "snapshots",
+      "parameter_groups"
+    ],
+    "errors": [
+      "NodeQuotaForCustomerExceededFault",
+      "ThrottlingException",
+      "ResourceNotFoundException",
+      "CacheClusterNotFoundFault",
+      "CacheClusterAlreadyExistsFault",
+      "AccessDeniedException"
+    ]
+  },
+  "ebs": {
+    "slug": "ebs",
+    "name": "Amazon Elastic Block Store (EBS)",
+    "category": "storage",
+    "resources": [
+      "volumes",
+      "snapshots"
+    ],
+    "errors": [
+      "SnapshotLimitExceeded",
+      "ThrottlingException",
+      "InvalidVolume.NotFound",
+      "ResourceNotFoundException",
+      "VolumeInUse",
+      "AccessDeniedException"
+    ]
+  },
+  "ecr": {
+    "slug": "ecr",
+    "name": "Amazon Elastic Container Registry (ECR)",
+    "category": "compute",
+    "resources": [
+      "repositories",
+      "images"
+    ],
+    "errors": [
+      "AccessDeniedException",
+      "ThrottlingException",
+      "ResourceNotFoundException",
+      "RepositoryAlreadyExistsException",
+      "ImageNotFoundException",
+      "TooManyRequestsException",
+      "RepositoryNotFoundException"
+    ]
+  },
+  "ecs": {
+    "slug": "ecs",
+    "name": "Amazon Elastic Container Service (ECS)",
+    "category": "compute",
+    "resources": [
+      "clusters",
+      "services",
+      "task_definitions",
+      "tasks",
+      "container_instances"
+    ],
+    "errors": [
+      "TaskNotFoundException",
+      "ServiceNotFoundException",
+      "ThrottlingException",
+      "ResourceNotFoundException",
+      "NoUpdateAvailableException",
+      "ClusterNotFoundException",
+      "AccessDeniedException"
+    ]
+  },
+  "efs": {
+    "slug": "efs",
+    "name": "Amazon Elastic File System (EFS)",
+    "category": "storage",
+    "resources": [
+      "file_systems",
+      "mount_targets",
+      "access_points"
+    ],
+    "errors": [
+      "MountTargetNotFound",
+      "ThrottlingException",
+      "FileSystemNotFound",
+      "ResourceNotFoundException",
+      "ThroughputLimitExceeded",
+      "AccessDeniedException"
+    ]
+  },
+  "elasticinference": {
+    "slug": "elasticinference",
+    "name": "Amazon Elastic Inference",
+    "category": "other",
+    "resources": [
+      "resources"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "eks": {
+    "slug": "eks",
+    "name": "Amazon Elastic Kubernetes Service (EKS)",
+    "category": "compute",
+    "resources": [
+      "clusters",
+      "nodegroups",
+      "fargate_profiles",
+      "addons"
+    ],
+    "errors": [
+      "InvalidRequestException",
+      "ThrottlingException",
+      "AccessDeniedException",
+      "ResourceNotFoundException",
+      "ServerException",
+      "ClientException"
+    ]
+  },
+  "elastictranscoder": {
+    "slug": "elastictranscoder",
+    "name": "Amazon Elastic Transcoder",
+    "category": "media",
+    "resources": [
+      "pipelines",
+      "jobs",
+      "presets"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "events": {
+    "slug": "events",
+    "name": "Amazon EventBridge",
+    "category": "messaging",
+    "resources": [
+      "event_buses",
+      "rules",
+      "targets",
+      "archives",
+      "schedules"
+    ],
+    "errors": [
+      "ManagedRuleException",
+      "ThrottlingException",
+      "ResourceNotFoundException",
+      "InvalidEventPatternException",
+      "AccessDeniedException"
+    ]
+  },
+  "fsx": {
+    "slug": "fsx",
+    "name": "Amazon FSx",
+    "category": "storage",
+    "resources": [
+      "file_systems",
+      "backups",
+      "data_repository_associations"
+    ],
+    "errors": [
+      "ThrottlingException",
+      "FileSystemNotFound",
+      "BackupNotFound",
+      "ResourceNotFoundException",
+      "AccessDeniedException"
+    ]
+  },
+  "finspace": {
+    "slug": "finspace",
+    "name": "Amazon FinSpace",
+    "category": "analytics",
+    "resources": [
+      "environments",
+      "users",
+      "datasets"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "forecast": {
+    "slug": "forecast",
+    "name": "Amazon Forecast",
+    "category": "ai_ml",
+    "resources": [
+      "predictors",
+      "forecasts",
+      "datasets"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "LimitExceededException",
+      "AccessDeniedException"
+    ]
+  },
+  "frauddetector": {
+    "slug": "frauddetector",
+    "name": "Amazon Fraud Detector",
+    "category": "ai_ml",
+    "resources": [
+      "detectors",
+      "models",
+      "outcomes"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "gamelift": {
+    "slug": "gamelift",
+    "name": "Amazon GameLift",
+    "category": "gametech",
+    "resources": [
+      "fleets",
+      "game_sessions",
+      "aliases",
+      "matchmaking_configurations"
+    ],
+    "errors": [
+      "FleetCapacityExceededException",
+      "ThrottlingException",
+      "ResourceNotFoundException",
+      "NotFoundException",
+      "AccessDeniedException"
+    ]
+  },
+  "guardduty": {
+    "slug": "guardduty",
+    "name": "Amazon GuardDuty",
+    "category": "security",
+    "resources": [
+      "detectors",
+      "findings",
+      "ip_sets",
+      "threat_intel_sets"
+    ],
+    "errors": [
+      "InternalServerErrorException",
+      "ThrottlingException",
+      "BadRequestException",
+      "ResourceNotFoundException",
+      "AccessDeniedException"
+    ]
+  },
+  "healthlake": {
+    "slug": "healthlake",
+    "name": "Amazon HealthLake",
+    "category": "healthcare",
+    "resources": [
+      "fhir_datastores",
+      "import_jobs",
+      "export_jobs"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "inspector": {
+    "slug": "inspector",
+    "name": "Amazon Inspector",
+    "category": "security",
+    "resources": [
+      "findings",
+      "assessments",
+      "filters"
+    ],
+    "errors": [
+      "AccessDeniedException",
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "NoSuchEntityException"
+    ]
+  },
+  "ivs": {
+    "slug": "ivs",
+    "name": "Amazon Interactive Video Service (IVS)",
+    "category": "media",
+    "resources": [
+      "channels",
+      "streams",
+      "recordings"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "kendra": {
+    "slug": "kendra",
+    "name": "Amazon Kendra",
+    "category": "ai_ml",
+    "resources": [
+      "indexes",
+      "data_sources",
+      "faqs"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "ServiceQuotaExceededException",
+      "AccessDeniedException"
+    ]
+  },
+  "keyspaces": {
+    "slug": "keyspaces",
+    "name": "Amazon Keyspaces",
+    "category": "database",
+    "resources": [
+      "keyspaces",
+      "tables"
+    ],
+    "errors": [
+      "AccessDeniedException",
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "ConflictException"
+    ]
+  },
+  "kinesis": {
+    "slug": "kinesis",
+    "name": "Amazon Kinesis Data Streams",
+    "category": "messaging",
+    "resources": [
+      "streams",
+      "shards",
+      "consumers"
+    ],
+    "errors": [
+      "ThrottlingException",
+      "ProvisionedThroughputExceededException",
+      "ResourceNotFoundException",
+      "LimitExceededException",
+      "AccessDeniedException"
+    ]
+  },
+  "kinesisanalytics": {
+    "slug": "kinesisanalytics",
+    "name": "Amazon Kinesis Data Analytics",
+    "category": "messaging",
+    "resources": [
+      "applications",
+      "input_processing"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "InvalidApplicationConfigurationException",
+      "AccessDeniedException"
+    ]
+  },
+  "firehose": {
+    "slug": "firehose",
+    "name": "Amazon Kinesis Data Firehose",
+    "category": "messaging",
+    "resources": [
+      "delivery_streams"
+    ],
+    "errors": [
+      "ThrottlingException",
+      "InvalidArgumentException",
+      "ResourceNotFoundException",
+      "ServiceUnavailableException",
+      "AccessDeniedException"
+    ]
+  },
+  "kinesisvideo": {
+    "slug": "kinesisvideo",
+    "name": "Amazon Kinesis Video Streams",
+    "category": "messaging",
+    "resources": [
+      "streams",
+      "signaling_channels"
+    ],
+    "errors": [
+      "AccessDeniedException",
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "ClientLimitExceededException"
+    ]
+  },
+  "lex": {
+    "slug": "lex",
+    "name": "Amazon Lex",
+    "category": "ai_ml",
+    "resources": [
+      "bots",
+      "intents",
+      "slots",
+      "aliases"
+    ],
+    "errors": [
+      "ConflictException",
+      "ThrottlingException",
+      "ResourceNotFoundException",
+      "NotFoundException",
+      "AccessDeniedException"
+    ]
+  },
+  "lightsail": {
+    "slug": "lightsail",
+    "name": "Amazon Lightsail",
+    "category": "compute",
+    "resources": [
+      "instances",
+      "databases",
+      "load_balancers",
+      "disks"
+    ],
+    "errors": [
+      "ThrottlingException",
+      "ResourceNotFoundException",
+      "NotFoundException",
+      "OperationFailureException",
+      "AccessDeniedException"
+    ]
+  },
+  "location": {
+    "slug": "location",
+    "name": "Amazon Location Service",
+    "category": "frontend",
+    "resources": [
+      "maps",
+      "place_indexes",
+      "route_calculators",
+      "trackers",
+      "geofence_collections"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "lookoutequipment": {
+    "slug": "lookoutequipment",
+    "name": "Amazon Lookout for Equipment",
+    "category": "ai_ml",
+    "resources": [
+      "models",
+      "datasets",
+      "inferences"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "lookoutmetrics": {
+    "slug": "lookoutmetrics",
+    "name": "Amazon Lookout for Metrics",
+    "category": "ai_ml",
+    "resources": [
+      "anomaly_detectors",
+      "metric_sets"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "lookoutvision": {
+    "slug": "lookoutvision",
+    "name": "Amazon Lookout for Vision",
+    "category": "ai_ml",
+    "resources": [
+      "projects",
+      "models",
+      "datasets"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "mq": {
+    "slug": "mq",
+    "name": "Amazon MQ",
+    "category": "messaging",
+    "resources": [
+      "brokers",
+      "configurations",
+      "users"
+    ],
+    "errors": [
+      "ConflictException",
+      "ThrottlingException",
+      "ResourceNotFoundException",
+      "NotFoundException",
+      "AccessDeniedException"
+    ]
+  },
+  "macie": {
+    "slug": "macie",
+    "name": "Amazon Macie",
+    "category": "security",
+    "resources": [
+      "findings",
+      "classification_jobs",
+      "custom_data_identifiers"
+    ],
+    "errors": [
+      "AccessDeniedException",
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "ConflictException"
+    ]
+  },
+  "managedblockchain": {
+    "slug": "managedblockchain",
+    "name": "Amazon Managed Blockchain",
+    "category": "blockchain",
+    "resources": [
+      "networks",
+      "members",
+      "nodes"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "grafana": {
+    "slug": "grafana",
+    "name": "Amazon Managed Grafana",
+    "category": "monitoring",
+    "resources": [
+      "workspaces",
+      "data_sources",
+      "dashboards"
+    ],
+    "errors": [
+      "AccessDeniedException",
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "ConflictException"
+    ]
+  },
+  "amp": {
+    "slug": "amp",
+    "name": "Amazon Managed Prometheus",
+    "category": "monitoring",
+    "resources": [
+      "workspaces",
+      "rule_groups",
+      "alerting_rules"
+    ],
+    "errors": [
+      "AccessDeniedException",
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "ValidationException"
+    ]
+  },
+  "kafka": {
+    "slug": "kafka",
+    "name": "Amazon Managed Streaming for Apache Kafka (MSK)",
+    "category": "messaging",
+    "resources": [
+      "clusters",
+      "configurations",
+      "topics",
+      "consumer_groups"
+    ],
+    "errors": [
+      "ThrottlingException",
+      "ResourceNotFoundException",
+      "ServiceUnavailableException",
+      "NotFoundException",
+      "TooManyRequestsException",
+      "AccessDeniedException"
+    ]
+  },
+  "mwaa": {
+    "slug": "mwaa",
+    "name": "Amazon Managed Workflows for Apache Airflow (MWAA)",
+    "category": "messaging",
+    "resources": [
+      "environments"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "memorydb": {
+    "slug": "memorydb",
+    "name": "Amazon MemoryDB for Redis",
+    "category": "database",
+    "resources": [
+      "clusters",
+      "snapshots",
+      "users"
+    ],
+    "errors": [
+      "ThrottlingException",
+      "ClusterNotFoundFault",
+      "ResourceNotFoundException",
+      "InvalidParameterValueException",
+      "AccessDeniedException"
+    ]
+  },
+  "monitron": {
+    "slug": "monitron",
+    "name": "Amazon Monitron",
+    "category": "iot",
+    "resources": [
+      "projects",
+      "sites",
+      "sensors",
+      "assets"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "neptune": {
+    "slug": "neptune",
+    "name": "Amazon Neptune",
+    "category": "database",
+    "resources": [
+      "clusters",
+      "instances",
+      "loads"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "DBClusterNotFoundFault",
+      "AccessDeniedException"
+    ]
+  },
+  "nimble": {
+    "slug": "nimble",
+    "name": "Amazon Nimble Studio",
+    "category": "media",
+    "resources": [
+      "studios",
+      "launch_profiles",
+      "streaming_sessions"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "omics": {
+    "slug": "omics",
+    "name": "Amazon Omics",
+    "category": "healthcare",
+    "resources": [
+      "sequence_stores",
+      "reference_stores",
+      "workflows",
+      "runs"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "opensearch": {
+    "slug": "opensearch",
+    "name": "Amazon OpenSearch Service",
+    "category": "analytics",
+    "resources": [
+      "domains",
+      "collections",
+      "packages"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "DisabledOperationException",
+      "AccessDeniedException"
+    ]
+  },
+  "personalize": {
+    "slug": "personalize",
+    "name": "Amazon Personalize",
+    "category": "ai_ml",
+    "resources": [
+      "solutions",
+      "campaigns",
+      "datasets",
+      "recommenders"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "pinpoint": {
+    "slug": "pinpoint",
+    "name": "Amazon Pinpoint",
+    "category": "engagement",
+    "resources": [
+      "apps",
+      "campaigns",
+      "journeys",
+      "segments"
+    ],
+    "errors": [
+      "ThrottlingException",
+      "BadRequestException",
+      "ResourceNotFoundException",
+      "NotFoundException",
+      "AccessDeniedException"
+    ]
+  },
+  "polly": {
+    "slug": "polly",
+    "name": "Amazon Polly",
+    "category": "ai_ml",
+    "resources": [
+      "voices",
+      "lexicons",
+      "synthesis_tasks"
+    ],
+    "errors": [
+      "ServiceFailureException",
+      "ThrottlingException",
+      "ResourceNotFoundException",
+      "LexiconNotFoundException",
+      "AccessDeniedException"
+    ]
+  },
+  "q": {
+    "slug": "q",
+    "name": "Amazon Q",
+    "category": "ai_ml",
+    "resources": [
+      "applications",
+      "retrievers",
+      "chats"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "qldb": {
+    "slug": "qldb",
+    "name": "Amazon QLDB",
+    "category": "database",
+    "resources": [
+      "ledgers",
+      "journals"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "LimitExceededException",
+      "AccessDeniedException"
+    ]
+  },
+  "quicksight": {
+    "slug": "quicksight",
+    "name": "Amazon QuickSight",
+    "category": "analytics",
+    "resources": [
+      "analyses",
+      "dashboards",
+      "datasets",
+      "data_sources",
+      "themes"
+    ],
+    "errors": [
+      "AccessDeniedException",
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "ConflictException"
+    ]
+  },
+  "redshift": {
+    "slug": "redshift",
+    "name": "Amazon Redshift",
+    "category": "database",
+    "resources": [
+      "clusters",
+      "snapshots",
+      "parameter_groups",
+      "users"
+    ],
+    "errors": [
+      "ClusterNotFound",
+      "InsufficientClusterCapacity",
+      "ThrottlingException",
+      "InvalidClusterState",
+      "ResourceNotFoundException",
+      "AccessDeniedException"
+    ]
+  },
+  "rekognition": {
+    "slug": "rekognition",
+    "name": "Amazon Rekognition",
+    "category": "ai_ml",
+    "resources": [
+      "collections",
+      "faces",
+      "stream_processors",
+      "projects"
+    ],
+    "errors": [
+      "AccessDeniedException",
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "ImageTooLargeException"
+    ]
+  },
+  "rds": {
+    "slug": "rds",
+    "name": "Amazon Relational Database Service (RDS)",
+    "category": "database",
+    "resources": [
+      "db_instances",
+      "db_clusters",
+      "snapshots",
+      "parameter_groups",
+      "subnet_groups"
+    ],
+    "errors": [
+      "DBInstanceAlreadyExists",
+      "StorageQuotaExceeded",
+      "ThrottlingException",
+      "ResourceNotFoundException",
+      "InsufficientDBInstanceCapacity",
+      "DBInstanceNotFound",
+      "DBClusterNotFoundFault",
+      "AccessDeniedException"
+    ]
+  },
+  "route53": {
+    "slug": "route53",
+    "name": "Amazon Route 53",
+    "category": "networking",
+    "resources": [
+      "hosted_zones",
+      "records",
+      "health_checks",
+      "domains"
+    ],
+    "errors": [
+      "ThrottlingException",
+      "NoSuchHealthCheck",
+      "ResourceNotFoundException",
+      "HostedZoneAlreadyExists",
+      "NoSuchHostedZone",
+      "AccessDeniedException"
+    ]
+  },
+  "glacier": {
+    "slug": "glacier",
+    "name": "Amazon S3 Glacier",
+    "category": "storage",
+    "resources": [
+      "vaults",
+      "archives"
+    ],
+    "errors": [
+      "InvalidParameterValueException",
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "sagemaker": {
+    "slug": "sagemaker",
+    "name": "Amazon SageMaker",
+    "category": "ai_ml",
+    "resources": [
+      "endpoints",
+      "training_jobs",
+      "models",
+      "notebooks",
+      "domains",
+      "pipelines"
+    ],
+    "errors": [
+      "ResourceNotFound",
+      "ThrottlingException",
+      "ResourceNotFoundException",
+      "ResourceInUse",
+      "ResourceLimitExceeded",
+      "AccessDeniedException"
+    ]
+  },
+  "securitylake": {
+    "slug": "securitylake",
+    "name": "Amazon Security Lake",
+    "category": "analytics",
+    "resources": [
+      "data_lakes",
+      "subscribers",
+      "sources"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "ses": {
+    "slug": "ses",
+    "name": "Amazon Simple Email Service (SES)",
+    "category": "engagement",
+    "resources": [
+      "identities",
+      "configuration_sets",
+      "templates"
+    ],
+    "errors": [
+      "MailFromDomainNotVerified",
+      "ThrottlingException",
+      "MessageRejected",
+      "ResourceNotFoundException",
+      "AccessDeniedException"
+    ]
+  },
+  "sns": {
+    "slug": "sns",
+    "name": "Amazon Simple Notification Service (SNS)",
+    "category": "messaging",
+    "resources": [
+      "topics",
+      "subscriptions",
+      "platform_applications"
+    ],
+    "errors": [
+      "AuthorizationErrorException",
+      "ThrottlingException",
+      "ResourceNotFoundException",
+      "NotFoundException",
+      "ThrottledException",
+      "FilterPolicyLimitExceededException",
+      "AccessDeniedException"
+    ]
+  },
+  "sqs": {
+    "slug": "sqs",
+    "name": "Amazon Simple Queue Service (SQS)",
+    "category": "messaging",
+    "resources": [
+      "queues",
+      "messages"
+    ],
+    "errors": [
+      "AWS.SimpleQueueService.QueueDeletedRecently",
+      "KmsThrottled",
+      "ThrottlingException",
+      "ResourceNotFoundException",
+      "AWS.SimpleQueueService.NonExistentQueue",
+      "AWS.SimpleQueueService.PurgeQueueInProgress",
+      "OverLimit",
+      "AccessDeniedException"
+    ]
+  },
+  "s3": {
+    "slug": "s3",
+    "name": "Amazon Simple Storage Service (S3)",
+    "category": "storage",
+    "resources": [
+      "buckets",
+      "objects"
+    ],
+    "errors": [
+      "KMS.DisabledException",
+      "ThrottlingException",
+      "KMS.KeyUnavailableException",
+      "ResourceNotFoundException",
+      "NoSuchBucket",
+      "BucketNotEmpty",
+      "SlowDown",
+      "AccessDenied",
+      "NoSuchKey",
+      "BucketAlreadyExists",
+      "AccessDeniedException"
+    ]
+  },
+  "textract": {
+    "slug": "textract",
+    "name": "Amazon Textract",
+    "category": "ai_ml",
+    "resources": [
+      "jobs",
+      "documents"
+    ],
+    "errors": [
+      "ThrottlingException",
+      "InvalidJobIdException",
+      "ProvisionedThroughputExceededException",
+      "ResourceNotFoundException",
+      "AccessDeniedException"
+    ]
+  },
+  "timestream": {
+    "slug": "timestream",
+    "name": "Amazon Timestream",
+    "category": "database",
+    "resources": [
+      "databases",
+      "tables"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "RejectedRecordsException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "transcribe": {
+    "slug": "transcribe",
+    "name": "Amazon Transcribe",
+    "category": "ai_ml",
+    "resources": [
+      "transcription_jobs",
+      "vocabularies",
+      "language_models"
+    ],
+    "errors": [
+      "ThrottlingException",
+      "BadRequestException",
+      "ResourceNotFoundException",
+      "NotFoundException",
+      "AccessDeniedException"
+    ]
+  },
+  "translate": {
+    "slug": "translate",
+    "name": "Amazon Translate",
+    "category": "ai_ml",
+    "resources": [
+      "text",
+      "jobs",
+      "custom_terminologies"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "TextSizeLimitExceededException",
+      "AccessDeniedException"
+    ]
+  },
+  "vpc": {
+    "slug": "vpc",
+    "name": "Amazon VPC",
+    "category": "networking",
+    "resources": [
+      "vpcs",
+      "subnets",
+      "route_tables",
+      "internet_gateways",
+      "nat_gateways",
+      "peering_connections",
+      "endpoints"
+    ],
+    "errors": [
+      "ThrottlingException",
+      "InvalidVpcID.NotFound",
+      "VpcLimitExceeded",
+      "ResourceNotFoundException",
+      "DependencyViolation",
+      "AccessDeniedException"
+    ]
+  },
+  "vpclattice": {
+    "slug": "vpclattice",
+    "name": "Amazon VPC Lattice",
+    "category": "networking",
+    "resources": [
+      "service_networks",
+      "services",
+      "listeners",
+      "target_groups"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "workdocs": {
+    "slug": "workdocs",
+    "name": "Amazon WorkDocs",
+    "category": "frontend",
+    "resources": [
+      "folders",
+      "documents",
+      "users"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "EntityNotExistsException",
+      "AccessDeniedException"
+    ]
+  },
+  "workmail": {
+    "slug": "workmail",
+    "name": "Amazon WorkMail",
+    "category": "frontend",
+    "resources": [
+      "organizations",
+      "users",
+      "groups",
+      "aliases"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "EntityNotFoundException",
+      "AccessDeniedException"
+    ]
+  },
+  "workspaces": {
+    "slug": "workspaces",
+    "name": "Amazon WorkSpaces",
+    "category": "frontend",
+    "resources": [
+      "workspaces",
+      "directories",
+      "bundles"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "InvalidParameterValuesException",
+      "AccessDeniedException"
+    ]
+  },
+  "efa": {
+    "slug": "efa",
+    "name": "Elastic Fabric Adapter",
+    "category": "networking",
+    "resources": [
+      "devices"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "AccessDeniedException"
+    ]
+  },
+  "rosa": {
+    "slug": "rosa",
+    "name": "Red Hat OpenShift Service on AWS (ROSA)",
+    "category": "compute",
+    "resources": [
+      "clusters",
+      "machine_pools"
+    ],
+    "errors": [
+      "ResourceNotFoundException",
+      "ThrottlingException",
+      "ClusterNotFoundException",
+      "AccessDeniedException"
+    ]
+  }
+}

@@ -77,6 +77,10 @@ class AwsEvidenceRecorder:
                                     "events": []},
             "sns":                 {"topic_arn": os.getenv("SNS_ALERTS_TOPIC_ARN"),
                                     "messages": []},
+            "sqs":                 {"queue_url": os.getenv("SQS_QUEUE_URL"),
+                                    "messages": []},
+            "eventbridge":         {"bus": os.getenv("EVENTBRIDGE_BUS_NAME", "default"),
+                                    "events": []},
             "secrets_manager":     {"loaded": []},
             "errors":              [],
         }
@@ -261,6 +265,55 @@ class AwsEvidenceRecorder:
             return False
 
     # ------------------------------------------------------------------
+    # SQS — push a per-update event so a side-car Lambda can consume.
+    # ------------------------------------------------------------------
+    def publish_sqs(self, body: dict) -> bool:
+        q = self.evidence["sqs"]["queue_url"]
+        if not q or not self.enabled:
+            return False
+        try:
+            sqs = self._client("sqs")
+            kwargs: dict[str, Any] = {"QueueUrl": q,
+                                      "MessageBody": json.dumps(body, default=str)}
+            if q.endswith(".fifo"):
+                kwargs["MessageGroupId"]         = "trainer"
+                kwargs["MessageDeduplicationId"] = f"t-{int(time.time()*1000)}"
+            sqs.send_message(**kwargs)
+            self.evidence["sqs"]["messages"].append({
+                "queue": q, "ts": int(time.time()),
+                "kind":  body.get("kind", "training_update"),
+            })
+            return True
+        except Exception as e:
+            self._err("sqs.send_message", e)
+            return False
+
+    # ------------------------------------------------------------------
+    # EventBridge — emit a structured event for downstream automations.
+    # ------------------------------------------------------------------
+    def publish_event(self, detail_type: str, detail: dict) -> bool:
+        if not self.enabled:
+            return False
+        bus = self.evidence["eventbridge"]["bus"]
+        try:
+            eb = self._client("events")
+            eb.put_events(Entries=[{
+                "Source":       os.getenv("EVENTBRIDGE_SOURCE",
+                                          "incident-commander.trainer"),
+                "DetailType":   detail_type,
+                "Detail":       json.dumps(detail, default=str),
+                "EventBusName": bus,
+            }])
+            self.evidence["eventbridge"]["events"].append({
+                "bus": bus, "detail_type": detail_type,
+                "ts": int(time.time()),
+            })
+            return True
+        except Exception as e:
+            self._err("eventbridge.put_events", e)
+            return False
+
+    # ------------------------------------------------------------------
     def write_evidence_file(self, out_dir: Path) -> Path:
         out = Path(out_dir) / "aws_evidence.json"
         self.evidence["finished_at"] = int(time.time())
@@ -271,6 +324,8 @@ class AwsEvidenceRecorder:
             "cloudwatch_datapoints":    len(self.evidence["cloudwatch_metrics"]["datapoints"]),
             "cloudwatch_log_events":    len(self.evidence["cloudwatch_logs"]["events"]),
             "sns_messages":             len(self.evidence["sns"]["messages"]),
+            "sqs_messages":             len(self.evidence["sqs"]["messages"]),
+            "eventbridge_events":       len(self.evidence["eventbridge"]["events"]),
             "errors":                   len(self.evidence["errors"]),
         }
         out.write_text(json.dumps(self.evidence, indent=2, default=str))

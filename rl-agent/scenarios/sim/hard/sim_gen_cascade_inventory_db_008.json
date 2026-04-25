@@ -1,0 +1,74 @@
+{
+  "id": "sim_gen_cascade_inventory_db_008",
+  "difficulty": "hard",
+  "title": "Dependency cascade \u2014 inventory_db is degraded, surfacing as alerts on checkout",
+  "description": "Alerts hit checkout, but the truth lives in inventory_db (degraded). Agent must walk the trace + describe_topology to find the real root, then vacuum/rollback.",
+  "preconditions": [],
+  "scheduled_failures": [],
+  "topology_overrides": [
+    {
+      "kind": "set_status",
+      "node": "inventory_db",
+      "status": "degraded"
+    }
+  ],
+  "saboteur": {
+    "primary_target": "inventory",
+    "failover_target": null,
+    "dependency_chain": [
+      "checkout",
+      "frontend"
+    ],
+    "aggressiveness": 0.5,
+    "cooldown_ticks": 2
+  },
+  "slack": {
+    "msgs_per_tick": 1.4
+  },
+  "traffic_profile": {
+    "period": 18,
+    "amplitude": 0.9,
+    "phase": 8.0,
+    "jitter": 0.13
+  },
+  "seed": 7280,
+  "k8s_controller": true,
+  "correct_action_chain": [
+    {
+      "id": "platform.read_slack",
+      "params": {
+        "last_n": 5
+      }
+    },
+    {
+      "id": "platform.describe_topology",
+      "params": {}
+    },
+    {
+      "id": "platform.get_logs",
+      "params": {
+        "service": "checkout"
+      }
+    },
+    {
+      "id": "platform.get_logs",
+      "params": {
+        "service": "inventory_db"
+      }
+    },
+    {
+      "id": "platform.get_trace",
+      "params": {
+        "service": "frontend"
+      }
+    },
+    {
+      "id": "platform.vacuum_freeze_db",
+      "params": {
+        "target": "inventory_db"
+      }
+    }
+  ],
+  "target_score": 0.65,
+  "max_steps": 18
+}

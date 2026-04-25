@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>IncidentCommander — Replay sim_advanced_slack_redherring_001_1777112894</title>
+<script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  body  { margin:0; font-family: -apple-system,Segoe UI,Roboto,sans-serif;
+          background:#0d1117; color:#c9d1d9; }
+  header { padding:14px 20px; background:#161b22; border-bottom:1px solid #30363d;
+           display:flex; align-items:center; gap:18px; }
+  header h1 { margin:0; font-size:18px; font-weight:600; }
+  header .pill { background:#21262d; padding:4px 10px; border-radius:12px;
+                 font-size:12px; color:#8b949e; }
+  #grid { display:grid; grid-template-columns: 2fr 1fr; gap:1px;
+          background:#30363d; height: calc(100vh - 110px); }
+  #grid > div { background:#0d1117; padding:10px; overflow:auto; }
+  #network { height: 60%; border-bottom:1px solid #30363d; }
+  #charts  { height: 40%; }
+  #side    { display:flex; flex-direction:column; gap:8px; }
+  .panel  { background:#161b22; border:1px solid #30363d; border-radius:8px;
+            padding:10px; }
+  .panel h2 { margin:0 0 6px 0; font-size:13px; color:#58a6ff;
+              text-transform:uppercase; letter-spacing:0.5px; }
+  .ev      { padding:4px 6px; border-left:3px solid #30363d; margin-bottom:4px;
+              font-size:12px; }
+  .ev.agent    { border-color:#3fb950; }
+  .ev.saboteur { border-color:#f85149; }
+  .ev.slack    { border-color:#d29922; }
+  .ev .meta { color:#8b949e; font-size:11px; }
+  #controls { padding:10px 20px; background:#161b22; border-top:1px solid #30363d;
+              display:flex; align-items:center; gap:14px; }
+  #controls input[type=range] { flex:1; }
+  button { background:#238636; color:white; border:0; padding:6px 14px;
+           border-radius:6px; cursor:pointer; font-size:13px; }
+  button.pause { background:#21262d; }
+</style>
+</head>
+<body>
+<header>
+  <h1>📼 IncidentCommander Replay</h1>
+  <span class="pill">episode: sim_advanced_slack_redherring_001_1777112894</span>
+  <span class="pill">task: sim_advanced_slack_redherring_001</span>
+  <span class="pill">steps: 7</span>
+  <span class="pill">final reward: -2.345</span>
+  <span class="pill">mitigated: ✅</span>
+</header>
+<div id="grid">
+  <div>
+    <div id="network"></div>
+    <div id="charts"><canvas id="metricChart"></canvas></div>
+  </div>
+  <div id="side">
+    <div class="panel" id="events"><h2>Timeline</h2><div id="evlist"></div></div>
+    <div class="panel" id="slackpanel"><h2>#sre-incidents</h2><div id="slacklist"></div></div>
+  </div>
+</div>
+<div id="controls">
+  <button id="play">▶ Play</button>
+  <input type="range" id="scrub" min="0" max="7" value="0">
+  <span id="tickLabel">tick 0 / 7</span>
+</div>
+
+<script>
+const REPLAY = {"nodes": ["frontend", "api_gateway", "cdn", "auth", "checkout", "catalog", "users_db", "session_cache", "payments", "inventory", "orders_db", "catalog_db", "search_index", "payments_db", "stripe_proxy", "inventory_db", "users_db_replica", "orders_db_replica"], "edges": [["frontend", "api_gateway"], ["frontend", "cdn"], ["api_gateway", "auth"], ["api_gateway", "checkout"], ["api_gateway", "catalog"], ["auth", "users_db"], ["auth", "session_cache"], ["checkout", "payments"], ["checkout", "inventory"], ["checkout", "orders_db"], ["catalog", "catalog_db"], ["catalog", "search_index"], ["payments", "payments_db"], ["payments", "stripe_proxy"], ["inventory", "inventory_db"]], "frames": [{"tick": 1, "statuses": {"frontend": "healthy", "api_gateway": "healthy", "cdn": "healthy", "auth": "healthy", "checkout": "memory_leak", "catalog": "healthy", "users_db": "healthy", "session_cache": "healthy", "payments": "degraded", "inventory": "healthy", "orders_db": "healthy", "catalog_db": "healthy", "search_index": "healthy", "payments_db": "healthy", "stripe_proxy": "healthy", "inventory_db": "healthy", "users_db_replica": "healthy", "orders_db_replica": "healthy"}, "mean_err": 0.0286, "mean_lat": 103.9, "reward": -0.205}, {"tick": 1, "statuses": {"frontend": "healthy", "api_gateway": "healthy", "cdn": "healthy", "auth": "healthy", "checkout": "memory_leak", "catalog": "healthy", "users_db": "healthy", "session_cache": "healthy", "payments": "degraded", "inventory": "healthy", "orders_db": "healthy", "catalog_db": "healthy", "search_index": "healthy", "payments_db": "healthy", "stripe_proxy": "healthy", "inventory_db": "healthy", "users_db_replica": "healthy", "orders_db_replica": "healthy"}, "mean_err": 0.0286, "mean_lat": 103.9, "reward": -0.2275}, {"tick": 1, "statuses": {"frontend": "healthy", "api_gateway": "healthy", "cdn": "healthy", "auth": "healthy", "checkout": "memory_leak", "catalog": "healthy", "users_db": "healthy", "session_cache": "healthy", "payments": "degraded", "inventory": "healthy", "orders_db": "healthy", "catalog_db": "healthy", "search_index": "healthy", "payments_db": "healthy", "stripe_proxy": "healthy", "inventory_db": "healthy", "users_db_replica": "healthy", "orders_db_replica": "healthy"}, "mean_err": 0.0286, "mean_lat": 103.9, "reward": -0.2275}, {"tick": 2, "statuses": {"frontend": "healthy", "api_gateway": "healthy", "cdn": "healthy", "auth": "healthy", "checkout": "memory_leak", "catalog": "healthy", "users_db": "healthy", "session_cache": "healthy", "payments": "degraded", "inventory": "healthy", "orders_db": "healthy", "catalog_db": "healthy", "search_index": "healthy", "payments_db": "healthy", "stripe_proxy": "healthy", "inventory_db": "healthy", "users_db_replica": "healthy", "orders_db_replica": "healthy"}, "mean_err": 0.0286, "mean_lat": 103.9, "reward": -0.185}, {"tick": 3, "statuses": {"frontend": "healthy", "api_gateway": "healthy", "cdn": "healthy", "auth": "healthy", "checkout": "memory_leak", "catalog": "healthy", "users_db": "healthy", "session_cache": "healthy", "payments": "degraded", "inventory": "healthy", "orders_db": "healthy", "catalog_db": "healthy", "search_index": "healthy", "payments_db": "healthy", "stripe_proxy": "healthy", "inventory_db": "healthy", "users_db_replica": "healthy", "orders_db_replica": "healthy"}, "mean_err": 0.0286, "mean_lat": 103.9, "reward": -0.185}, {"tick": 4, "statuses": {"frontend": "healthy", "api_gateway": "healthy", "cdn": "healthy", "auth": "healthy", "checkout": "rolling_back", "catalog": "healthy", "users_db": "healthy", "session_cache": "healthy", "payments": "degraded", "inventory": "healthy", "orders_db": "healthy", "catalog_db": "healthy", "search_index": "healthy", "payments_db": "healthy", "stripe_proxy": "healthy", "inventory_db": "healthy", "users_db_replica": "healthy", "orders_db_replica": "healthy"}, "mean_err": 0.0313, "mean_lat": 103.9, "reward": -0.205}, {"tick": 5, "statuses": {"frontend": "healthy", "api_gateway": "healthy", "cdn": "healthy", "auth": "healthy", "checkout": "rolling_back", "catalog": "healthy", "users_db": "healthy", "session_cache": "healthy", "payments": "degraded", "inventory": "healthy", "orders_db": "healthy", "catalog_db": "healthy", "search_index": "healthy", "payments_db": "healthy", "stripe_proxy": "healthy", "inventory_db": "healthy", "users_db_replica": "healthy", "orders_db_replica": "healthy"}, "mean_err": 0.0313, "mean_lat": 103.9, "reward": -0.255}, {"tick": 6, "statuses": {"frontend": "healthy", "api_gateway": "healthy", "cdn": "healthy", "auth": "healthy", "checkout": "memory_leak", "catalog": "healthy", "users_db": "healthy", "session_cache": "healthy", "payments": "degraded", "inventory": "healthy", "orders_db": "healthy", "catalog_db": "healthy", "search_index": "healthy", "payments_db": "healthy", "stripe_proxy": "healthy", "inventory_db": "healthy", "users_db_replica": "healthy", "orders_db_replica": "healthy"}, "mean_err": 0.0286, "mean_lat": 103.9, "reward": -0.855}], "events": [{"tick": 1, "kind": "agent", "text": "aws_api_call {'service': 'platform', 'verb': 'read_slack', 'last_n': 8}"}, {"tick": 1, "kind": "agent", "text": "aws_api_call {'service': 'checkout', 'verb': 'get_logs'}"}, {"tick": 1, "kind": "agent", "text": "aws_api_call {'service': 'checkout', 'verb': 'get_metrics', 'metric': 'mem_pct'}"}, {"tick": 1, "kind": "saboteur", "text": "[attack_dependency] Lateral pivot \u2014 degrading payments"}, {"tick": 2, "kind": "agent", "text": "aws_api_call {'service': 'platform', 'verb': 'pause_health_checks', 'target': 'checkout'}"}, {"tick": 3, "kind": "agent", "text": "aws_api_call {'service': 'platform', 'verb': 'capture_memory_dump', 'target': 'checkout'}"}, {"tick": 4, "kind": "agent", "text": "aws_api_call {'service': 'platform', 'verb': 'rollback_deployment', 'target': 'checkout'}"}, {"tick": 5, "kind": "agent", "text": "aws_api_call {'service': 'platform', 'verb': 'resume_health_checks', 'target': 'checkout'}"}, {"tick": 6, "kind": "agent", "text": "aws_api_call {'service': 'platform', 'verb': 'get_traffic'}"}, {"tick": 6, "kind": "saboteur", "text": "[attack_primary] Memory leak injected on checkout"}], "slack": [{"tick": 1, "author": "Platform team", "severity": "high", "text": "checkout latency went vertical \u2014 request queue is backing up."}, {"tick": 1, "author": "@oncall-pd", "severity": "info", "text": "PagerDuty incident #INC-0001 acked."}, {"tick": 2, "author": "VP Eng (Priya)", "severity": "high", "text": "Are we back up yet? What's the ETA?"}, {"tick": 2, "author": "@channel", "severity": "high", "text": "Status page just went red, the press is going to notice."}, {"tick": 4, "author": "@oncall-pd", "severity": "info", "text": "PagerDuty incident #INC-0004 acked."}, {"tick": 5, "author": "@oncall-pd", "severity": "info", "text": "PagerDuty incident #INC-0005 acked."}, {"tick": 6, "author": "Customer Support", "severity": "high", "text": "Customers say checkout is timing out \u2014 confirmed reproduction."}, {"tick": 6, "author": "Data team", "severity": "info", "text": "Our nightly Athena pipeline is failing \u2014 probably unrelated, ignore for now."}]};
+
+// ── Network setup ───────────────────────────────────────────────────
+const STATUS_COLOR = {
+  healthy:'#3fb950', degraded:'#d29922', memory_leak:'#f85149',
+  cpu_throttled:'#db61a2', dead:'#6e7681', corrupted:'#a371f7',
+  rebuilding:'#58a6ff', rolling_back:'#f0883e'
+};
+const nodes = new vis.DataSet(REPLAY.nodes.map(n => ({
+  id: n, label: n, color: STATUS_COLOR.healthy, font:{color:'#fff'},
+  shape:'dot', size:14
+})));
+const edges = new vis.DataSet(REPLAY.edges.map(([a,b]) => ({
+  from: a, to: b, arrows:'to', color:'#30363d'
+})));
+const net = new vis.Network(document.getElementById('network'),
+  {nodes, edges},
+  {physics:{stabilization:true},
+    interaction:{hover:true},
+    nodes:{borderWidth:1.5}
+  });
+
+// ── Chart ───────────────────────────────────────────────────────────
+const ctx = document.getElementById('metricChart');
+const chart = new Chart(ctx, {
+  type:'line',
+  data:{
+    labels: REPLAY.frames.map(f => 'tick '+f.tick),
+    datasets:[
+      {label:'mean error rate', data: REPLAY.frames.map(f => f.mean_err),
+       borderColor:'#f85149', tension:0.25},
+      {label:'mean latency (ms)', data: REPLAY.frames.map(f => f.mean_lat),
+       borderColor:'#d29922', tension:0.25, yAxisID:'y2'},
+      {label:'reward', data: REPLAY.frames.map(f => f.reward),
+       borderColor:'#3fb950', tension:0.25},
+    ]
+  },
+  options:{
+    plugins:{legend:{labels:{color:'#c9d1d9'}}},
+    scales:{
+      x:{ticks:{color:'#8b949e'}},
+      y:{ticks:{color:'#8b949e'}, beginAtZero:true},
+      y2:{position:'right', ticks:{color:'#8b949e'}, grid:{drawOnChartArea:false}}
+    }
+  }
+});
+
+// ── Tick scrubber ───────────────────────────────────────────────────
+const evList    = document.getElementById('evlist');
+const slackList = document.getElementById('slacklist');
+const tickLabel = document.getElementById('tickLabel');
+const scrub     = document.getElementById('scrub');
+
+function applyTick(i) {
+  const f = REPLAY.frames[i];
+  if (!f) return;
+  // recolour nodes
+  Object.entries(f.statuses).forEach(([name, st]) => {
+    nodes.update({id:name, color: STATUS_COLOR[st] || '#6e7681'});
+  });
+  // events up to this tick
+  evList.innerHTML = REPLAY.events.filter(e => e.tick <= f.tick)
+    .slice(-20).map(e =>
+      `<div class="ev ${e.kind}"><b>[${e.kind}]</b> ${e.text}
+        <div class="meta">tick ${e.tick}</div></div>`).join('');
+  slackList.innerHTML = REPLAY.slack.filter(m => m.tick <= f.tick)
+    .slice(-12).map(m =>
+      `<div class="ev slack"><b>${m.author}:</b> ${m.text}
+        <div class="meta">[${m.severity}] tick ${m.tick}</div></div>`).join('');
+  tickLabel.textContent = `tick ${f.tick} / ${REPLAY.frames.length-1}`;
+}
+scrub.addEventListener('input', e => applyTick(+e.target.value));
+applyTick(0);
+
+// ── Auto-play ───────────────────────────────────────────────────────
+let playing = false, timer = null;
+const playBtn = document.getElementById('play');
+playBtn.onclick = () => {
+  playing = !playing;
+  playBtn.textContent = playing ? '⏸ Pause' : '▶ Play';
+  playBtn.classList.toggle('pause', playing);
+  if (playing) {
+    timer = setInterval(() => {
+      let v = +scrub.value + 1;
+      if (v > REPLAY.frames.length-1) v = 0;
+      scrub.value = v;
+      applyTick(v);
+    }, 600);
+  } else {
+    clearInterval(timer);
+  }
+};
+</script>
+</body>
+</html>

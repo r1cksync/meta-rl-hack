@@ -1,0 +1,56 @@
+{
+  "id": "sim_easy_kms_disabled_066",
+  "difficulty": "easy",
+  "title": "recommendations KMS key disabled",
+  "description": "Encrypt calls fail with KMSInvalidStateException. Re-enable `alias/ic-recommendations-key`.",
+  "preconditions": [
+    {
+      "path": "kms/alias/ic-recommendations-key",
+      "op": "set",
+      "value": {
+        "alias": "alias/ic-recommendations-key",
+        "state": "Disabled",
+        "policy": "{}",
+        "pending_deletion_days": null
+      }
+    }
+  ],
+  "scheduled_failures": [
+    {
+      "action_id": "kms.encrypt",
+      "error": "KMSInvalidStateException",
+      "message": "key disabled",
+      "count": 1
+    }
+  ],
+  "correct_action_chain": [
+    {
+      "id": "kms.describe",
+      "params": {
+        "resource_id": "alias/ic-recommendations-key"
+      }
+    },
+    {
+      "id": "kms.encrypt",
+      "params": {
+        "resource_id": "alias/ic-recommendations-key",
+        "plaintext": "hi"
+      }
+    },
+    {
+      "id": "kms.enable",
+      "params": {
+        "resource_id": "alias/ic-recommendations-key"
+      }
+    },
+    {
+      "id": "kms.encrypt",
+      "params": {
+        "resource_id": "alias/ic-recommendations-key",
+        "plaintext": "hi"
+      }
+    }
+  ],
+  "target_score": 0.55,
+  "max_steps": 16
+}

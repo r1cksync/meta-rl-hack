@@ -1,0 +1,60 @@
+{
+  "id": "sim_med_eb_lambda_027",
+  "difficulty": "medium",
+  "title": "catalog pipeline silent",
+  "description": "Events are being published to `ic-catalog-bus` but `ic-catalog-handler` is not invoked. Rule was disabled during a deploy.",
+  "preconditions": [
+    {
+      "path": "events/ic-catalog-bus",
+      "op": "set",
+      "value": {
+        "name": "ic-catalog-bus",
+        "rules": {
+          "ic-catalog-rule": {
+            "name": "ic-catalog-rule",
+            "state": "DISABLED",
+            "target_arn": "ic-catalog-handler"
+          }
+        }
+      }
+    },
+    {
+      "path": "lambda_/ic-catalog-handler",
+      "op": "set",
+      "value": {
+        "name": "ic-catalog-handler",
+        "state": "Active",
+        "reserved_concurrency": 10,
+        "invocations": 0,
+        "errors": 0,
+        "throttles": 0
+      }
+    }
+  ],
+  "scheduled_failures": [],
+  "correct_action_chain": [
+    {
+      "id": "events.describe",
+      "params": {
+        "bus_name": "ic-catalog-bus",
+        "rule_name": "ic-catalog-rule"
+      }
+    },
+    {
+      "id": "events.enable",
+      "params": {
+        "bus_name": "ic-catalog-bus",
+        "rule_name": "ic-catalog-rule"
+      }
+    },
+    {
+      "id": "events.publish",
+      "params": {
+        "bus_name": "ic-catalog-bus",
+        "payload": "ping"
+      }
+    }
+  ],
+  "target_score": 0.55,
+  "max_steps": 16
+}

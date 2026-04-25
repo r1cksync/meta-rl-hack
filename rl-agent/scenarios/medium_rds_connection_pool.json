@@ -1,0 +1,14 @@
+{
+  "task_id": "task17",
+  "difficulty": "medium",
+  "target_score": 0.50,
+  "fault_type": "rds_connection_pool_exhaustion",
+  "chaos_experiment_name": "",
+  "ground_truth_root_cause": "rds_connection_pool_exhaustion_from_long_running_transactions",
+  "correct_mitigation_action": "restart_pods",
+  "correct_mitigation_target": "payments-api",
+  "wrong_mitigation_penalty_services": ["inventory-service", "order-worker"],
+  "useful_log_keywords": ["psycopg2.OperationalError", "remaining connection slots", "RDS", "DatabaseConnections", "idle in transaction", "max_connections"],
+  "red_herrings": ["redis", "kafka"],
+  "reference_postmortem": "RDS db.t3.medium reached max_connections=80 because payments-api leaked one DB connection per failed Stripe webhook (try/finally missing). Mitigation: restart_pods on payments-api closes the leaked sockets. Follow-up: add PgBouncer in transaction-pooling mode, fix the leak by wrapping the call in a context manager, add a CloudWatch alarm on DatabaseConnections > 80% of max. Cost-awareness: t3.medium is correctly sized for normal traffic; PgBouncer avoids upsizing. Security: rotate the IAM-auth DB password every 90 days."
+}

@@ -1,0 +1,88 @@
+{
+  "id": "sim_gen_redherring_checkout_005",
+  "difficulty": "medium",
+  "title": "Red-herring on Slack \u2014 true cause is leak in checkout",
+  "description": "Slack is loud with red herrings (a hotfix dev, an intern, a VP demanding ETA). Real cause is a memory leak in checkout. Agent must triage.",
+  "preconditions": [],
+  "scheduled_failures": [],
+  "topology_overrides": [
+    {
+      "kind": "set_status",
+      "node": "checkout",
+      "status": "memory_leak"
+    },
+    {
+      "kind": "set_leak",
+      "node": "checkout",
+      "rate": 0.02
+    }
+  ],
+  "saboteur": {
+    "primary_target": "checkout",
+    "failover_target": null,
+    "dependency_chain": [
+      "api_gateway",
+      "frontend"
+    ],
+    "aggressiveness": 0.4,
+    "cooldown_ticks": 3
+  },
+  "slack": {
+    "msgs_per_tick": 2.2
+  },
+  "traffic_profile": {
+    "period": 12,
+    "amplitude": 0.8,
+    "phase": 5.0,
+    "jitter": 0.15
+  },
+  "seed": 6267,
+  "k8s_controller": true,
+  "correct_action_chain": [
+    {
+      "id": "platform.read_slack",
+      "params": {
+        "last_n": 10
+      }
+    },
+    {
+      "id": "platform.get_logs",
+      "params": {
+        "service": "checkout"
+      }
+    },
+    {
+      "id": "platform.get_metrics",
+      "params": {
+        "service": "checkout",
+        "metric": "mem_pct"
+      }
+    },
+    {
+      "id": "platform.pause_health_checks",
+      "params": {
+        "target": "checkout"
+      }
+    },
+    {
+      "id": "platform.capture_memory_dump",
+      "params": {
+        "target": "checkout"
+      }
+    },
+    {
+      "id": "platform.rollback_deployment",
+      "params": {
+        "target": "checkout"
+      }
+    },
+    {
+      "id": "platform.resume_health_checks",
+      "params": {
+        "target": "checkout"
+      }
+    }
+  ],
+  "target_score": 0.6,
+  "max_steps": 16
+}

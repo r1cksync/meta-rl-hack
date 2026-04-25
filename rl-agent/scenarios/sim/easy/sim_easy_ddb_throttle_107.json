@@ -1,0 +1,36 @@
+{
+  "id": "sim_easy_ddb_throttle_107",
+  "difficulty": "easy",
+  "title": "auth DynamoDB throttling",
+  "description": "`ic-auth-table` is throttling writes. Scale write capacity.",
+  "preconditions": [
+    {
+      "path": "dynamodb/ic-auth-table",
+      "op": "set",
+      "value": {
+        "name": "ic-auth-table",
+        "items": {},
+        "throttled": true,
+        "capacity": 5
+      }
+    }
+  ],
+  "scheduled_failures": [],
+  "correct_action_chain": [
+    {
+      "id": "dynamodb.describe",
+      "params": {
+        "resource_id": "ic-auth-table"
+      }
+    },
+    {
+      "id": "dynamodb.scale",
+      "params": {
+        "resource_id": "ic-auth-table",
+        "capacity": 50
+      }
+    }
+  ],
+  "target_score": 0.55,
+  "max_steps": 16
+}

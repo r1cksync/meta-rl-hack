@@ -1,0 +1,60 @@
+{
+  "id": "sim_med_eb_lambda_019",
+  "difficulty": "medium",
+  "title": "payments pipeline silent",
+  "description": "Events are being published to `ic-payments-bus` but `ic-payments-handler` is not invoked. Rule was disabled during a deploy.",
+  "preconditions": [
+    {
+      "path": "events/ic-payments-bus",
+      "op": "set",
+      "value": {
+        "name": "ic-payments-bus",
+        "rules": {
+          "ic-payments-rule": {
+            "name": "ic-payments-rule",
+            "state": "DISABLED",
+            "target_arn": "ic-payments-handler"
+          }
+        }
+      }
+    },
+    {
+      "path": "lambda_/ic-payments-handler",
+      "op": "set",
+      "value": {
+        "name": "ic-payments-handler",
+        "state": "Active",
+        "reserved_concurrency": 10,
+        "invocations": 0,
+        "errors": 0,
+        "throttles": 0
+      }
+    }
+  ],
+  "scheduled_failures": [],
+  "correct_action_chain": [
+    {
+      "id": "events.describe",
+      "params": {
+        "bus_name": "ic-payments-bus",
+        "rule_name": "ic-payments-rule"
+      }
+    },
+    {
+      "id": "events.enable",
+      "params": {
+        "bus_name": "ic-payments-bus",
+        "rule_name": "ic-payments-rule"
+      }
+    },
+    {
+      "id": "events.publish",
+      "params": {
+        "bus_name": "ic-payments-bus",
+        "payload": "ping"
+      }
+    }
+  ],
+  "target_score": 0.55,
+  "max_steps": 16
+}

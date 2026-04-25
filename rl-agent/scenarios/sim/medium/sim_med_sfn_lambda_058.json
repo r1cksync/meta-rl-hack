@@ -1,0 +1,67 @@
+{
+  "id": "sim_med_sfn_lambda_058",
+  "difficulty": "medium",
+  "title": "fulfillment state machine failing",
+  "description": "`ic-fulfillment-saga` executions stuck in FAILED. Underlying Lambda is throttled.",
+  "preconditions": [
+    {
+      "path": "stepfunctions/ic-fulfillment-saga",
+      "op": "set",
+      "value": {
+        "name": "ic-fulfillment-saga",
+        "executions": [
+          {
+            "id": "e0",
+            "status": "FAILED",
+            "error": "States.TaskFailed",
+            "input": "{}"
+          }
+        ],
+        "force_fail": true
+      }
+    },
+    {
+      "path": "lambda_/ic-fulfillment-step",
+      "op": "set",
+      "value": {
+        "name": "ic-fulfillment-step",
+        "state": "Active",
+        "reserved_concurrency": 0,
+        "invocations": 0,
+        "errors": 0,
+        "throttles": 4
+      }
+    }
+  ],
+  "scheduled_failures": [],
+  "correct_action_chain": [
+    {
+      "id": "stepfunctions.describe",
+      "params": {
+        "resource_id": "ic-fulfillment-saga"
+      }
+    },
+    {
+      "id": "lambda.describe",
+      "params": {
+        "resource_id": "ic-fulfillment-step"
+      }
+    },
+    {
+      "id": "lambda.scale",
+      "params": {
+        "resource_id": "ic-fulfillment-step",
+        "capacity": 25
+      }
+    },
+    {
+      "id": "stepfunctions.start",
+      "params": {
+        "resource_id": "ic-fulfillment-saga",
+        "input": "{}"
+      }
+    }
+  ],
+  "target_score": 0.55,
+  "max_steps": 18
+}

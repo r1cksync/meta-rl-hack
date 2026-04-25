@@ -1,0 +1,60 @@
+{
+  "id": "sim_med_eb_lambda_026",
+  "difficulty": "medium",
+  "title": "reviews pipeline silent",
+  "description": "Events are being published to `ic-reviews-bus` but `ic-reviews-handler` is not invoked. Rule was disabled during a deploy.",
+  "preconditions": [
+    {
+      "path": "events/ic-reviews-bus",
+      "op": "set",
+      "value": {
+        "name": "ic-reviews-bus",
+        "rules": {
+          "ic-reviews-rule": {
+            "name": "ic-reviews-rule",
+            "state": "DISABLED",
+            "target_arn": "ic-reviews-handler"
+          }
+        }
+      }
+    },
+    {
+      "path": "lambda_/ic-reviews-handler",
+      "op": "set",
+      "value": {
+        "name": "ic-reviews-handler",
+        "state": "Active",
+        "reserved_concurrency": 10,
+        "invocations": 0,
+        "errors": 0,
+        "throttles": 0
+      }
+    }
+  ],
+  "scheduled_failures": [],
+  "correct_action_chain": [
+    {
+      "id": "events.describe",
+      "params": {
+        "bus_name": "ic-reviews-bus",
+        "rule_name": "ic-reviews-rule"
+      }
+    },
+    {
+      "id": "events.enable",
+      "params": {
+        "bus_name": "ic-reviews-bus",
+        "rule_name": "ic-reviews-rule"
+      }
+    },
+    {
+      "id": "events.publish",
+      "params": {
+        "bus_name": "ic-reviews-bus",
+        "payload": "ping"
+      }
+    }
+  ],
+  "target_score": 0.55,
+  "max_steps": 16
+}

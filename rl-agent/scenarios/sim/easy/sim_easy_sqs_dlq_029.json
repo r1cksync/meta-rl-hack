@@ -1,0 +1,215 @@
+{
+  "id": "sim_easy_sqs_dlq_029",
+  "difficulty": "easy",
+  "title": "shipping DLQ depth growing",
+  "description": "`ic-shipping-dlq` ApproximateNumberOfMessagesVisible exceeded threshold. Inspect the messages and purge stale ones.",
+  "preconditions": [
+    {
+      "path": "sqs/ic-shipping-dlq",
+      "op": "set",
+      "value": {
+        "name": "ic-shipping-dlq",
+        "depth": 42,
+        "in_flight": 0,
+        "messages": [
+          {
+            "id": "m-0",
+            "body": "old"
+          },
+          {
+            "id": "m-1",
+            "body": "old"
+          },
+          {
+            "id": "m-2",
+            "body": "old"
+          },
+          {
+            "id": "m-3",
+            "body": "old"
+          },
+          {
+            "id": "m-4",
+            "body": "old"
+          },
+          {
+            "id": "m-5",
+            "body": "old"
+          },
+          {
+            "id": "m-6",
+            "body": "old"
+          },
+          {
+            "id": "m-7",
+            "body": "old"
+          },
+          {
+            "id": "m-8",
+            "body": "old"
+          },
+          {
+            "id": "m-9",
+            "body": "old"
+          },
+          {
+            "id": "m-10",
+            "body": "old"
+          },
+          {
+            "id": "m-11",
+            "body": "old"
+          },
+          {
+            "id": "m-12",
+            "body": "old"
+          },
+          {
+            "id": "m-13",
+            "body": "old"
+          },
+          {
+            "id": "m-14",
+            "body": "old"
+          },
+          {
+            "id": "m-15",
+            "body": "old"
+          },
+          {
+            "id": "m-16",
+            "body": "old"
+          },
+          {
+            "id": "m-17",
+            "body": "old"
+          },
+          {
+            "id": "m-18",
+            "body": "old"
+          },
+          {
+            "id": "m-19",
+            "body": "old"
+          },
+          {
+            "id": "m-20",
+            "body": "old"
+          },
+          {
+            "id": "m-21",
+            "body": "old"
+          },
+          {
+            "id": "m-22",
+            "body": "old"
+          },
+          {
+            "id": "m-23",
+            "body": "old"
+          },
+          {
+            "id": "m-24",
+            "body": "old"
+          },
+          {
+            "id": "m-25",
+            "body": "old"
+          },
+          {
+            "id": "m-26",
+            "body": "old"
+          },
+          {
+            "id": "m-27",
+            "body": "old"
+          },
+          {
+            "id": "m-28",
+            "body": "old"
+          },
+          {
+            "id": "m-29",
+            "body": "old"
+          },
+          {
+            "id": "m-30",
+            "body": "old"
+          },
+          {
+            "id": "m-31",
+            "body": "old"
+          },
+          {
+            "id": "m-32",
+            "body": "old"
+          },
+          {
+            "id": "m-33",
+            "body": "old"
+          },
+          {
+            "id": "m-34",
+            "body": "old"
+          },
+          {
+            "id": "m-35",
+            "body": "old"
+          },
+          {
+            "id": "m-36",
+            "body": "old"
+          },
+          {
+            "id": "m-37",
+            "body": "old"
+          },
+          {
+            "id": "m-38",
+            "body": "old"
+          },
+          {
+            "id": "m-39",
+            "body": "old"
+          },
+          {
+            "id": "m-40",
+            "body": "old"
+          },
+          {
+            "id": "m-41",
+            "body": "old"
+          }
+        ],
+        "attrs": {
+          "VisibilityTimeout": 30
+        },
+        "dlq": null
+      }
+    }
+  ],
+  "scheduled_failures": [],
+  "correct_action_chain": [
+    {
+      "id": "sqs.describe",
+      "params": {
+        "resource_id": "ic-shipping-dlq"
+      }
+    },
+    {
+      "id": "sqs.receive",
+      "params": {
+        "resource_id": "ic-shipping-dlq",
+        "limit": 10
+      }
+    },
+    {
+      "id": "sqs.purge",
+      "params": {
+        "resource_id": "ic-shipping-dlq"
+      }
+    }
+  ],
+  "target_score": 0.55,
+  "max_steps": 16
+}

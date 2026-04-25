@@ -1,0 +1,60 @@
+{
+  "id": "sim_med_eb_lambda_024",
+  "difficulty": "medium",
+  "title": "shipping pipeline silent",
+  "description": "Events are being published to `ic-shipping-bus` but `ic-shipping-handler` is not invoked. Rule was disabled during a deploy.",
+  "preconditions": [
+    {
+      "path": "events/ic-shipping-bus",
+      "op": "set",
+      "value": {
+        "name": "ic-shipping-bus",
+        "rules": {
+          "ic-shipping-rule": {
+            "name": "ic-shipping-rule",
+            "state": "DISABLED",
+            "target_arn": "ic-shipping-handler"
+          }
+        }
+      }
+    },
+    {
+      "path": "lambda_/ic-shipping-handler",
+      "op": "set",
+      "value": {
+        "name": "ic-shipping-handler",
+        "state": "Active",
+        "reserved_concurrency": 10,
+        "invocations": 0,
+        "errors": 0,
+        "throttles": 0
+      }
+    }
+  ],
+  "scheduled_failures": [],
+  "correct_action_chain": [
+    {
+      "id": "events.describe",
+      "params": {
+        "bus_name": "ic-shipping-bus",
+        "rule_name": "ic-shipping-rule"
+      }
+    },
+    {
+      "id": "events.enable",
+      "params": {
+        "bus_name": "ic-shipping-bus",
+        "rule_name": "ic-shipping-rule"
+      }
+    },
+    {
+      "id": "events.publish",
+      "params": {
+        "bus_name": "ic-shipping-bus",
+        "payload": "ping"
+      }
+    }
+  ],
+  "target_score": 0.55,
+  "max_steps": 16
+}

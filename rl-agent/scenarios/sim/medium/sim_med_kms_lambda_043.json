@@ -1,0 +1,72 @@
+{
+  "id": "sim_med_kms_lambda_043",
+  "difficulty": "medium",
+  "title": "fulfillment Lambda 5xx after KMS change",
+  "description": "`ic-fulfillment` invocations fail. Logs show KMS pending deletion on `alias/ic-fulfillment-data`.",
+  "preconditions": [
+    {
+      "path": "lambda_/ic-fulfillment",
+      "op": "set",
+      "value": {
+        "name": "ic-fulfillment",
+        "state": "Active",
+        "reserved_concurrency": 10,
+        "invocations": 0,
+        "errors": 3,
+        "throttles": 0
+      }
+    },
+    {
+      "path": "kms/alias/ic-fulfillment-data",
+      "op": "set",
+      "value": {
+        "alias": "alias/ic-fulfillment-data",
+        "state": "PendingDeletion",
+        "policy": "{}",
+        "pending_deletion_days": 7
+      }
+    }
+  ],
+  "scheduled_failures": [
+    {
+      "action_id": "lambda.invoke",
+      "error": "KMSInvalidStateException",
+      "message": "key alias/ic-fulfillment-data pending deletion",
+      "count": 1
+    }
+  ],
+  "correct_action_chain": [
+    {
+      "id": "lambda.describe",
+      "params": {
+        "resource_id": "ic-fulfillment"
+      }
+    },
+    {
+      "id": "lambda.invoke",
+      "params": {
+        "resource_id": "ic-fulfillment"
+      }
+    },
+    {
+      "id": "kms.describe",
+      "params": {
+        "resource_id": "alias/ic-fulfillment-data"
+      }
+    },
+    {
+      "id": "kms.enable",
+      "params": {
+        "resource_id": "alias/ic-fulfillment-data"
+      }
+    },
+    {
+      "id": "lambda.invoke",
+      "params": {
+        "resource_id": "ic-fulfillment"
+      }
+    }
+  ],
+  "target_score": 0.6,
+  "max_steps": 18
+}

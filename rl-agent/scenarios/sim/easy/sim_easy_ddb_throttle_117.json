@@ -1,0 +1,36 @@
+{
+  "id": "sim_easy_ddb_throttle_117",
+  "difficulty": "easy",
+  "title": "cart DynamoDB throttling",
+  "description": "`ic-cart-table` is throttling writes. Scale write capacity.",
+  "preconditions": [
+    {
+      "path": "dynamodb/ic-cart-table",
+      "op": "set",
+      "value": {
+        "name": "ic-cart-table",
+        "items": {},
+        "throttled": true,
+        "capacity": 5
+      }
+    }
+  ],
+  "scheduled_failures": [],
+  "correct_action_chain": [
+    {
+      "id": "dynamodb.describe",
+      "params": {
+        "resource_id": "ic-cart-table"
+      }
+    },
+    {
+      "id": "dynamodb.scale",
+      "params": {
+        "resource_id": "ic-cart-table",
+        "capacity": 50
+      }
+    }
+  ],
+  "target_score": 0.55,
+  "max_steps": 16
+}

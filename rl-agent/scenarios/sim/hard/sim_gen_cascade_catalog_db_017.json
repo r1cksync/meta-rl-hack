@@ -1,0 +1,74 @@
+{
+  "id": "sim_gen_cascade_catalog_db_017",
+  "difficulty": "hard",
+  "title": "Dependency cascade \u2014 catalog_db is cpu_throttled, surfacing as alerts on api_gateway",
+  "description": "Alerts hit api_gateway, but the truth lives in catalog_db (cpu_throttled). Agent must walk the trace + describe_topology to find the real root, then vacuum/rollback.",
+  "preconditions": [],
+  "scheduled_failures": [],
+  "topology_overrides": [
+    {
+      "kind": "set_status",
+      "node": "catalog_db",
+      "status": "cpu_throttled"
+    }
+  ],
+  "saboteur": {
+    "primary_target": "catalog",
+    "failover_target": null,
+    "dependency_chain": [
+      "api_gateway",
+      "frontend"
+    ],
+    "aggressiveness": 0.5,
+    "cooldown_ticks": 2
+  },
+  "slack": {
+    "msgs_per_tick": 1.4
+  },
+  "traffic_profile": {
+    "period": 18,
+    "amplitude": 0.9,
+    "phase": 8.0,
+    "jitter": 0.13
+  },
+  "seed": 7188,
+  "k8s_controller": true,
+  "correct_action_chain": [
+    {
+      "id": "platform.read_slack",
+      "params": {
+        "last_n": 5
+      }
+    },
+    {
+      "id": "platform.describe_topology",
+      "params": {}
+    },
+    {
+      "id": "platform.get_logs",
+      "params": {
+        "service": "api_gateway"
+      }
+    },
+    {
+      "id": "platform.get_logs",
+      "params": {
+        "service": "catalog_db"
+      }
+    },
+    {
+      "id": "platform.get_trace",
+      "params": {
+        "service": "frontend"
+      }
+    },
+    {
+      "id": "platform.vacuum_freeze_db",
+      "params": {
+        "target": "catalog_db"
+      }
+    }
+  ],
+  "target_score": 0.65,
+  "max_steps": 18
+}

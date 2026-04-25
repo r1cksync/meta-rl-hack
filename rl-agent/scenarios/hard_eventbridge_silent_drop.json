@@ -1,0 +1,14 @@
+{
+  "task_id": "task20",
+  "difficulty": "hard",
+  "target_score": 0.40,
+  "fault_type": "eventbridge_rule_silent_drop",
+  "chaos_experiment_name": "",
+  "ground_truth_root_cause": "eventbridge_rule_input_transformer_drops_events_silently",
+  "correct_mitigation_action": "rollback_deployment",
+  "correct_mitigation_target": "order-worker",
+  "wrong_mitigation_penalty_services": ["notification-service", "payments-api"],
+  "useful_log_keywords": ["EventBridge", "PutEvents", "FailedEntryCount", "InputTransformer", "default-event-bus", "MatchedEvents", "InvocationsFailedToBeSentToDlq"],
+  "red_herrings": ["kafka"],
+  "reference_postmortem": "EventBridge rule order-events-to-worker has MatchedEvents=4200 but InvocationsFailedToBeSentToDlq=4200 — every order event is dropped silently. Root cause: order-worker v1.43 changed the event JSON schema and the EventBridge InputTransformer template still references $.detail.order.id which no longer exists (now $.detail.orderId). Mitigation: rollback_deployment on order-worker to v1.42 so the schema matches the InputTransformer. Follow-up: add a CloudWatch alarm on FailedInvocations > 0, version the event schema with a JSON-Schema contract, configure a DLQ on the rule. IAM: grant only events:PutEvents on the specific event bus, never *. Timeline T+0 deploy, T+02:30 first failure, T+09:00 alarm fired, T+12:00 mitigated."
+}

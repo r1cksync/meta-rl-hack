@@ -1,0 +1,57 @@
+{
+  "id": "sim_easy_lambda_throttle_008",
+  "difficulty": "easy",
+  "title": "billing Lambda throttling",
+  "description": "Customers report 5xx from /billing. CloudWatch alarm `billing-Throttles` is in ALARM. Fix the throttle.",
+  "preconditions": [
+    {
+      "path": "lambda_/ic-billing",
+      "op": "set",
+      "value": {
+        "name": "ic-billing",
+        "state": "Active",
+        "reserved_concurrency": 0,
+        "invocations": 0,
+        "errors": 0,
+        "throttles": 5
+      }
+    }
+  ],
+  "scheduled_failures": [
+    {
+      "action_id": "lambda.invoke",
+      "error": "TooManyRequestsException",
+      "message": "Reserved concurrency = 0",
+      "count": 1
+    }
+  ],
+  "correct_action_chain": [
+    {
+      "id": "lambda.describe",
+      "params": {
+        "resource_id": "ic-billing"
+      }
+    },
+    {
+      "id": "lambda.invoke",
+      "params": {
+        "resource_id": "ic-billing"
+      }
+    },
+    {
+      "id": "lambda.scale",
+      "params": {
+        "resource_id": "ic-billing",
+        "capacity": 25
+      }
+    },
+    {
+      "id": "lambda.invoke",
+      "params": {
+        "resource_id": "ic-billing"
+      }
+    }
+  ],
+  "target_score": 0.55,
+  "max_steps": 16
+}

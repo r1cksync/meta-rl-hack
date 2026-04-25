@@ -1,0 +1,14 @@
+{
+  "task_id": "task21",
+  "difficulty": "hard",
+  "target_score": 0.40,
+  "fault_type": "step_functions_execution_failure",
+  "chaos_experiment_name": "",
+  "ground_truth_root_cause": "step_functions_state_machine_execution_failed_due_to_unhandled_choice_default",
+  "correct_mitigation_action": "apply_config_patch",
+  "correct_mitigation_target": "order-worker",
+  "wrong_mitigation_penalty_services": ["payments-api", "inventory-service"],
+  "useful_log_keywords": ["States.TaskFailed", "ExecutionFailed", "ic-order-saga", "Choice", "InducedFailure", "stateMachineArn"],
+  "red_herrings": ["smtp", "redis"],
+  "reference_postmortem": "Step Functions state machine ic-order-saga reached the Boom Fail state because the order-worker service emitted events with kind != 'happy'. The Choice state lacked a Default branch that retried with a sanitised payload, so all non-happy events terminated as ExecutionFailed. Mitigation: apply_config_patch on order-worker to set ORDER_KIND_DEFAULT=happy and add a Wait+Pass branch to the state machine. Follow-up: scope IAM least-privilege on the SFN execution role, add a CloudWatch alarm on ExecutionsFailed>0 wired to SNS, audit X-Ray traces for unhealthy executions. Cost-awareness: STANDARD vs EXPRESS — for short-lived order sagas, EXPRESS is cheaper at scale."
+}

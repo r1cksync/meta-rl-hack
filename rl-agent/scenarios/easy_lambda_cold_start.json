@@ -1,0 +1,14 @@
+{
+  "task_id": "task16",
+  "difficulty": "easy",
+  "target_score": 0.65,
+  "fault_type": "lambda_cold_start",
+  "chaos_experiment_name": "lambda-cold-start-storm",
+  "ground_truth_root_cause": "lambda_cold_start_after_concurrency_quota_drop",
+  "correct_mitigation_action": "delete_chaos_experiment",
+  "correct_mitigation_target": "lambda-cold-start-storm",
+  "wrong_mitigation_penalty_services": ["payments-api"],
+  "useful_log_keywords": ["INIT_REPORT", "Cold start", "ProvisionedConcurrencyUtilization", "Init Duration", "Lambda", "Throttled"],
+  "red_herrings": ["checkout-frontend"],
+  "reference_postmortem": "The notify-on-order Lambda backing notification-service's outbound email started reporting Init Duration > 4500ms because reserved concurrency was reduced from 50 to 5 by an earlier infra change. p99 latency on notification-service spiked. Chaos Mesh experiment lambda-cold-start-storm amplified this by triggering 200 cold starts. Mitigation: delete_chaos_experiment lambda-cold-start-storm. Follow-up: enable Provisioned Concurrency on this Lambda, add a CloudWatch alarm on Throttles > 0, and re-run capacity planning. Cost-awareness: Provisioned Concurrency costs ~$15/mo per instance — sized to peak."
+}

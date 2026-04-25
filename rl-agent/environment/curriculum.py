@@ -33,11 +33,14 @@ TIERS: list[str] = [
 ]
 
 TIER_TASKS: dict[str, list[str]] = {
-    "warmup":       ["task1", "task4", "task9"],
-    "beginner":     ["task1", "task2", "task4", "task5", "task9"],
-    "intermediate": ["task1", "task2", "task3", "task4", "task5", "task6", "task7", "task8", "task9", "task10"],
-    "advanced":     ["task2", "task3", "task5", "task6", "task7", "task8", "task10", "task11"],
-    "expert":       ["task3", "task6", "task7", "task8", "task10", "task11"],
+    "warmup":       ["task1", "task4", "task9", "task16", "task19"],
+    "beginner":     ["task1", "task2", "task4", "task5", "task9", "task16", "task19", "task22"],
+    "intermediate": ["task1", "task2", "task3", "task4", "task5", "task6", "task7", "task8",
+                     "task9", "task10", "task12", "task14", "task17", "task22"],
+    "advanced":     ["task2", "task3", "task5", "task6", "task7", "task8", "task10", "task11",
+                     "task12", "task13", "task14", "task15", "task17", "task18", "task20", "task21", "task23"],
+    "expert":       ["task3", "task6", "task7", "task8", "task10", "task11",
+                     "task13", "task15", "task18", "task20", "task21", "task23"],
 }
 
 # Minimum rolling success rate (score >= target) to promote to the next tier.

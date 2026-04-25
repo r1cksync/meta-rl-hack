@@ -1,0 +1,31 @@
+{
+  "id": "sim_advanced_saboteur_duel_001",
+  "difficulty": "hard",
+  "title": "1v1 Duel — Active Saboteur attacks auth_db, then choke-holds the replica",
+  "description": "An active adversary takes down the auth users_db, then once the agent fails over to the replica it pins a 'backup job' on the replica's CPU. Agent must (1) detect via logs/trace, (2) failover, (3) detect CPU spike via metrics + slack chatter, (4) kill the backup job by restarting the replica's deployment.",
+  "preconditions": [],
+  "scheduled_failures": [],
+  "topology_overrides": [],
+  "saboteur": {
+    "primary_target":   "users_db",
+    "failover_target":  "users_db_replica",
+    "dependency_chain": ["auth", "api_gateway"],
+    "aggressiveness":   0.95,
+    "cooldown_ticks":   1
+  },
+  "slack": {"msgs_per_tick": 1.5},
+  "traffic_profile": {"period": 16, "amplitude": 0.6, "phase": 4.0},
+  "seed": 5151,
+  "k8s_controller": true,
+  "correct_action_chain": [
+    {"id": "platform.read_slack",        "params": {"last_n": 5}},
+    {"id": "platform.get_logs",          "params": {"service": "auth"}},
+    {"id": "platform.get_trace",         "params": {"service": "frontend"}},
+    {"id": "platform.failover_replica",  "params": {"target": "users_db"}},
+    {"id": "platform.read_slack",        "params": {"last_n": 5}},
+    {"id": "platform.get_metrics",       "params": {"service": "users_db_replica", "metric": "cpu_pct"}},
+    {"id": "platform.rollback_deployment","params": {"target": "users_db_replica"}}
+  ],
+  "target_score": 0.65,
+  "max_steps": 20
+}

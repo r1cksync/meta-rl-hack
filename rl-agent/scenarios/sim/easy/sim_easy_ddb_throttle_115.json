@@ -1,0 +1,36 @@
+{
+  "id": "sim_easy_ddb_throttle_115",
+  "difficulty": "easy",
+  "title": "analytics DynamoDB throttling",
+  "description": "`ic-analytics-table` is throttling writes. Scale write capacity.",
+  "preconditions": [
+    {
+      "path": "dynamodb/ic-analytics-table",
+      "op": "set",
+      "value": {
+        "name": "ic-analytics-table",
+        "items": {},
+        "throttled": true,
+        "capacity": 5
+      }
+    }
+  ],
+  "scheduled_failures": [],
+  "correct_action_chain": [
+    {
+      "id": "dynamodb.describe",
+      "params": {
+        "resource_id": "ic-analytics-table"
+      }
+    },
+    {
+      "id": "dynamodb.scale",
+      "params": {
+        "resource_id": "ic-analytics-table",
+        "capacity": 50
+      }
+    }
+  ],
+  "target_score": 0.55,
+  "max_steps": 16
+}

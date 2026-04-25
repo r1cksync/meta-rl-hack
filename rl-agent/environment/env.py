@@ -46,6 +46,7 @@ from .prometheus_client import PrometheusClient
 logger = logging.getLogger(__name__)
 
 SCENARIOS_DIR = Path(__file__).resolve().parent.parent / "scenarios"
+SCENARIOS_SIM_DIR = SCENARIOS_DIR / "sim"
 
 TASK_FILE_MAP = {
     "task1": "easy_redis_exhaustion.json",
@@ -59,6 +60,19 @@ TASK_FILE_MAP = {
     "task9": "easy_image_pull_backoff.json",
     "task10": "medium_resource_quota.json",
     "task11": "hard_liveness_probe_regression.json",
+    # AWS-themed extension tasks (task12–task20).
+    "task12": "medium_sqs_dlq_growth.json",
+    "task13": "hard_dynamodb_throttle.json",
+    "task14": "medium_secrets_manager_rotation.json",
+    "task15": "hard_s3_iam_drift.json",
+    "task16": "easy_lambda_cold_start.json",
+    "task17": "medium_rds_connection_pool.json",
+    "task18": "hard_bedrock_throttling.json",
+    "task19": "easy_cloudwatch_alarm_storm.json",
+    "task20": "hard_eventbridge_silent_drop.json",
+    "task21": "hard_step_functions_failure.json",
+    "task22": "medium_athena_failed_query.json",
+    "task23": "hard_kms_key_drift.json",
 }
 
 # Ground truth for reward computation
@@ -74,6 +88,48 @@ CORRECT_SERVICES = {
     "task9": "checkout-frontend",
     "task10": "payments-worker",
     "task11": "inventory-service",
+    # New AWS-themed tasks.
+    "task12": "order-worker",
+    "task13": "inventory-service",
+    "task14": "payments-api",
+    "task15": "inventory-service",
+    "task16": None,  # delete_chaos_experiment
+    "task17": "payments-api",
+    "task18": "notification-service",
+    "task19": None,  # delete_chaos_experiment
+    "task20": "order-worker",
+    "task21": "order-worker",
+    "task22": "inventory-service",
+    "task23": "payments-api",
+}
+
+# Per-task AWS service hints — used by aws_evidence_used and security/cost
+# reward signals. Each key lists the AWS terms that a *correct* postmortem
+# would mention. Empty list = task is not AWS-flavoured.
+TASK_AWS_HINTS: dict[str, list[str]] = {
+    "task1":  [],
+    "task2":  [],
+    "task3":  [],
+    "task4":  [],
+    "task5":  [],
+    "task6":  [],
+    "task7":  [],
+    "task8":  [],
+    "task9":  ["ECR", "ImagePullSecret"],
+    "task10": [],
+    "task11": [],
+    "task12": ["SQS", "DLQ", "CloudWatch", "IAM"],
+    "task13": ["DynamoDB", "RCU", "WCU", "CloudWatch", "auto-scaling"],
+    "task14": ["Secrets Manager", "RotationLambda", "EventBridge", "IAM"],
+    "task15": ["S3", "IAM", "AssumeRole", "IRSA", "CloudTrail"],
+    "task16": ["Lambda", "Provisioned Concurrency", "CloudWatch"],
+    "task17": ["RDS", "PgBouncer", "DatabaseConnections", "IAM"],
+    "task18": ["Bedrock", "InvokeModel", "Throttling", "quota", "CloudWatch"],
+    "task19": ["CloudWatch", "SNS", "PagerDuty", "PutMetricAlarm"],
+    "task20": ["EventBridge", "PutEvents", "DLQ", "IAM", "CloudWatch"],
+    "task21": ["Step Functions", "StateMachine", "X-Ray", "IAM", "SNS", "CloudWatch"],
+    "task22": ["Athena", "Glue", "S3", "IAM", "CloudWatch"],
+    "task23": ["KMS", "CloudTrail", "IAM", "IRSA", "SCP", "Decrypt"],
 }
 
 ALL_AVAILABLE_ACTIONS = [a.value for a in ActionType]
@@ -136,6 +192,13 @@ class IncidentCommanderEnv:
         self._seen_action_signatures: dict[str, int] = {}
         self._last_judge_result: dict[str, Any] | None = None
 
+        # Simulator state — only populated when reset() is called with a
+        # `sim_*` task id. Live AWS code paths remain available behind the
+        # IC_USE_LIVE_AWS env flag but the simulator is the default.
+        self._sim_active: bool = False
+        self._sim_state = None
+        self._sim_scenario: dict | None = None
+
         # Optional companions (k8s backend, LLM judge, adversarial designer)
         self._k8s_backend = K8sBackend()
         self._judge = LLMJudge()
@@ -186,13 +249,24 @@ class IncidentCommanderEnv:
         """Fast synchronous reset for mock mode."""
         if scenario is not None:
             self._task = scenario
+            self._sim_active = False
         else:
             filename = TASK_FILE_MAP.get(task_id)
             if not filename:
-                raise ValueError(f"Unknown task_id: {task_id}. Must be one of {list(TASK_FILE_MAP.keys())}")
-            scenario_path = SCENARIOS_DIR / filename
-            with open(scenario_path) as f:
-                self._task = TaskScenario(**json.load(f))
+                # Sim scenario? task_id is the file stem under scenarios/sim/<difficulty>/.
+                sim_path = self._find_sim_scenario(task_id)
+                if sim_path is None:
+                    raise ValueError(f"Unknown task_id: {task_id}. Must be one of {list(TASK_FILE_MAP.keys())} "
+                                     f"or a simulator scenario id (sim_*).")
+                self._init_simulator(sim_path)
+                # Build a minimal TaskScenario shell so downstream reward
+                # plumbing has something to consult.
+                self._task = self._task_from_sim(sim_path)
+            else:
+                scenario_path = SCENARIOS_DIR / filename
+                with open(scenario_path) as f:
+                    self._task = TaskScenario(**json.load(f))
+                self._sim_active = False
         self._step_count = 0
         self._done = False
         self._blast_tracker.reset()
@@ -204,6 +278,15 @@ class IncidentCommanderEnv:
         self._inspected_metrics = False
         self._inspected_deps = set()
         self._inspected_traces = False
+        # Sim-mode reward bookkeeping (one-shot credits per episode).
+        self._seen_sim_inspects: set[str]      = set()
+        self._sim_mitigation_credited: bool    = False
+        self._seen_blast: int                  = 0
+        self._sim_trap_credited: bool          = False
+        self._sim_trolley_credited: bool       = False
+        self._seen_k8s_kicks: int              = 0
+        self._aws_inspected: set[str]          = set()
+        self._aws_remediated: set[str]         = set()
         self._last_reward_breakdown = {}
         self._last_action_correct = False
         self._episode_scores = {}
@@ -212,7 +295,56 @@ class IncidentCommanderEnv:
         self._seen_action_signatures = {}
         self._last_judge_result = None
         self._useful_log_query_count = 0
+        # AWS-flavoured action tracking
+        self._aws_inspected = set()
+        self._aws_remediated = set()
+        # Simulator state is owned by _init_simulator() when applicable; clear
+        # it here for non-sim resets so a previous sim run doesn't leak.
+        if not getattr(self, "_sim_active", False):
+            self._sim_state = None
+            self._sim_scenario = None
         return self._build_mock_observation()
+
+    # ------------------------------------------------------------------
+    # Simulator integration
+    # ------------------------------------------------------------------
+    def _find_sim_scenario(self, task_id: str) -> Path | None:
+        """Locate a sim scenario by id (filename stem) under scenarios/sim/."""
+        if not SCENARIOS_SIM_DIR.exists():
+            return None
+        for p in SCENARIOS_SIM_DIR.rglob(f"{task_id}.json"):
+            return p
+        return None
+
+    def _init_simulator(self, scenario_path: Path) -> None:
+        """Spin up a fresh SimState and load the scenario."""
+        # Local import: keeps the simulator package optional.
+        from simulator import SimState, load_scenario
+        self._sim_state = SimState()
+        self._sim_scenario = load_scenario(scenario_path, self._sim_state)
+        self._sim_active = True
+
+    def _task_from_sim(self, scenario_path: Path) -> TaskScenario:
+        """Synthesise a TaskScenario shell from a sim scenario JSON.
+
+        The shell is just enough for the reward & observation builders to run;
+        actual work happens via the simulator.
+        """
+        scn = json.loads(scenario_path.read_text(encoding="utf-8"))
+        difficulty_str = scn.get("difficulty", "medium")
+        # TaskScenario has many required fields; fill them with sim-friendly
+        # defaults. These are not consulted by the simulator path, but the
+        # reward plumbing reads `difficulty` and `target_score`.
+        return TaskScenario(
+            task_id=scn["id"],
+            difficulty=difficulty_str,
+            target_score=scn.get("target_score", 0.55),
+            fault_type="simulated",
+            ground_truth_root_cause=scn.get("description", scn.get("title", "")),
+            correct_mitigation_action="aws_api_call",
+            correct_mitigation_target=scn["correct_action_chain"][-1]["id"]
+                if scn.get("correct_action_chain") else "",
+        )
 
     def _sync_step(self, action: Action) -> StepResult:
         """Fast synchronous step for mock mode."""
@@ -271,9 +403,27 @@ class IncidentCommanderEnv:
             "repeat_count": repeat_count,
             "judge_score": judge.score,
         })
+
+        # ── Phase 8: replay recording (sim mode only). ──
+        if self._sim_active and self._sim_state is not None:
+            from .replay import record_step
+            record_step(self._sim_state,
+                        action={"id": f"{action.type.value}",
+                                "params": action.params},
+                        action_result=str(action_result),
+                        step_reward=reward)
+
         self._step_count += 1
         done = action.type == ActionType.SUBMIT_POSTMORTEM or self._step_count >= 20
         self._done = done
+
+        # ── Phase 8: dump replay artifact at episode end. ──
+        if done and self._sim_active and self._sim_state is not None:
+            try:
+                self._dump_replay()
+            except Exception as exc:                          # noqa: BLE001
+                logger.warning("replay dump failed: %s", exc)
+
         info = {
             "reward_breakdown": self._last_reward_breakdown,
             "action_was_correct": self._last_action_correct,
@@ -361,6 +511,10 @@ class IncidentCommanderEnv:
                 affected_services=p.get("affected_services", []),
                 recommended_followups=p.get("recommended_followups", ""),
             )
+        # ---- AWS-flavoured non-obvious actions (sync = same impl) ----
+        aws_result = self._dispatch_aws_action(action)
+        if aws_result is not None:
+            return aws_result
         return f"Unknown action type: {t}"
 
     def state(self) -> dict[str, Any]:
@@ -850,6 +1004,9 @@ class IncidentCommanderEnv:
                 recommended_followups=p.get("recommended_followups", ""),
             )
         else:
+            aws_result = self._dispatch_aws_action(action)
+            if aws_result is not None:
+                return aws_result
             return f"Unknown action type: {t}"
 
     async def _action_query_logs(self, service: str, last_minutes: int, filter_text: str | None) -> str:
@@ -1053,6 +1210,252 @@ class IncidentCommanderEnv:
             reference_postmortem=self._task.reference_postmortem,
         )
         return json.dumps({"postmortem_scores": scores}, indent=2)
+
+    # ------------------------------------------------------------------
+    # AWS-flavoured non-obvious action dispatch
+    # ------------------------------------------------------------------
+
+    def _dispatch_aws_action(self, action: Action) -> str | None:
+        """Run an AWS-flavoured action. Returns None if the action type is
+        not one of the AWS variants (caller falls through to 'Unknown').
+
+        Side-effects on env state:
+          * tracks which forensic tools have been used (rewards consult these)
+          * marks `_mitigation_applied` for the AWS-write actions when the
+            target matches the task's correct_mitigation_target.
+        """
+        from . import aws_actions as A
+        t = action.type
+        p = action.params or {}
+        # Lazily-initialised investigation sets.
+        self._aws_inspected = getattr(self, "_aws_inspected", set())
+        self._aws_remediated = getattr(self, "_aws_remediated", set())
+
+        # If a simulator scenario is active, every AWS action goes through
+        # the simulator engine so live AWS is never touched.
+        if getattr(self, "_sim_active", False) and self._sim_state is not None:
+            sim_result = self._dispatch_sim_action(action)
+            if sim_result is not None:
+                return sim_result
+
+        # ---------- read / forensic ----------
+        if t == ActionType.CHECK_CLOUDTRAIL_EVENTS:
+            self._aws_inspected.add("cloudtrail")
+            return A.check_cloudtrail_events(
+                resource_name=p.get("resource_name", ""),
+                event_name=p.get("event_name", ""),
+                last_minutes=int(p.get("last_minutes", 60)))
+        if t == ActionType.DESCRIBE_RESOURCE_POLICY:
+            self._aws_inspected.add("resource_policy")
+            return A.describe_resource_policy(target=p.get("target", ""))
+        if t == ActionType.GET_QUOTA_USAGE:
+            self._aws_inspected.add("quota")
+            return A.get_quota_usage(
+                service_code=p.get("service_code", ""),
+                quota_code=p.get("quota_code", ""))
+        if t == ActionType.CHECK_SECRET_ROTATION:
+            self._aws_inspected.add("secret_rotation")
+            return A.check_secret_rotation(
+                secret_name=p.get("secret_name", ""))
+        if t == ActionType.VALIDATE_IAM_PERMISSION:
+            self._aws_inspected.add("iam_sim")
+            return A.validate_iam_permission(
+                action=p.get("iam_action", ""),
+                resource=p.get("resource", "*"),
+                principal=p.get("principal", ""))
+        if t == ActionType.ANALYZE_CLOUDWATCH_INSIGHTS:
+            self._aws_inspected.add("insights")
+            return A.analyze_cloudwatch_insights(
+                log_group=p.get("log_group", ""),
+                pattern=p.get("pattern", "ERROR"),
+                last_minutes=int(p.get("last_minutes", 15)))
+        if t == ActionType.INSPECT_DLQ_MESSAGES:
+            self._aws_inspected.add("dlq_inspect")
+            return A.inspect_dlq_messages(
+                queue_name=p.get("queue_name", "ic-orders-dlq"),
+                max_messages=int(p.get("max_messages", 5)))
+        if t == ActionType.DIFF_CONFIG_VERSIONS:
+            self._aws_inspected.add("ssm_diff")
+            return A.diff_config_versions(
+                parameter_name=p.get("parameter_name", ""),
+                a=int(p.get("a", 0)), b=int(p.get("b", 0)))
+        if t == ActionType.DESCRIBE_STATE_MACHINE_EXEC:
+            self._aws_inspected.add("sfn_exec")
+            return A.describe_state_machine_execution(
+                execution_arn=p.get("execution_arn", ""),
+                state_machine_name=p.get("state_machine_name", ""))
+
+        # ---------- write / remediation ----------
+        if t == ActionType.INVOKE_LAMBDA:
+            self._aws_remediated.add("lambda")
+            # Recognise correct mitigation when the agent invokes the runbook
+            # lambda for a task whose correct action is invoke_lambda.
+            if (self._task and
+                    self._task.correct_mitigation_action == "invoke_lambda"):
+                self._mitigation_applied = True
+            return A.invoke_lambda(
+                function_name=p.get("function_name", ""),
+                payload=p.get("payload"))
+        if t == ActionType.ROTATE_SECRET:
+            self._aws_remediated.add("secret_rotation")
+            if (self._task and
+                    self._task.correct_mitigation_action == "rotate_secret"):
+                self._mitigation_applied = True
+            return A.rotate_secret(
+                secret_name=p.get("secret_name", ""))
+        if t == ActionType.PURGE_QUEUE:
+            self._aws_remediated.add("purge")
+            if (self._task and
+                    self._task.correct_mitigation_action == "purge_queue"):
+                self._mitigation_applied = True
+            return A.purge_queue(queue_name=p.get("queue_name", ""))
+        if t == ActionType.ENABLE_EVENTBRIDGE_RULE:
+            self._aws_remediated.add("enable_rule")
+            if (self._task and
+                    self._task.correct_mitigation_action == "enable_eventbridge_rule"):
+                self._mitigation_applied = True
+            return A.enable_eventbridge_rule(
+                rule_name=p.get("rule_name", ""),
+                bus_name=p.get("bus_name", ""))
+        return None
+
+    # ------------------------------------------------------------------
+    # Simulator dispatch
+    # ------------------------------------------------------------------
+    # Map ActionType variants (the "named" AWS actions) to a (service, verb)
+    # tuple plus a parameter projector. The simulator engine just consumes
+    # `{"id": "<service>.<verb>", "params": {...}}`, so we translate.
+    _AWS_ACTION_MAP: dict = {
+        # Read / forensic
+        ActionType.CHECK_CLOUDTRAIL_EVENTS:
+            ("cloudtrail", "list_events", lambda p: {
+                "filter": p.get("event_name", ""),
+                "range_minutes": int(p.get("last_minutes", 60))}),
+        ActionType.DESCRIBE_RESOURCE_POLICY:
+            ("s3", "get_policy", lambda p: {"resource_id": p.get("target", "")}),
+        ActionType.GET_QUOTA_USAGE:
+            ("cloudwatch", "get_quota", lambda p: {
+                "service_code": p.get("service_code", "")}),
+        ActionType.CHECK_SECRET_ROTATION:
+            ("secretsmanager", "describe", lambda p: {
+                "resource_id": p.get("secret_name", "")}),
+        ActionType.VALIDATE_IAM_PERMISSION:
+            ("iam", "simulate_policy", lambda p: {
+                "principal": p.get("principal", ""),
+                "action_name": p.get("iam_action", ""),
+                "resource": p.get("resource", "*")}),
+        ActionType.ANALYZE_CLOUDWATCH_INSIGHTS:
+            ("cloudwatch", "get_logs", lambda p: {
+                "log_group": p.get("log_group", ""),
+                "filter": p.get("pattern", ""),
+                "range_minutes": int(p.get("last_minutes", 15))}),
+        ActionType.INSPECT_DLQ_MESSAGES:
+            ("sqs", "receive", lambda p: {
+                "resource_id": p.get("queue_name", ""),
+                "limit": int(p.get("max_messages", 5))}),
+        ActionType.DIFF_CONFIG_VERSIONS:
+            ("ssm", "diff_versions", lambda p: {
+                "resource_id": p.get("parameter_name", ""),
+                "v1": p.get("v1", 1), "v2": p.get("v2", 2)}),
+        ActionType.DESCRIBE_STATE_MACHINE_EXEC:
+            ("stepfunctions", "describe", lambda p: {
+                "resource_id": p.get("state_machine_name", "")}),
+        # Write / remediation
+        ActionType.INVOKE_LAMBDA:
+            ("lambda", "invoke", lambda p: {
+                "resource_id": p.get("function_name", ""),
+                "payload": p.get("payload", "")}),
+        ActionType.ROTATE_SECRET:
+            ("secretsmanager", "rotate", lambda p: {
+                "resource_id": p.get("secret_name", "")}),
+        ActionType.PURGE_QUEUE:
+            ("sqs", "purge", lambda p: {
+                "resource_id": p.get("queue_name", "")}),
+        ActionType.ENABLE_EVENTBRIDGE_RULE:
+            ("events", "enable", lambda p: {
+                "bus_name": p.get("bus_name", ""),
+                "rule_name": p.get("rule_name", "")}),
+    }
+
+    def _dispatch_sim_action(self, action: Action) -> str | None:
+        """Route the action through the simulator. Returns a string result, or
+        None if this action variant has no simulator mapping (caller falls
+        back to live-AWS code paths — which are themselves no-ops when
+        IC_USE_LIVE_AWS is unset)."""
+        from simulator import dispatch as sim_dispatch
+        p = action.params or {}
+
+        # Generic AWS_API_CALL — agent specifies service + verb directly.
+        if action.type == ActionType.AWS_API_CALL:
+            service = p.get("service")
+            verb    = p.get("verb")
+            if not service or not verb:
+                return "[sim:error] AWS_API_CALL requires params.service and params.verb"
+            inner_params = {k: v for k, v in p.items()
+                            if k not in ("service", "verb")}
+            result = sim_dispatch(
+                {"id": f"{service}.{verb}", "params": inner_params},
+                self._sim_state)
+            self._sync_sim_breadcrumbs(result)
+            self._tag_breadcrumbs(result, service, verb)
+            return result.as_observation()
+
+        mapping = self._AWS_ACTION_MAP.get(action.type)
+        if mapping is None:
+            return None
+        service, verb, project = mapping
+        result = sim_dispatch(
+            {"id": f"{service}.{verb}", "params": project(p)},
+            self._sim_state)
+        self._sync_sim_breadcrumbs(result)
+        self._tag_breadcrumbs(result, service, verb)
+        return result.as_observation()
+
+    def _tag_breadcrumbs(self, result, service: str, verb: str) -> None:
+        """Translate simulator tags into env reward breadcrumbs."""
+        # Inspection-flavoured tags from both legacy AWS handlers and the
+        # `platform.*` physics handlers.
+        INSPECT_TAGS = {
+            "cloudtrail", "iam_sim", "insights", "dlq_inspect",
+            "secret_rotation", "ssm_diff", "resource_policy", "sfn_exec",
+            "investigation", "logs", "trace", "metrics", "topology",
+            "runbook_read", "runbook_search", "heap_dump", "traffic",
+            "slack",
+        }
+        for tag in result.tags:
+            if tag in INSPECT_TAGS:
+                self._aws_inspected.add(tag)
+            if tag in ("remediation", "remediation_safe", "remediation_pending"):
+                self._aws_remediated.add(f"{service}.{verb}")
+
+    def _sync_sim_breadcrumbs(self, result) -> None:
+        """Fold simulator-side breadcrumbs into env reward state."""
+        if not result.ok:
+            return
+        if self._sim_state is not None and self._sim_state.mitigation_applied:
+            self._mitigation_applied = True
+
+    def _dump_replay(self) -> Path | None:
+        """Write a standalone HTML replay artifact next to checkpoints/.
+
+        Path: `<repo>/rl-agent/replays/{task_id}_{episode}.html`. The path is
+        configurable via env var `IC_REPLAY_DIR`.
+        """
+        if self._sim_state is None or self._task is None:
+            return None
+        from .replay import build_replay
+        out_dir = Path(os.environ.get("IC_REPLAY_DIR",
+                                       Path(__file__).resolve().parent.parent
+                                       / "replays"))
+        out_dir.mkdir(parents=True, exist_ok=True)
+        ep_id = f"{self._task.task_id}_{int(self._sim_state.clock_s)}"
+        out = out_dir / f"{ep_id}.html"
+        return build_replay(self._sim_state,
+                            task_id=self._task.task_id,
+                            episode_id=ep_id,
+                            final_reward=self._cumulative_reward,
+                            mitigated=self._mitigation_applied,
+                            out_path=out)
 
     # ------------------------------------------------------------------
     # Reward Function
@@ -1365,6 +1768,383 @@ class IncidentCommanderEnv:
             cmd = str(action.params.get("command", "")).lower()
             if not any(d in cmd for d in (" delete ", " drop ", " --force ")):
                 breakdown["safe_action_bonus"] = 0.02
+
+        # =============================================================
+        # AWS-aware + safety + observability reward signals (round 3).
+        # All deterministic, low-magnitude, gated on action+task context.
+        # =============================================================
+
+        aws_hints = TASK_AWS_HINTS.get(task_id, [])
+        # Lowercased postmortem text once, used by several signals below.
+        pm_blob = ""
+        if action.type == ActionType.SUBMIT_POSTMORTEM:
+            pm_blob = " ".join(
+                str(v) for v in action.params.values() if isinstance(v, (str, list))
+            ).lower()
+
+        # --- aws_evidence_used (+0.06): postmortem mentions \u22651 expected AWS term ---
+        if action.type == ActionType.SUBMIT_POSTMORTEM and aws_hints:
+            hits = sum(1 for h in aws_hints if h.lower() in pm_blob)
+            if hits >= 1:
+                breakdown["aws_evidence_used"] = round(min(0.06, 0.02 * hits), 3)
+
+        # --- iam_least_privilege_bonus (+0.05): postmortem mentions IAM scoping ---
+        if action.type == ActionType.SUBMIT_POSTMORTEM:
+            if any(kw in pm_blob for kw in (
+                    "least-privilege", "least privilege", "irsa",
+                    "iam policy", "scope", "assumerole")):
+                breakdown["iam_least_privilege_bonus"] = 0.05
+
+        # --- cost_awareness_bonus (+0.03): postmortem reasons about cost ---
+        if action.type == ActionType.SUBMIT_POSTMORTEM:
+            if any(kw in pm_blob for kw in (
+                    "cost", "budget", "$", "cheaper", "pay_per_request",
+                    "provisioned concurrency", "rcu", "wcu")):
+                breakdown["cost_awareness_bonus"] = 0.03
+
+        # --- security_followup_bonus (+0.04): a followup mentions security ---
+        if action.type == ActionType.SUBMIT_POSTMORTEM:
+            fu = action.params.get("recommended_followups", []) or []
+            joined = " ".join(str(x) for x in fu).lower() if isinstance(fu, list) else ""
+            if any(k in joined for k in ("rotate", "audit", "rbac", "iam",
+                                         "secret", "ciphertext", "encrypt")):
+                breakdown["security_followup_bonus"] = 0.04
+
+        # --- timeline_quality_bonus (+0.04): timeline has \u22653 dated entries ---
+        if action.type == ActionType.SUBMIT_POSTMORTEM:
+            timeline = action.params.get("timeline", "")
+            if isinstance(timeline, str):
+                # Crude: count occurrences of T+ markers or HH:MM-style stamps.
+                ts_count = len(re.findall(r"(?:T\+\d|\d{1,2}:\d{2})", timeline))
+                if ts_count >= 3:
+                    breakdown["timeline_quality_bonus"] = 0.04
+
+        # --- replica_target_safe (+0.02): scale to a sane replica count ---
+        if action.type == ActionType.SCALE_DEPLOYMENT:
+            try:
+                n = int(action.params.get("replicas", 0))
+                if 1 <= n <= 20:
+                    breakdown["replica_target_safe"] = 0.02
+                elif n > 50:
+                    breakdown["replica_target_unsafe"] = -0.05
+            except (TypeError, ValueError):
+                pass
+
+        # --- correct_action_type (+0.05): right action verb even if wrong target ---
+        if (action.type in WRITE_ACTIONS
+                and action.type.value == task.correct_mitigation_action
+                and not self._mitigation_applied):
+            breakdown["correct_action_type"] = 0.05
+
+        # --- service_dependency_traversal (+0.04): queried logs of a known dep ---
+        if action.type == ActionType.QUERY_LOGS:
+            svc = action.params.get("service", "")
+            correct = CORRECT_SERVICES.get(task_id) or ""
+            deps = SERVICE_DEPENDENCIES.get(correct, [])
+            if svc and svc in deps and "service_dependency_traversal" not in breakdown:
+                breakdown["service_dependency_traversal"] = 0.04
+
+        # --- alert_triage_match (+0.05): first read targets a service in alerts ---
+        if (self._step_count == 1
+                and action.type in {ActionType.QUERY_LOGS,
+                                    ActionType.QUERY_METRICS,
+                                    ActionType.GET_SERVICE_DEPENDENCIES}
+                and obs.active_alerts):
+            alert_svcs = {a.service for a in obs.active_alerts}
+            tgt = action.params.get("service", "") or str(action.params.get("promql", ""))
+            if any(s and s in tgt for s in alert_svcs):
+                breakdown["alert_triage_match"] = 0.05
+
+        # --- progressive_investigation (+0.04): logs \u2192 metrics \u2192 trace order ---
+        if action.type == ActionType.GET_TRACE:
+            seen_logs    = any(a["action_type"] == "query_logs"
+                               for a in self._action_history)
+            seen_metrics = any(a["action_type"] == "query_metrics"
+                               for a in self._action_history)
+            if seen_logs and seen_metrics and not self._inspected_traces:
+                breakdown["progressive_investigation"] = 0.04
+
+        # --- specific_promql_bonus (+0.03): query uses rate()/histogram_quantile ---
+        if action.type == ActionType.QUERY_METRICS:
+            promql = str(action.params.get("promql", "")).lower()
+            if any(fn in promql for fn in ("rate(", "histogram_quantile",
+                                           "increase(", "sum by", "max_over_time")):
+                breakdown["specific_promql_bonus"] = 0.03
+
+        # --- avoided_red_herring (+0.05): never wrote to a red-herring service ---
+        if action.type == ActionType.SUBMIT_POSTMORTEM and task.red_herrings:
+            wrote_herring = any(
+                a.get("action_type") in {w.value for w in WRITE_ACTIONS}
+                and any(h.lower() in str(a.get("params", {}).get("deployment", "")).lower()
+                        for h in task.red_herrings)
+                for a in self._action_history
+            )
+            if not wrote_herring:
+                breakdown["avoided_red_herring"] = 0.05
+
+        # --- evidence_diversity_bonus (+0.05): \u22654 distinct evidence sources ---
+        if action.type == ActionType.SUBMIT_POSTMORTEM:
+            n_src = (
+                int(bool(self._inspected_logs))
+                + int(self._inspected_metrics)
+                + int(bool(self._inspected_deps))
+                + int(self._inspected_traces)
+                + int(any(k.startswith("exec:") for k in self._inspected_logs))
+            )
+            if n_src >= 4:
+                breakdown["evidence_diversity_bonus"] = 0.05
+
+        # --- mitigation_target_match (+0.04): write target equals correct service ---
+        correct_for_task = CORRECT_SERVICES.get(task_id)
+        if (correct_for_task
+                and action.type in WRITE_ACTIONS
+                and action.type != ActionType.DELETE_CHAOS_EXPERIMENT):
+            target_deploy = action.params.get("deployment", "")
+            if target_deploy == correct_for_task:
+                breakdown["mitigation_target_match"] = 0.04
+
+        # --- chaos_detection_bonus (+0.04): probed chaos for a chaos task ---
+        if (task.chaos_experiment_name
+                and action.type == ActionType.EXEC_KUBECTL):
+            cmd = str(action.params.get("command", "")).lower()
+            if "chaos" in cmd or "podchaos" in cmd or "networkchaos" in cmd:
+                breakdown["chaos_detection_bonus"] = 0.04
+
+        # --- timely_acknowledgment (+0.03): first action within 2 steps ---
+        if self._step_count <= 1 and action.type in READ_ACTIONS:
+            breakdown["timely_acknowledgment"] = 0.03
+
+        # --- summary_brevity_penalty (-0.02): postmortem summary is empty ---
+        if action.type == ActionType.SUBMIT_POSTMORTEM:
+            summary_text = str(action.params.get("summary", "")).strip()
+            if len(summary_text) < 20:
+                breakdown["summary_brevity_penalty"] = -0.02
+
+        # =============================================================
+        # ROUND-4 REWARDS \u2014 dense, non-obvious AWS-aware signals.
+        # Goal: push the actor to PICK THE RIGHT FORENSIC TOOL FOR THE
+        # SYMPTOMS rather than fall back on logs+kubectl every time.
+        # All values are deterministic and small (\u22640.10).
+        # =============================================================
+
+        aws_inspected  = getattr(self, "_aws_inspected",  set())
+        aws_remediated = getattr(self, "_aws_remediated", set())
+
+        # Tasks where each forensic tool yields the *non-obvious* clue.
+        # These are intentionally not 1:1 with task ids \u2014 the agent has
+        # to learn the mapping by trial.
+        cloudtrail_tasks       = {"task14", "task15", "task19", "task20",
+                                  "task23"}
+        resource_policy_tasks  = {"task14", "task15", "task20", "task23"}
+        quota_tasks            = {"task13", "task16", "task18"}
+        secret_rotation_tasks  = {"task14", "task23"}
+        iam_sim_tasks          = {"task15", "task20", "task23"}
+        insights_tasks         = {"task9", "task12", "task16", "task17",
+                                  "task22"}
+        dlq_inspect_tasks      = {"task12", "task20"}
+        ssm_diff_tasks         = {"task17", "task7"}
+        sfn_exec_tasks         = {"task21"}
+
+        # ---- 1. cloudtrail_for_drift_task (+0.07) ------------------------
+        # Used cloudtrail on a task whose root cause is an operator action.
+        if (action.type == ActionType.CHECK_CLOUDTRAIL_EVENTS
+                and task_id in cloudtrail_tasks
+                and "cloudtrail_first_use" not in breakdown):
+            breakdown["cloudtrail_for_drift_task"] = 0.07
+        # ---- 2. cloudtrail_irrelevant_penalty (-0.03) -------------------
+        elif (action.type == ActionType.CHECK_CLOUDTRAIL_EVENTS
+              and task_id not in cloudtrail_tasks):
+            breakdown["cloudtrail_irrelevant_penalty"] = -0.03
+
+        # ---- 3. policy_inspection_for_drift (+0.06) ---------------------
+        if (action.type == ActionType.DESCRIBE_RESOURCE_POLICY
+                and task_id in resource_policy_tasks):
+            breakdown["policy_inspection_for_drift"] = 0.06
+
+        # ---- 4. quota_check_for_throttle_task (+0.07) -------------------
+        if (action.type == ActionType.GET_QUOTA_USAGE
+                and task_id in quota_tasks):
+            breakdown["quota_check_for_throttle_task"] = 0.07
+
+        # ---- 5. secret_rotation_inspected_for_secret_task (+0.06) -------
+        if (action.type == ActionType.CHECK_SECRET_ROTATION
+                and task_id in secret_rotation_tasks):
+            breakdown["secret_rotation_inspected_for_secret_task"] = 0.06
+
+        # ---- 6. iam_simulation_used_for_iam_task (+0.06) ---------------
+        if (action.type == ActionType.VALIDATE_IAM_PERMISSION
+                and task_id in iam_sim_tasks):
+            breakdown["iam_simulation_used_for_iam_task"] = 0.06
+
+        # ---- 7. insights_query_used (+0.05) ----------------------------
+        if (action.type == ActionType.ANALYZE_CLOUDWATCH_INSIGHTS
+                and task_id in insights_tasks):
+            breakdown["insights_query_used"] = 0.05
+
+        # ---- 8. dlq_inspect_before_purge (+0.06) -----------------------
+        if (action.type == ActionType.PURGE_QUEUE
+                and "dlq_inspect" in aws_inspected):
+            breakdown["dlq_inspect_before_purge"] = 0.06
+        # ---- 9. blind_purge_penalty (-0.10) ----------------------------
+        if (action.type == ActionType.PURGE_QUEUE
+                and "dlq_inspect" not in aws_inspected):
+            breakdown["blind_purge_penalty"] = -0.10
+
+        # ---- 10. ssm_diff_for_config_task (+0.06) ----------------------
+        if (action.type == ActionType.DIFF_CONFIG_VERSIONS
+                and task_id in ssm_diff_tasks):
+            breakdown["ssm_diff_for_config_task"] = 0.06
+
+        # ---- 11. sfn_exec_for_sfn_task (+0.07) -------------------------
+        if (action.type == ActionType.DESCRIBE_STATE_MACHINE_EXEC
+                and task_id in sfn_exec_tasks):
+            breakdown["sfn_exec_for_sfn_task"] = 0.07
+
+        # ---- 12. forensic_chain_bonus (+0.08) -------------------------
+        # Agent ran \u22653 distinct AWS forensic actions in one episode.
+        if (action.type == ActionType.SUBMIT_POSTMORTEM
+                and len(aws_inspected) >= 3):
+            breakdown["forensic_chain_bonus"] = min(0.08,
+                                                    0.025 * len(aws_inspected))
+
+        # ---- 13. minimal_invasive_recovery (+0.05) ---------------------
+        # Used a soft AWS remediation (lambda invoke / rotate / enable rule)
+        # instead of the heavy hammer (rollback / restart) when softer was
+        # appropriate.
+        soft = {"lambda", "secret_rotation", "enable_rule"}
+        if (action.type == ActionType.SUBMIT_POSTMORTEM
+                and aws_remediated & soft
+                and not any(a.get("action_type") in
+                            {"rollback_deployment", "restart_pods"}
+                            for a in self._action_history)):
+            breakdown["minimal_invasive_recovery"] = 0.05
+
+        # ---- 14. evidence_supports_root_cause (+0.06) ------------------
+        # The submitted root cause names a CloudTrail/quota/policy/dlq
+        # concept that the agent ACTUALLY inspected this episode.
+        if action.type == ActionType.SUBMIT_POSTMORTEM:
+            rc = str(action.params.get("root_cause", "")).lower()
+            link = {
+                "cloudtrail":   "cloudtrail" in rc or "scheduled_for_deletion" in rc,
+                "resource_policy": "policy" in rc or "denies" in rc,
+                "quota":        "quota" in rc or "throttl" in rc or "limit" in rc,
+                "secret_rotation": "rotation" in rc or "stale" in rc,
+                "iam_sim":      "iam" in rc or "least-privilege" in rc,
+                "insights":     "log" in rc or "pattern" in rc,
+                "dlq_inspect":  "dlq" in rc or "dead-letter" in rc or "poison" in rc,
+                "ssm_diff":     "config" in rc or "ssm" in rc or "parameter" in rc,
+                "sfn_exec":     "state" in rc or "execution" in rc or "saga" in rc,
+            }
+            matches = sum(1 for k, v in link.items()
+                          if v and k in aws_inspected)
+            if matches >= 1:
+                breakdown["evidence_supports_root_cause"] = round(
+                    min(0.08, 0.04 * matches), 3)
+
+        # ---- 15. obvious_action_penalty (-0.04) ------------------------
+        # First two actions on an AWS task were both query_logs+kubectl
+        # without ever consulting any AWS-specific tool. Pushes the agent
+        # to LOOK before reaching for k8s primitives.
+        if (action.type in WRITE_ACTIONS
+                and self._step_count >= 2
+                and aws_hints
+                and not aws_inspected
+                and not self._inspected_metrics):
+            breakdown["obvious_action_penalty"] = -0.04
+
+        # ---- 16. correct_runbook_lambda (+0.07) ------------------------
+        if (action.type == ActionType.INVOKE_LAMBDA
+                and "runbook" in str(action.params.get("function_name", "")).lower()
+                and task_id in {"task1", "task2", "task11"}):
+            breakdown["correct_runbook_lambda"] = 0.07
+
+        # ---- 17. enable_rule_after_disable (+0.06) ---------------------
+        if (action.type == ActionType.ENABLE_EVENTBRIDGE_RULE
+                and task_id == "task20"):
+            breakdown["enable_rule_after_disable"] = 0.06
+
+        # ---- 18. tool_diversity_bonus (+0.04 cap) ----------------------
+        # Per-step micro-bonus for using a forensic tool the agent has not
+        # used yet this episode.
+        forensic_types = {ActionType.CHECK_CLOUDTRAIL_EVENTS,
+                          ActionType.DESCRIBE_RESOURCE_POLICY,
+                          ActionType.GET_QUOTA_USAGE,
+                          ActionType.CHECK_SECRET_ROTATION,
+                          ActionType.VALIDATE_IAM_PERMISSION,
+                          ActionType.ANALYZE_CLOUDWATCH_INSIGHTS,
+                          ActionType.INSPECT_DLQ_MESSAGES,
+                          ActionType.DIFF_CONFIG_VERSIONS,
+                          ActionType.DESCRIBE_STATE_MACHINE_EXEC}
+        if action.type in forensic_types:
+            already_used = sum(1 for a in self._action_history
+                               if a.get("action_type") == action.type.value)
+            if already_used == 0:                     # first time this episode
+                breakdown["tool_diversity_bonus"] = 0.04
+
+        # ---- 19. wrong_tool_for_obvious_clue (-0.03) -------------------
+        # If the alerts already mention "Throttl" / "PendingDeletion" /
+        # "ExecutionFailed" but the agent fires query_logs as its FIRST
+        # forensic action instead of the dedicated AWS tool.
+        if (self._step_count == 0
+                and action.type == ActionType.QUERY_LOGS
+                and obs.active_alerts):
+            alert_text = " ".join(a.alert_name + " " +
+                                  " ".join(a.annotations.values())
+                                  for a in obs.active_alerts).lower()
+            if any(kw in alert_text for kw in ("throttl", "pendingdeletion",
+                                               "executionfailed",
+                                               "schemanotfound")):
+                breakdown["wrong_tool_for_obvious_clue"] = -0.03
+
+        # ---- 20. cross_aws_correlation (+0.05) -------------------------
+        # Used \u22652 different AWS forensic tools that target the SAME
+        # resource within the episode (cloudtrail+policy on KMS, etc).
+        if (action.type == ActionType.SUBMIT_POSTMORTEM
+                and len({"cloudtrail", "resource_policy"} & aws_inspected) == 2):
+            breakdown["cross_aws_correlation"] = 0.05
+
+        # ---- 21. simulator-mode breadcrumbs ----------------------------
+        # When a sim_* scenario is active, fold the simulator's physics
+        # signals into the reward. These compose with the K8s-shaped
+        # rewards above; magnitudes stay within the \u00b10.10 envelope per
+        # category to respect the project-wide cap.
+        if getattr(self, "_sim_active", False) and self._sim_state is not None:
+            sim = self._sim_state
+            # Investigation bonus: every NEW physics-inspect tag the
+            # simulator marks (heap_dump, runbook, hc_paused, …) is worth
+            # +0.02, capped at +0.10 / step.
+            sim_inspect_tags = sim.inspected - getattr(self, "_seen_sim_inspects", set())
+            if sim_inspect_tags:
+                bonus = min(0.10, 0.02 * len(sim_inspect_tags))
+                breakdown["sim_investigation"] = bonus
+                self._seen_sim_inspects = set(sim.inspected)
+            # Mitigation: simulator says the world is healed -> +0.10.
+            if sim.mitigation_applied and not getattr(self, "_sim_mitigation_credited", False):
+                breakdown["sim_mitigation"] = 0.10
+                self._sim_mitigation_credited = True
+            # Blast radius: brute-force action knocked over N services -> -0.01 / hop.
+            blast = sim.blast_ledger.total_radius()
+            seen_blast = getattr(self, "_seen_blast", 0)
+            if blast > seen_blast:
+                breakdown["sim_blast_penalty"] = -min(0.10, 0.01 * (blast - seen_blast))
+                self._seen_blast = blast
+            # Runbook trap: the agent crossed a tripwire -> hard -0.10.
+            tripped = any(t.triggered for t in sim.runbook_traps)
+            if tripped and not getattr(self, "_sim_trap_credited", False):
+                breakdown["sim_runbook_trap"] = -0.10
+                self._sim_trap_credited = True
+            # Trolley trade-off: subtract the cost only once on resolve.
+            if sim.trolley.chosen_path and not getattr(self, "_sim_trolley_credited", False):
+                cost = sim.trolley.cost()
+                breakdown["sim_trolley_cost"] = -min(0.10, 0.10 * cost)
+                self._sim_trolley_credited = True
+            # K8s controller restart that destroyed evidence -> -0.02 each.
+            n_restarts = len(sim.controller.restart_log)
+            seen_kicks = getattr(self, "_seen_k8s_kicks", 0)
+            if n_restarts > seen_kicks:
+                breakdown["sim_controller_kick"] = -min(0.10,
+                    0.02 * (n_restarts - seen_kicks))
+                self._seen_k8s_kicks = n_restarts
 
         total = sum(breakdown.values())
         self._last_reward_breakdown = breakdown

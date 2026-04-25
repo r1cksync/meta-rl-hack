@@ -1,0 +1,56 @@
+{
+  "id": "sim_easy_kms_disabled_079",
+  "difficulty": "easy",
+  "title": "promotions KMS key disabled",
+  "description": "Encrypt calls fail with KMSInvalidStateException. Re-enable `alias/ic-promotions-key`.",
+  "preconditions": [
+    {
+      "path": "kms/alias/ic-promotions-key",
+      "op": "set",
+      "value": {
+        "alias": "alias/ic-promotions-key",
+        "state": "Disabled",
+        "policy": "{}",
+        "pending_deletion_days": null
+      }
+    }
+  ],
+  "scheduled_failures": [
+    {
+      "action_id": "kms.encrypt",
+      "error": "KMSInvalidStateException",
+      "message": "key disabled",
+      "count": 1
+    }
+  ],
+  "correct_action_chain": [
+    {
+      "id": "kms.describe",
+      "params": {
+        "resource_id": "alias/ic-promotions-key"
+      }
+    },
+    {
+      "id": "kms.encrypt",
+      "params": {
+        "resource_id": "alias/ic-promotions-key",
+        "plaintext": "hi"
+      }
+    },
+    {
+      "id": "kms.enable",
+      "params": {
+        "resource_id": "alias/ic-promotions-key"
+      }
+    },
+    {
+      "id": "kms.encrypt",
+      "params": {
+        "resource_id": "alias/ic-promotions-key",
+        "plaintext": "hi"
+      }
+    }
+  ],
+  "target_score": 0.55,
+  "max_steps": 16
+}

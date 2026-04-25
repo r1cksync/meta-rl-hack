@@ -1,0 +1,88 @@
+{
+  "id": "sim_gen_redherring_payments_014",
+  "difficulty": "medium",
+  "title": "Red-herring on Slack \u2014 true cause is leak in payments",
+  "description": "Slack is loud with red herrings (a hotfix dev, an intern, a VP demanding ETA). Real cause is a memory leak in payments. Agent must triage.",
+  "preconditions": [],
+  "scheduled_failures": [],
+  "topology_overrides": [
+    {
+      "kind": "set_status",
+      "node": "payments",
+      "status": "memory_leak"
+    },
+    {
+      "kind": "set_leak",
+      "node": "payments",
+      "rate": 0.02
+    }
+  ],
+  "saboteur": {
+    "primary_target": "payments",
+    "failover_target": null,
+    "dependency_chain": [
+      "api_gateway",
+      "frontend"
+    ],
+    "aggressiveness": 0.4,
+    "cooldown_ticks": 3
+  },
+  "slack": {
+    "msgs_per_tick": 2.2
+  },
+  "traffic_profile": {
+    "period": 12,
+    "amplitude": 0.8,
+    "phase": 2.0,
+    "jitter": 0.15
+  },
+  "seed": 6377,
+  "k8s_controller": true,
+  "correct_action_chain": [
+    {
+      "id": "platform.read_slack",
+      "params": {
+        "last_n": 10
+      }
+    },
+    {
+      "id": "platform.get_logs",
+      "params": {
+        "service": "payments"
+      }
+    },
+    {
+      "id": "platform.get_metrics",
+      "params": {
+        "service": "payments",
+        "metric": "mem_pct"
+      }
+    },
+    {
+      "id": "platform.pause_health_checks",
+      "params": {
+        "target": "payments"
+      }
+    },
+    {
+      "id": "platform.capture_memory_dump",
+      "params": {
+        "target": "payments"
+      }
+    },
+    {
+      "id": "platform.rollback_deployment",
+      "params": {
+        "target": "payments"
+      }
+    },
+    {
+      "id": "platform.resume_health_checks",
+      "params": {
+        "target": "payments"
+      }
+    }
+  ],
+  "target_score": 0.6,
+  "max_steps": 16
+}

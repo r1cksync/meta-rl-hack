@@ -1,0 +1,36 @@
+{
+  "id": "sim_easy_ddb_throttle_114",
+  "difficulty": "easy",
+  "title": "telemetry DynamoDB throttling",
+  "description": "`ic-telemetry-table` is throttling writes. Scale write capacity.",
+  "preconditions": [
+    {
+      "path": "dynamodb/ic-telemetry-table",
+      "op": "set",
+      "value": {
+        "name": "ic-telemetry-table",
+        "items": {},
+        "throttled": true,
+        "capacity": 5
+      }
+    }
+  ],
+  "scheduled_failures": [],
+  "correct_action_chain": [
+    {
+      "id": "dynamodb.describe",
+      "params": {
+        "resource_id": "ic-telemetry-table"
+      }
+    },
+    {
+      "id": "dynamodb.scale",
+      "params": {
+        "resource_id": "ic-telemetry-table",
+        "capacity": 50
+      }
+    }
+  ],
+  "target_score": 0.55,
+  "max_steps": 16
+}

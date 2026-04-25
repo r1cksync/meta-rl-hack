@@ -1,0 +1,77 @@
+{
+  "id": "sim_gen_db_duel_orders_db_017",
+  "difficulty": "hard",
+  "title": "Failover duel \u2014 saboteur attacks orders_db, then chokes orders_db_replica",
+  "description": "Saboteur takes down orders_db; once the agent fails over, it pins a heavy backup job on orders_db_replica's CPU. Agent must detect both phases via slack + metrics.",
+  "preconditions": [],
+  "scheduled_failures": [],
+  "topology_overrides": [],
+  "saboteur": {
+    "primary_target": "orders_db",
+    "failover_target": "orders_db_replica",
+    "dependency_chain": [
+      "checkout",
+      "api_gateway"
+    ],
+    "aggressiveness": 0.8,
+    "cooldown_ticks": 1
+  },
+  "slack": {
+    "msgs_per_tick": 1.5
+  },
+  "traffic_profile": {
+    "period": 16,
+    "amplitude": 0.7,
+    "phase": 5.0,
+    "jitter": 0.12
+  },
+  "seed": 5168,
+  "k8s_controller": true,
+  "correct_action_chain": [
+    {
+      "id": "platform.read_slack",
+      "params": {
+        "last_n": 5
+      }
+    },
+    {
+      "id": "platform.get_logs",
+      "params": {
+        "service": "checkout"
+      }
+    },
+    {
+      "id": "platform.get_trace",
+      "params": {
+        "service": "frontend"
+      }
+    },
+    {
+      "id": "platform.failover_replica",
+      "params": {
+        "target": "orders_db"
+      }
+    },
+    {
+      "id": "platform.read_slack",
+      "params": {
+        "last_n": 5
+      }
+    },
+    {
+      "id": "platform.get_metrics",
+      "params": {
+        "service": "orders_db_replica",
+        "metric": "cpu_pct"
+      }
+    },
+    {
+      "id": "platform.rollback_deployment",
+      "params": {
+        "target": "orders_db_replica"
+      }
+    }
+  ],
+  "target_score": 0.65,
+  "max_steps": 20
+}

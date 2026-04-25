@@ -1,0 +1,25 @@
+{
+  "id": "sim_advanced_runbook_trap_postgres_001",
+  "difficulty": "hard",
+  "title": "Trap: TXID wraparound — restart corrupts the DB",
+  "description": "users_db is approaching transaction-ID wraparound. The naive remediation (restart_cluster) corrupts the catalog. The agent must search the wiki, read the runbook, then run vacuum_freeze_db. Hitting restart_cluster before reading the runbook trips a CORRUPTED state on users_db that no later action can clear.",
+  "preconditions": [],
+  "topology_overrides": [
+    {"kind": "set_status", "node": "users_db", "status": "degraded"}
+  ],
+  "scheduled_failures": [],
+  "runbook_traps": [
+    {"runbook_id": "postgres_txid_wraparound", "target": "users_db"}
+  ],
+  "k8s_controller":   true,
+  "traffic_profile":  {"period": 24, "amplitude": 0.8, "jitter": 0.10},
+  "seed":             7373,
+  "correct_action_chain": [
+    {"id": "platform.get_logs",        "params": {"service": "users_db", "n_lines": 20, "pattern": "wraparound"}},
+    {"id": "platform.search_runbook",  "params": {"query": "postgres transaction id wraparound"}},
+    {"id": "platform.read_runbook",    "params": {"runbook_id": "postgres_txid_wraparound"}},
+    {"id": "platform.vacuum_freeze_db","params": {"target": "users_db"}}
+  ],
+  "target_score": 0.55,
+  "max_steps":    20
+}

@@ -600,6 +600,11 @@ def main() -> None:
             aws.publish_metric("RootCauseRate",  m["root_cause_rate"] * 100,
                                "Percent", {"Run": run_id})
             aws.log_event({"event": "training_update", **m})
+            # Push the same update onto SQS + EventBridge so a runbook
+            # Lambda or a downstream training run can replay it. These
+            # silently no-op when the relevant env vars aren't set.
+            aws.publish_sqs({"kind": "training_update", **m})
+            aws.publish_event("TrainingUpdate", m)
 
         log.info("u=%d r=%.3f ± %.3f g=%.3f mit=%.2f rc=%.2f",
                  u, m["mean_reward"], m["reward_std"], m["mean_grade"],

@@ -1,0 +1,36 @@
+{
+  "id": "sim_easy_ddb_throttle_105",
+  "difficulty": "easy",
+  "title": "search DynamoDB throttling",
+  "description": "`ic-search-table` is throttling writes. Scale write capacity.",
+  "preconditions": [
+    {
+      "path": "dynamodb/ic-search-table",
+      "op": "set",
+      "value": {
+        "name": "ic-search-table",
+        "items": {},
+        "throttled": true,
+        "capacity": 5
+      }
+    }
+  ],
+  "scheduled_failures": [],
+  "correct_action_chain": [
+    {
+      "id": "dynamodb.describe",
+      "params": {
+        "resource_id": "ic-search-table"
+      }
+    },
+    {
+      "id": "dynamodb.scale",
+      "params": {
+        "resource_id": "ic-search-table",
+        "capacity": 50
+      }
+    }
+  ],
+  "target_score": 0.55,
+  "max_steps": 16
+}

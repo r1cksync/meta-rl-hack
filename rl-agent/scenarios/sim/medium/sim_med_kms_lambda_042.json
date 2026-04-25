@@ -1,0 +1,72 @@
+{
+  "id": "sim_med_kms_lambda_042",
+  "difficulty": "medium",
+  "title": "catalog Lambda 5xx after KMS change",
+  "description": "`ic-catalog` invocations fail. Logs show KMS pending deletion on `alias/ic-catalog-data`.",
+  "preconditions": [
+    {
+      "path": "lambda_/ic-catalog",
+      "op": "set",
+      "value": {
+        "name": "ic-catalog",
+        "state": "Active",
+        "reserved_concurrency": 10,
+        "invocations": 0,
+        "errors": 3,
+        "throttles": 0
+      }
+    },
+    {
+      "path": "kms/alias/ic-catalog-data",
+      "op": "set",
+      "value": {
+        "alias": "alias/ic-catalog-data",
+        "state": "PendingDeletion",
+        "policy": "{}",
+        "pending_deletion_days": 7
+      }
+    }
+  ],
+  "scheduled_failures": [
+    {
+      "action_id": "lambda.invoke",
+      "error": "KMSInvalidStateException",
+      "message": "key alias/ic-catalog-data pending deletion",
+      "count": 1
+    }
+  ],
+  "correct_action_chain": [
+    {
+      "id": "lambda.describe",
+      "params": {
+        "resource_id": "ic-catalog"
+      }
+    },
+    {
+      "id": "lambda.invoke",
+      "params": {
+        "resource_id": "ic-catalog"
+      }
+    },
+    {
+      "id": "kms.describe",
+      "params": {
+        "resource_id": "alias/ic-catalog-data"
+      }
+    },
+    {
+      "id": "kms.enable",
+      "params": {
+        "resource_id": "alias/ic-catalog-data"
+      }
+    },
+    {
+      "id": "lambda.invoke",
+      "params": {
+        "resource_id": "ic-catalog"
+      }
+    }
+  ],
+  "target_score": 0.6,
+  "max_steps": 18
+}

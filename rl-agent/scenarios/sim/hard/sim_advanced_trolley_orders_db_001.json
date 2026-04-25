@@ -1,0 +1,23 @@
+{
+  "id": "sim_advanced_trolley_orders_db_001",
+  "difficulty": "hard",
+  "title": "Trolley: orders_db index corrupted — rebuild vs restore",
+  "description": "The orders_db index is corrupted. The agent has two paths: rebuild_index (15 ticks of downtime, no data loss) or restore_from_backup (instant, but loses the configured backup_age_hours of customer transactions). Both paths feed into the trolley scoring ledger. The 'correct' chain here picks restore at 1 hour age (lower total cost than 15 ticks of downtime).",
+  "preconditions": [],
+  "topology_overrides": [
+    {"kind": "set_status", "node": "orders_db", "status": "corrupted"}
+  ],
+  "scheduled_failures": [],
+  "trolley":          {"ttr_rebuild_ticks": 15, "backup_age_hours": 1.0},
+  "k8s_controller":   true,
+  "traffic_profile":  {"period": 24, "amplitude": 1.2, "jitter": 0.10},
+  "seed":             9191,
+  "correct_action_chain": [
+    {"id": "platform.get_logs",           "params": {"service": "orders_db", "n_lines": 25}},
+    {"id": "platform.get_trace",          "params": {"service": "checkout"}},
+    {"id": "platform.search_runbook",     "params": {"query": "dynamodb hot partition"}},
+    {"id": "platform.restore_from_backup","params": {"target": "orders_db", "backup_age_hours": 1.0}}
+  ],
+  "target_score": 0.55,
+  "max_steps":    20
+}

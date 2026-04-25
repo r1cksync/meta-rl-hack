@@ -1,0 +1,14 @@
+{
+  "task_id": "task23",
+  "difficulty": "hard",
+  "target_score": 0.40,
+  "fault_type": "kms_key_pending_deletion",
+  "chaos_experiment_name": "",
+  "ground_truth_root_cause": "kms_data_key_scheduled_for_deletion_breaks_application_decrypt_path",
+  "correct_mitigation_action": "rollback_deployment",
+  "correct_mitigation_target": "payments-api",
+  "wrong_mitigation_penalty_services": ["inventory-service", "order-worker"],
+  "useful_log_keywords": ["KMSInvalidStateException", "PendingDeletion", "alias/ic-data-key", "Decrypt", "AccessDeniedException", "ic-data-key"],
+  "red_herrings": ["smtp", "kafka"],
+  "reference_postmortem": "An operator mistakenly invoked schedule_key_deletion on alias/ic-data-key, the KMS CMK that payments-api uses to envelope-decrypt its at-rest tokenized PAN columns. The key entered KeyState=PendingDeletion with a 7-day window, and immediate Decrypt calls began returning KMSInvalidStateException. Mitigation: rollback_deployment payments-api to the prior revision pinned to the older key id while operations cancel_key_deletion + enable_key on the CMK. Follow-up: deny kms:ScheduleKeyDeletion in the org SCP except for break-glass roles, IRSA-scope IAM principals to cmk-specific Decrypt on alias/ic-data-key, audit CloudTrail for ScheduleKeyDeletion events, set up a CloudWatch alarm on KMS keystate change events. Cost-awareness: a single CMK with key rotation enabled is cheaper than per-service CMKs."
+}

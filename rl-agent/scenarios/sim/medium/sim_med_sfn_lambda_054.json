@@ -1,0 +1,67 @@
+{
+  "id": "sim_med_sfn_lambda_054",
+  "difficulty": "medium",
+  "title": "shipping state machine failing",
+  "description": "`ic-shipping-saga` executions stuck in FAILED. Underlying Lambda is throttled.",
+  "preconditions": [
+    {
+      "path": "stepfunctions/ic-shipping-saga",
+      "op": "set",
+      "value": {
+        "name": "ic-shipping-saga",
+        "executions": [
+          {
+            "id": "e0",
+            "status": "FAILED",
+            "error": "States.TaskFailed",
+            "input": "{}"
+          }
+        ],
+        "force_fail": true
+      }
+    },
+    {
+      "path": "lambda_/ic-shipping-step",
+      "op": "set",
+      "value": {
+        "name": "ic-shipping-step",
+        "state": "Active",
+        "reserved_concurrency": 0,
+        "invocations": 0,
+        "errors": 0,
+        "throttles": 4
+      }
+    }
+  ],
+  "scheduled_failures": [],
+  "correct_action_chain": [
+    {
+      "id": "stepfunctions.describe",
+      "params": {
+        "resource_id": "ic-shipping-saga"
+      }
+    },
+    {
+      "id": "lambda.describe",
+      "params": {
+        "resource_id": "ic-shipping-step"
+      }
+    },
+    {
+      "id": "lambda.scale",
+      "params": {
+        "resource_id": "ic-shipping-step",
+        "capacity": 25
+      }
+    },
+    {
+      "id": "stepfunctions.start",
+      "params": {
+        "resource_id": "ic-shipping-saga",
+        "input": "{}"
+      }
+    }
+  ],
+  "target_score": 0.55,
+  "max_steps": 18
+}

@@ -1,0 +1,72 @@
+{
+  "id": "sim_med_kms_lambda_038",
+  "difficulty": "medium",
+  "title": "billing Lambda 5xx after KMS change",
+  "description": "`ic-billing` invocations fail. Logs show KMS pending deletion on `alias/ic-billing-data`.",
+  "preconditions": [
+    {
+      "path": "lambda_/ic-billing",
+      "op": "set",
+      "value": {
+        "name": "ic-billing",
+        "state": "Active",
+        "reserved_concurrency": 10,
+        "invocations": 0,
+        "errors": 3,
+        "throttles": 0
+      }
+    },
+    {
+      "path": "kms/alias/ic-billing-data",
+      "op": "set",
+      "value": {
+        "alias": "alias/ic-billing-data",
+        "state": "PendingDeletion",
+        "policy": "{}",
+        "pending_deletion_days": 7
+      }
+    }
+  ],
+  "scheduled_failures": [
+    {
+      "action_id": "lambda.invoke",
+      "error": "KMSInvalidStateException",
+      "message": "key alias/ic-billing-data pending deletion",
+      "count": 1
+    }
+  ],
+  "correct_action_chain": [
+    {
+      "id": "lambda.describe",
+      "params": {
+        "resource_id": "ic-billing"
+      }
+    },
+    {
+      "id": "lambda.invoke",
+      "params": {
+        "resource_id": "ic-billing"
+      }
+    },
+    {
+      "id": "kms.describe",
+      "params": {
+        "resource_id": "alias/ic-billing-data"
+      }
+    },
+    {
+      "id": "kms.enable",
+      "params": {
+        "resource_id": "alias/ic-billing-data"
+      }
+    },
+    {
+      "id": "lambda.invoke",
+      "params": {
+        "resource_id": "ic-billing"
+      }
+    }
+  ],
+  "target_score": 0.6,
+  "max_steps": 18
+}

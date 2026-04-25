@@ -1,0 +1,14 @@
+{
+  "task_id": "task15",
+  "difficulty": "hard",
+  "target_score": 0.40,
+  "fault_type": "s3_403_iam_policy_drift",
+  "chaos_experiment_name": "",
+  "ground_truth_root_cause": "s3_bucket_policy_drift_blocking_inventory_putobject",
+  "correct_mitigation_action": "apply_config_patch",
+  "correct_mitigation_target": "inventory-service",
+  "wrong_mitigation_penalty_services": ["payments-api", "order-worker", "notification-service"],
+  "useful_log_keywords": ["AccessDenied", "PutObject", "s3:PutObject", "AWS_S3_BUCKET", "SignatureDoesNotMatch", "IAM", "AssumeRole"],
+  "red_herrings": ["postgres", "kafka"],
+  "reference_postmortem": "inventory-service started getting 403 AccessDenied on s3:PutObject to ic-inventory-snapshots after a Terraform apply on infra/aws/main.tf removed the inventory-service-pod-role from the bucket policy's Principal list. Mitigation: apply_config_patch on inventory-service to point at the new IRSA role ARN that does have the s3:PutObject permission, OR re-add the role to the bucket policy. IAM least-privilege: ic-inventory-snapshots policy now scopes Action to s3:PutObject + s3:GetObject only (was s3:*) and Resource to /snapshots/* (was bucket-wide). Follow-up: add a CloudTrail alarm for bucket-policy changes."
+}

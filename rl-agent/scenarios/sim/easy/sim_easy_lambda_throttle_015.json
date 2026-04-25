@@ -1,0 +1,57 @@
+{
+  "id": "sim_easy_lambda_throttle_015",
+  "difficulty": "easy",
+  "title": "analytics Lambda throttling",
+  "description": "Customers report 5xx from /analytics. CloudWatch alarm `analytics-Throttles` is in ALARM. Fix the throttle.",
+  "preconditions": [
+    {
+      "path": "lambda_/ic-analytics",
+      "op": "set",
+      "value": {
+        "name": "ic-analytics",
+        "state": "Active",
+        "reserved_concurrency": 0,
+        "invocations": 0,
+        "errors": 0,
+        "throttles": 5
+      }
+    }
+  ],
+  "scheduled_failures": [
+    {
+      "action_id": "lambda.invoke",
+      "error": "TooManyRequestsException",
+      "message": "Reserved concurrency = 0",
+      "count": 1
+    }
+  ],
+  "correct_action_chain": [
+    {
+      "id": "lambda.describe",
+      "params": {
+        "resource_id": "ic-analytics"
+      }
+    },
+    {
+      "id": "lambda.invoke",
+      "params": {
+        "resource_id": "ic-analytics"
+      }
+    },
+    {
+      "id": "lambda.scale",
+      "params": {
+        "resource_id": "ic-analytics",
+        "capacity": 25
+      }
+    },
+    {
+      "id": "lambda.invoke",
+      "params": {
+        "resource_id": "ic-analytics"
+      }
+    }
+  ],
+  "target_score": 0.55,
+  "max_steps": 16
+}

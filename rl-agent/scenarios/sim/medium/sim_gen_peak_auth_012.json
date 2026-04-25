@@ -1,0 +1,74 @@
+{
+  "id": "sim_gen_peak_auth_012",
+  "difficulty": "medium",
+  "title": "Sine-wave peak hammers auth (x1.8)",
+  "description": "Sine-wave traffic at 1.8x amplitude is saturating auth. Agent must read traffic, enable coalescing, and warm caches BEFORE the next peak.",
+  "preconditions": [],
+  "scheduled_failures": [],
+  "topology_overrides": [
+    {
+      "kind": "set_status",
+      "node": "auth",
+      "status": "degraded"
+    },
+    {
+      "kind": "set_cpu_drift",
+      "node": "auth",
+      "rate": 0.02
+    }
+  ],
+  "saboteur": {
+    "primary_target": "auth",
+    "failover_target": null,
+    "dependency_chain": [
+      "api_gateway",
+      "frontend"
+    ],
+    "aggressiveness": 0.5,
+    "cooldown_ticks": 2
+  },
+  "slack": {
+    "msgs_per_tick": 1.6
+  },
+  "traffic_profile": {
+    "period": 8,
+    "amplitude": 1.8,
+    "phase": 0.0,
+    "jitter": 0.18
+  },
+  "seed": 30012,
+  "k8s_controller": true,
+  "correct_action_chain": [
+    {
+      "id": "platform.read_slack",
+      "params": {
+        "last_n": 5
+      }
+    },
+    {
+      "id": "platform.get_traffic",
+      "params": {}
+    },
+    {
+      "id": "platform.get_metrics",
+      "params": {
+        "service": "auth",
+        "metric": "cpu_pct"
+      }
+    },
+    {
+      "id": "platform.enable_request_coalescing",
+      "params": {
+        "target": "auth"
+      }
+    },
+    {
+      "id": "platform.warm_cache",
+      "params": {
+        "target": "session_cache"
+      }
+    }
+  ],
+  "target_score": 0.55,
+  "max_steps": 14
+}

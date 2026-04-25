@@ -1,0 +1,36 @@
+{
+  "id": "sim_easy_ddb_throttle_106",
+  "difficulty": "easy",
+  "title": "recommendations DynamoDB throttling",
+  "description": "`ic-recommendations-table` is throttling writes. Scale write capacity.",
+  "preconditions": [
+    {
+      "path": "dynamodb/ic-recommendations-table",
+      "op": "set",
+      "value": {
+        "name": "ic-recommendations-table",
+        "items": {},
+        "throttled": true,
+        "capacity": 5
+      }
+    }
+  ],
+  "scheduled_failures": [],
+  "correct_action_chain": [
+    {
+      "id": "dynamodb.describe",
+      "params": {
+        "resource_id": "ic-recommendations-table"
+      }
+    },
+    {
+      "id": "dynamodb.scale",
+      "params": {
+        "resource_id": "ic-recommendations-table",
+        "capacity": 50
+      }
+    }
+  ],
+  "target_score": 0.55,
+  "max_steps": 16
+}

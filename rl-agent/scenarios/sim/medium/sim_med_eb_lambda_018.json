@@ -1,0 +1,60 @@
+{
+  "id": "sim_med_eb_lambda_018",
+  "difficulty": "medium",
+  "title": "inventory pipeline silent",
+  "description": "Events are being published to `ic-inventory-bus` but `ic-inventory-handler` is not invoked. Rule was disabled during a deploy.",
+  "preconditions": [
+    {
+      "path": "events/ic-inventory-bus",
+      "op": "set",
+      "value": {
+        "name": "ic-inventory-bus",
+        "rules": {
+          "ic-inventory-rule": {
+            "name": "ic-inventory-rule",
+            "state": "DISABLED",
+            "target_arn": "ic-inventory-handler"
+          }
+        }
+      }
+    },
+    {
+      "path": "lambda_/ic-inventory-handler",
+      "op": "set",
+      "value": {
+        "name": "ic-inventory-handler",
+        "state": "Active",
+        "reserved_concurrency": 10,
+        "invocations": 0,
+        "errors": 0,
+        "throttles": 0
+      }
+    }
+  ],
+  "scheduled_failures": [],
+  "correct_action_chain": [
+    {
+      "id": "events.describe",
+      "params": {
+        "bus_name": "ic-inventory-bus",
+        "rule_name": "ic-inventory-rule"
+      }
+    },
+    {
+      "id": "events.enable",
+      "params": {
+        "bus_name": "ic-inventory-bus",
+        "rule_name": "ic-inventory-rule"
+      }
+    },
+    {
+      "id": "events.publish",
+      "params": {
+        "bus_name": "ic-inventory-bus",
+        "payload": "ping"
+      }
+    }
+  ],
+  "target_score": 0.55,
+  "max_steps": 16
+}
