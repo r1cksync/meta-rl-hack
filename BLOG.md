@@ -10,7 +10,7 @@
 **Showcase:** [/showcase](https://sagnik-mukherjee-incodent-commander.hf.space/showcase)
 **Dashboard:** [/dashboard](https://sagnik-mukherjee-incodent-commander.hf.space/dashboard)
 **Code:** [github.com/r1cksync/meta-rl-hack](https://github.com/r1cksync/meta-rl-hack)
-**Video walkthrough (4 min):** **[youtu.be/8bDJ0MMZ1DM](https://youtu.be/8bDJ0MMZ1DM)**
+**Video walkthrough (4 min):** **[youtu.be/aBnQ33q9MMw](https://youtu.be/aBnQ33q9MMw)**
 
 ---
 
@@ -1459,7 +1459,7 @@ categories specifically improving.
 ## 9 · Where to go next
 
 * **Watch the 4‑minute video walkthrough →
-  [youtu.be/8bDJ0MMZ1DM](https://youtu.be/8bDJ0MMZ1DM)**
+  [youtu.be/aBnQ33q9MMw](https://youtu.be/aBnQ33q9MMw)**
 * **Browse all 381 tasks live →
   [/showcase#tasks](https://sagnik-mukherjee-incodent-commander.hf.space/showcase#tasks)**
 * **Inspect an episode in real‑time →
@@ -1492,7 +1492,7 @@ categories specifically improving.
 | | |
 |---|---|
 | 📝 **Blog / writeup** | [`BLOG.md`](https://github.com/r1cksync/meta-rl-hack/blob/main/incident-commander/BLOG.md) — story‑driven walkthrough (problem · env · novelties · results · pipeline) |
-| 🎥 **Video walkthrough** | [https://youtu.be/8bDJ0MMZ1DM](https://youtu.be/8bDJ0MMZ1DM) |
+| 🎥 **Video walkthrough** | [https://youtu.be/aBnQ33q9MMw](https://youtu.be/aBnQ33q9MMw) |
 | 🧪 **Live env (HF Space)** | [sagnik-mukherjee/incodent-commander](https://huggingface.co/spaces/sagnik-mukherjee/incodent-commander) |
 | 💻 **Source (GitHub)** | [r1cksync/meta-rl-hack](https://github.com/r1cksync/meta-rl-hack) |
 | 📊 **Training notebooks** | [`kaggle/`](https://github.com/r1cksync/meta-rl-hack/tree/main/incident-commander/kaggle) (3 shards × Phi‑3.5 + DeepSeek‑R1) · [`notebooks/`](https://github.com/r1cksync/meta-rl-hack/tree/main/incident-commander/notebooks) (legacy SB3 PPO baseline) |
