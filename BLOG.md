@@ -40,7 +40,7 @@ one fix is never enough?*
 
 ## 2 · The environment — what does the agent see, do, and get rewarded for?
 
-> **Standalone env reference docs** — for a full per‑task / per‑action / per‑reward spec of each training regime see [`docs/ENV_DEEP.md`](docs/ENV_DEEP.md) (the 11 hand‑curated archetypes used by Rounds 1 + 2) and [`docs/ENV_SHALLOW.md`](docs/ENV_SHALLOW.md) (the 381 procedural scenarios used by Round 3).
+> **Standalone env reference docs** — for a full per‑task / per‑action / per‑reward spec of each training regime see [`docs/ENV_DEEP.md`](docs/ENV_DEEP.md) (the 11 hand‑curated archetypes used by Rounds 1 + 2) and [`docs/ENV_SHALLOW.md`](docs/ENV_SHALLOW.md) (the 381 procedural scenarios used by Round 3). The full row‑by‑row index of all 381 procedural tasks (id · title · target · max steps · correct chain) lives in [`docs/TASKS_SHALLOW.md`](docs/TASKS_SHALLOW.md).
 
 `IncidentCommanderEnv` is an OpenEnv `Environment` subclass that drops the
 agent into an active production incident at **AcmeCorp** — a fictitious

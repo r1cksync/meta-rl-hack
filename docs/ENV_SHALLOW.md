@@ -8,6 +8,8 @@
 > [`rl-agent/scenarios/sim/{easy,medium,hard}/`](../rl-agent/scenarios/sim) and
 > the action namespace is the full simulator surface (`platform.*`,
 > `dynamodb.*`, `s3.*`, …) — not the 10 actions used by the deep regime.
+>
+> **For the per‑scenario row‑by‑row index of every one of the 381 tasks** (id, title, target score, max steps, canonical correct action chain) see the companion file [`TASKS_SHALLOW.md`](TASKS_SHALLOW.md).
 
 ## 1 · Task pool — 381 procedural scenarios
 
