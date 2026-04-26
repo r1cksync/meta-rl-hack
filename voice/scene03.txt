@@ -1,0 +1,1 @@
+Here's what makes this real. The curriculum auto-escalates. An adversarial designer invents new incidents. Three SRE personas judge every action. And the part nobody else does — the agent reads coworker Slack too. The CEO panicking, an intern wanting to restart the cluster, a frontend dev's hotfix red herring. Some are clues. Most are noise. Acting on the wrong one costs reward.

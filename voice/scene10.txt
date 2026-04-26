@@ -1,0 +1,1 @@
+Every JSON file in the project, documented in one place. Training logs, LoRA configs, scenario definitions, the showcase bundle. Want to verify the coverage claim? Union the rewards-by-task keys across the three training logs — exactly 381.

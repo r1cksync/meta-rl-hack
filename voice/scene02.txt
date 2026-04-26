@@ -1,0 +1,1 @@
+Four numbers. 381 scenarios — real archetypes, not toy puzzles. DynamoDB throttling. IAM chains. Memory leaks behind cascading 504s. Every one of them was trained — full coverage. 180 PPO updates total, three shards in parallel. About twelve hours wall-clock on free T4s.

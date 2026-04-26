@@ -1,0 +1,1 @@
+The new PPO dashboard. Every chart computed from the 381-task Kaggle run. The blue banner up top tells you which JSON files each number came from — no magic. And the original dashboard is still here, with its own yellow banner. Same nav, different data, one click to swap.

@@ -1,0 +1,1 @@
+Every PPO update, every shard. Three colors — three shards. Reward starts deeply negative — that's the agent exploring blindly — then climbs as it learns to investigate before acting. KL stays bounded. Loss decays clean. Wall-clock is flat — no memory blow-up. Hover any point — that's live JSON, not a screenshot.

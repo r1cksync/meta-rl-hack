@@ -1,0 +1,1 @@
+Phi-3.5-mini, 4-bit, 3.8 billion params. DeepSeek-R1 critic, frozen, 4-bit. LoRA rank 16, alpha 32 — about 25 million trainable weights. Standard PPO knobs, all packed into a 16-gig T4.

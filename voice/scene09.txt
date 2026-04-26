@@ -1,0 +1,1 @@
+Flip one env var — the same actions hit a real Kubernetes cluster. Terraform on Hetzner, twenty euros a month, three nodes, load balancer. Bring-up is five scripted steps. This is the actual Terraform file. Fifteen resources. Real cluster.

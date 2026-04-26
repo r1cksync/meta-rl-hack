@@ -1,0 +1,1 @@
+Picture this. It's 3 AM. Pager goes off. Five dashboards are red — and you have no idea which service is actually broken. We turned that exact panic into an RL environment. 381 incident scenarios. A Phi-3.5 actor, a DeepSeek critic, trained on three free Kaggle T4s. Let me show you.

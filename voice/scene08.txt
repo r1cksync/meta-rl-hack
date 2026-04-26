@@ -1,0 +1,1 @@
+Code lives on GitHub. The Kaggle notebook clones it on every run. Cell five — git clone. Cell six sets the shard variable, the only thing that differs between the three notebooks. Cell seven runs the training loop. Cell eight zips the adapter. Push to GitHub, re-run the kernel. Never re-upload anything.

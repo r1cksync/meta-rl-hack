@@ -1,0 +1,1 @@
+The loop. Scenario JSON becomes an environment. Actor proposes, environment scores, critic gives a value baseline. GAE turns that into advantages. PPO updates only the LoRA — base model stays frozen. The rollout collector visits every task across 60 updates. Shard split is modulo 3 over sorted IDs — disjoint, exhaustive. 127 plus 127 plus 127. Exactly 381.

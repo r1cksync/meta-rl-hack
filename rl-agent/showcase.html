@@ -404,6 +404,7 @@
     <div class="brand"><span class="brand-dot"></span> IncidentCommander</div>
     <nav class="nav">
       <a href="#overview">Overview</a>
+      <a href="#slack">Slack noise</a>
       <a href="#training">Training</a>
       <a href="#tasks">Tasks</a>
       <a href="#methodology">Methodology</a>
@@ -485,6 +486,131 @@
       <div class="card">
         <h3>Live infrastructure option</h3>
         <p>Write actions normally hit a mock cluster but can be routed to a live Kubernetes cluster (<code class="mono">REAL_K8S=true</code>) — same code path.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═════════════════════════ SLACK NOISE ═════════════════════════ -->
+<section id="slack">
+  <div class="container">
+    <span class="eyebrow reveal">A novel observation channel</span>
+    <h2 class="reveal">The agent reads coworker Slack chatter — not just metrics.</h2>
+    <p class="lead reveal">
+      Real on-call engineers don't just stare at dashboards. They scroll Slack — where the CEO is shouting,
+      a frontend dev is asking if their hotfix broke prod, the intern wants to "just restart the cluster",
+      and buried in the noise a DBA quietly mentions Postgres CPU is climbing on a replica.
+      We built that channel into the environment. Every scenario emits a deterministic stream of human
+      messages — some are real clues, most are <em>red herrings</em> — and the agent has to learn which
+      voices to trust.
+    </p>
+
+    <div class="grid-2 reveal stagger" style="margin-top:48px">
+      <div class="card">
+        <h3>What's in the stream</h3>
+        <p style="margin-bottom:10px">Each tick the simulator samples from a templated pool seeded by the scenario:</p>
+        <ul style="margin:0;padding-left:18px;line-height:1.75;font-size:14.5px;color:#cad3eb">
+          <li><strong>Saboteur-coupled lines</strong> — DBAs / Platform / Customer Support corroborate the actual fault as it escalates.</li>
+          <li><strong>Generic chatter</strong> — VP Eng asking ETAs, Comms drafting status pages, Finance reminding everyone every minute is $8k.</li>
+          <li><strong>Red herrings</strong> — a frontend dev's hotfix, a Security CloudTrail ping, an Athena pipeline failure. None of them caused the incident; acting on them costs reward.</li>
+          <li><strong>Severity escalation</strong> — the longer the incident drags, the more <code class="mono">high</code>-severity messages appear, mirroring real pressure.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Why it matters</h3>
+        <p>Most LLM-RL benchmarks give the agent perfectly structured JSON observations. Real incidents
+        are buried in <em>unstructured human text</em>, mixed with noise, mixed with politics. By adding
+        a <code class="mono">SlackStream</code> alongside metrics and traces we force the policy to learn
+        a real on-call skill: <strong>parse human chatter, weight it against telemetry, ignore the noise.</strong></p>
+        <p style="margin-top:14px">The action <code class="mono">platform.read_slack</code> is rewarded as
+        <em>useful information gathering</em> when followed by an action that targets a service mentioned
+        in a recent message — and penalised as a <em>red herring</em> when the agent acts on a misleading
+        line (e.g. rolling back the wrong service because Sara from Frontend mentioned a hotfix).</p>
+      </div>
+    </div>
+
+    <div class="grid-2 reveal" style="margin-top:32px">
+      <div class="card">
+        <h3>Scenario JSON · Slack config</h3>
+        <p style="font-size:13.5px;color:#aab3cf">From <code class="mono">scenarios/sim/hard/sim_gen_cascade_payments_db_005.json</code> — a hard cascade where the truth is in <code class="mono">payments_db</code> but alerts fire on <code class="mono">checkout</code>. Slack chatter is dialled to 1.4 messages per tick.</p>
+<pre class="codeblock"><span class="c-com">// scenario JSON declares the Slack stream</span>
+{
+  <span class="c-str">"id"</span>: <span class="c-str">"sim_gen_cascade_payments_db_005"</span>,
+  <span class="c-str">"saboteur"</span>: { <span class="c-str">"primary_target"</span>: <span class="c-str">"payments"</span>, <span class="c-str">"aggressiveness"</span>: <span class="c-num">0.5</span> },
+  <span class="c-str">"slack"</span>: { <span class="c-str">"msgs_per_tick"</span>: <span class="c-num">1.4</span> },
+  <span class="c-str">"correct_action_chain"</span>: [
+    { <span class="c-str">"id"</span>: <span class="c-str">"platform.read_slack"</span>, <span class="c-str">"params"</span>: { <span class="c-str">"last_n"</span>: <span class="c-num">5</span> } },
+    { <span class="c-str">"id"</span>: <span class="c-str">"platform.describe_topology"</span> },
+    { <span class="c-str">"id"</span>: <span class="c-str">"platform.get_logs"</span>, <span class="c-str">"params"</span>: { <span class="c-str">"service"</span>: <span class="c-str">"payments_db"</span> } },
+    { <span class="c-str">"id"</span>: <span class="c-str">"platform.vacuum_freeze_db"</span>, <span class="c-str">"params"</span>: { <span class="c-str">"target"</span>: <span class="c-str">"payments_db"</span> } }
+  ]
+}</pre>
+      </div>
+      <div class="card">
+        <h3>Templates · what coworkers actually say</h3>
+        <p style="font-size:13.5px;color:#aab3cf">From <code class="mono">rl-agent/simulator/slack.py</code> — fully deterministic per <code class="mono">seed</code>. Mix of generic + phase-coupled lines.</p>
+<pre class="codeblock"><span class="c-com"># rl-agent/simulator/slack.py — _GENERIC pool (excerpt)</span>
+[
+  (<span class="c-str">"@channel"</span>,           <span class="c-str">"info"</span>, <span class="c-str">"Customers reporting 500s on /checkout 🔥"</span>),
+  (<span class="c-str">"Sara (Frontend)"</span>,    <span class="c-str">"info"</span>, <span class="c-str">"Hey SRE, I just pushed a hotfix for the cart UI — could that be related?"</span>),  <span class="c-com"># red herring</span>
+  (<span class="c-str">"Intern (Jamal)"</span>,     <span class="c-str">"info"</span>, <span class="c-str">"Should I just restart the cluster? My friend said that fixes everything 😅"</span>),
+  (<span class="c-str">"DBA (Yuki)"</span>,         <span class="c-str">"info"</span>, <span class="c-str">"Postgres CPU is climbing on the replica btw. FYI."</span>),  <span class="c-com"># buried clue</span>
+  (<span class="c-str">"Finance"</span>,            <span class="c-str">"info"</span>, <span class="c-str">"Reminder: every minute of downtime is ~$8k for us."</span>),
+  (<span class="c-str">"CEO"</span>,                <span class="c-str">"high"</span>, <span class="c-str">"I'm getting calls. Tell me what's happening in plain English."</span>),
+]
+
+<span class="c-com"># Phase-coupled lines fire when the saboteur escalates:</span>
+_PHASE_LINES = {
+  <span class="c-str">"attack_failover"</span>: [
+    (<span class="c-str">"DBA (Yuki)"</span>,    <span class="c-str">"high"</span>, <span class="c-str">"{svc} just spiked to 90% CPU. Did someone kick off a backup job?"</span>),
+  ],
+}</pre>
+      </div>
+    </div>
+
+    <h3 class="reveal" style="margin-top:60px;font-size:22px">Signal vs. noise — how Slack flows through training</h3>
+    <p class="reveal" style="font-size:14.5px;color:#aab3cf;margin-top:8px">
+      Each Slack message becomes part of the agent's observation token stream. The actor must classify
+      what's a clue and what's noise <em>before</em> emitting an action. The reward signal then
+      retroactively grades the choice.
+    </p>
+    <div class="mermaid-frame reveal" style="margin-top:24px">
+      <div class="mermaid">
+%%{init: {'theme':'dark','themeVariables':{'primaryColor':'#11162b','primaryTextColor':'#e9eeff','primaryBorderColor':'#7aa7ff','lineColor':'#7aa7ff','tertiaryColor':'#0a0d1c'}}}%%
+flowchart LR
+    SC["Scenario JSON<br/>slack: msgs_per_tick=1.4"] --> SS["SlackStream<br/>(deterministic, seed-driven)"]
+    SAB["Saboteur phase<br/>attack_primary / failover / dependency"] --> SS
+    SS -->|emit_for_tick| OBS["Observation<br/>{ metrics, traces, slack[] }"]
+    OBS --> ACT["Phi-3.5 Actor<br/>4-bit + LoRA"]
+    ACT -->|action JSON| ENV["IncidentCommanderEnv"]
+    ENV --> R{"Reward shaping"}
+    R -->|action targets a service<br/>mentioned in recent slack| RP["+0.10<br/>useful_log_query"]
+    R -->|action targets red-herring<br/>service from chatter| RH["−0.15<br/>red_herring_penalty"]
+    R -->|action ignores buried clue<br/>and acts blind| BA["−0.10<br/>blind_action_penalty"]
+    RP --> ADV["GAE advantage<br/>+ PPO update"]
+    RH --> ADV
+    BA --> ADV
+    ADV --> ACT
+
+    classDef good fill:#0e2a1c,stroke:#3ec78a,color:#cdeed8
+    classDef bad fill:#2a0e0e,stroke:#ff7a7a,color:#ffd6d6
+    class RP good
+    class RH,BA bad
+      </div>
+    </div>
+
+    <div class="grid-3 reveal stagger" style="margin-top:48px">
+      <div class="card" style="border-left:3px solid #3ec78a">
+        <h3 style="font-size:15px">Trusted signal</h3>
+        <p>DBA mentioning Postgres CPU on a replica → agent calls <code class="mono">platform.get_logs(payments_db)</code> next → the action lands on a service the chatter pointed to → reward shaper applies <code class="mono">useful_log_query (+0.10)</code>.</p>
+      </div>
+      <div class="card" style="border-left:3px solid #ff7a7a">
+        <h3 style="font-size:15px">Red herring</h3>
+        <p>Frontend dev mentions a cart-UI hotfix → agent calls <code class="mono">platform.rollback_deployment(frontend)</code> blindly → wrong service, no fix, <code class="mono">red_herring_penalty (−0.15)</code> + the blast radius keeps growing.</p>
+      </div>
+      <div class="card" style="border-left:3px solid #c39cff">
+        <h3 style="font-size:15px">Why it generalises</h3>
+        <p>166 of 381 scenarios include a configurable Slack stream. Templates parameterise the affected service, so the policy can't memorise — it has to learn the meta-pattern: <em>cross-reference chatter with telemetry before acting</em>.</p>
       </div>
     </div>
   </div>

@@ -1,0 +1,1 @@
+That's IncidentCommander. 381 real incident scenarios. Full PPO-plus-LoRA pipeline. Free-T4-friendly sharded notebooks. Terraform-provisioned cluster. Live dashboard. Every task, action, and reward documented. Code on GitHub. Space on Hugging Face. Built for the Meta PyTorch OpenEnv Hackathon, 2026.
