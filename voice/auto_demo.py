@@ -140,14 +140,19 @@ SCENES = {
         (19.0, lambda p: _hover(p, "#slack .codeblock", 1)),
         (22.0, lambda p: _scroll_to(p, "#slack .mermaid-frame", block="center")),
     ],
-    "scene04": [          # "Did it actually learn?" + Results
-        (0.0, lambda p: _scroll_to(p, "#training")),
-        (4.0, lambda p: _scroll_to(p, "#results")),
-        (4.5, lambda p: _hover(p, "#results .grid-2 .card", 0)),
-        (9.0, lambda p: _hover(p, "#results .grid-2 .card", 1)),
-        (14.0, lambda p: _scroll_to(p, "#results table", block="center")),
-        (19.0, lambda p: _hover(p, "#results table tbody tr", 2)),
-        (23.0, lambda p: _scroll_to(p, "#results .grid-3", block="center")),
+    "scene04": [          # Deep regime tour + shallow learning evidence
+        (0.0,  lambda p: _scroll_to(p, "#deep")),
+        (5.0,  lambda p: _scroll_to(p, "#deep table", block="center")),                 # 11-archetype table
+        (14.0, lambda p: _scroll_px(p, 380)),                                            # Round 1 SB3 floor
+        (24.0, lambda p: _scroll_px(p, 420)),                                            # Round 2 critic ladder
+        (38.0, lambda p: _scroll_px(p, 420)),                                            # Per-task delta table
+        (52.0, lambda p: _scroll_px(p, 420)),                                            # Optimisation-side cards
+        (66.0, lambda p: _scroll_px(p, 380)),                                            # TL;DR card
+        (74.0, lambda p: _scroll_to(p, "#results")),
+        (80.0, lambda p: _hover(p, "#results .grid-2 .card", 0)),
+        (87.0, lambda p: _hover(p, "#results .grid-2 .card", 1)),
+        (94.0, lambda p: _scroll_to(p, "#results table", block="center")),
+        (100.0, lambda p: _hover(p, "#results table tbody tr", 2)),
     ],
     "scene05": [          # Hyper-parameters
         (0.0, lambda p: _scroll_to(p, "#training", block="end")),
