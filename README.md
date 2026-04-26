@@ -31,7 +31,7 @@ Built for the **Meta PyTorch OpenEnv Hackathon x Scaler School of Technology, 20
 | 💻 **Source (GitHub)** | [r1cksync/meta-rl-hack](https://github.com/r1cksync/meta-rl-hack) |
 | 📊 **Training notebooks (Kaggle)** | [`kaggle/`](kaggle/) (3 shards × Phi-3.5 + DeepSeek-R1) · [`notebooks/`](notebooks/) (legacy SB3 PPO baseline) |
 | 📦 **Trained adapters** | [`kaggle ran notebooks/shard {1,2,3}/adapter_kaggle{N}/`](kaggle%20ran%20notebooks/) |
-| 🎚️ **Per-update training logs** | [`kaggle ran notebooks/shard {1,2,3}/training_kaggle{N}.json`](kaggle%20ran%20notebooks/) · [`rl-agent/checkpoints/training_metrics.json`](rl-agent/checkpoints/training_metrics.json) |
+| 🎚️ **Per-update training logs** | **Round 3 (shallow, 381 tasks):** [`kaggle ran notebooks/shard {1,2,3}/training_kaggle{N}.json`](kaggle%20ran%20notebooks/) · **Round 2 (deep, 11 tasks):** [`rl-agent/checkpoints/ppo-v{2,3,4}-*/metrics.jsonl`](rl-agent/checkpoints/) · **Round 1 (legacy SB3):** [`rl-agent/checkpoints/training_metrics.json`](rl-agent/checkpoints/training_metrics.json) |
 
 ---
 
@@ -298,9 +298,31 @@ python -m rl_agent.eval \
 
 ---
 
-## Actual Training We Ran (PPO + LoRA, 3 Kaggle Shards)
+## Actual Training We Ran (3 rounds, 2 regimes)
 
-The GRPO roadmap above was the original plan; in practice we ran a custom PPO loop with a dual-model setup that fit comfortably on free Kaggle T4s. The full live numbers are visible at [`/showcase`](https://sagnik-mukherjee-incodent-commander.hf.space/showcase).
+The GRPO roadmap above was the original plan; in practice we ran a custom PPO loop in two regimes — **deep training on a small task set** first, then **shallow training on all 381 procedural scenarios**. Three real rounds, all with full logs, all reproducible from this repo. The full live numbers are visible at [`/showcase`](https://sagnik-mukherjee-incodent-commander.hf.space/showcase) and discussed at length in [`BLOG.md`](BLOG.md) §4.
+
+| Round | Regime | Tasks | Algorithm | Updates | Headline result | Code | Logs |
+|---|---|---:|---|---:|---|---|---|
+| **1 · Legacy SB3** | deep | 7 | SB3 PPO + MLP, 200 k timesteps | 5 evals | mean reward **1.05**, **100% success** over 90 episodes | [`rl-agent/training/train_enhanced.py`](rl-agent/training/train_enhanced.py) + [`gym_wrapper.py`](rl-agent/training/gym_wrapper.py) | [`training_metrics.json`](rl-agent/checkpoints/training_metrics.json) · [`evaluation_report.json`](rl-agent/checkpoints/evaluation_report.json) |
+| **2 · Hybrid v2/v3/v4** | deep | 11 | Custom PPO, heuristic + small-LLM actor + judge critic | 12–33 | policy loss **−93% (v2)** / **−55% (v3,v4)**; v4 mean reward **1.78**, max **2.41** on `task9` | [`rl-agent/training/train_hybrid.py`](rl-agent/training/train_hybrid.py) (+ [`groq_critic.py`](rl-agent/training/groq_critic.py)) | [`ppo-v2-heuristic/`](rl-agent/checkpoints/ppo-v2-heuristic) · [`ppo-v3-hybrid-ollama-bedrock/`](rl-agent/checkpoints/ppo-v3-hybrid-ollama-bedrock) · [`ppo-v4-hybrid-ollama-groq/`](rl-agent/checkpoints/ppo-v4-hybrid-ollama-groq) |
+| **3 · LoRA fine-tune** | shallow | **381** | Custom PPO + LoRA, Phi-3.5-mini actor + DeepSeek-R1 critic, 3 Kaggle shards | 60 / shard | KL & loss decay **50–66%** across all 3 shards; novelty categories all show positive Δ reward (+0.30 → +1.05) | [`scripts/run_training.py`](scripts/run_training.py) + [`colab/train_lib.py`](colab/train_lib.py) + [`scripts/merge_lora_adapters.py`](scripts/merge_lora_adapters.py) | [`shard 1/training_kaggle1.json`](kaggle%20ran%20notebooks/shard%201/training_kaggle1.json) · [`shard 2/training_kaggle2.json`](kaggle%20ran%20notebooks/shard%202/training_kaggle2.json) · [`shard 3/training_kaggle3.json`](kaggle%20ran%20notebooks/shard%203/training_kaggle3.json) |
+
+**Why two regimes?** Round 1 + 2 (deep) prove the rubric is learnable on a small, well-understood task set — they're how we debugged the reward shaper, validated that a frozen LLM judge produces useful advantages, and locked the PPO hyper-parameters. Round 3 (shallow) takes those exact hyper-parameters and runs them across the full 381-scenario procedural curriculum on three free Kaggle T4 accounts in parallel.
+
+**Headline numbers from the deep runs (Round 2):**
+
+| Run | Actor | Critic | Episodes | Mean reward | Top per-task mean | Mitigation rate |
+|---|---|---|---:|---:|---|---:|
+| `ppo-v2-heuristic` | heuristic | none | 99 | 1.17 | 1.60 (`task1`,`task4`) | **100%** |
+| `ppo-v3-hybrid-ollama-bedrock` | Qwen2.5:0.5b (Ollama) | heuristic-fallback | 36 | 1.32 | 1.72 (`task10`) | 69% |
+| `ppo-v4-hybrid-ollama-groq` | Qwen2.5:0.5b (Ollama) | **Groq Llama-3.1-8B-instant** | 36 | **1.78** | **2.41** (`task9`) | 44% |
+
+Across all three deep runs, policy loss collapses (1.20 → 0.083 over 33 updates for v2; 1.10 → 0.50 over 12 updates for v3/v4), entropy compresses (~2.0 → 0.39 for v2; ~1.9 → 1.21 for v3/v4), and v4's small-LLM actor with the Groq Llama-3.1-8B critic clears the heuristic ceiling on the hardest tasks. Plots and the full discussion live in [`BLOG.md` §4](BLOG.md).
+
+### Round 3 — LoRA fine-tune on 381 scenarios (the headline run)
+
+Round 3 is the run that ships the merged LoRA adapter on top of `microsoft/Phi-3.5-mini-instruct`. It uses the same PPO hyper-parameters validated by rounds 1 + 2.
 
 ### Models
 

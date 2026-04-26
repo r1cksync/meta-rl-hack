@@ -260,9 +260,24 @@ visualisation channel during demos and judging.
 
 ---
 
-## 4 · How we actually trained — two passes
+## 4 · How we actually trained — three rounds, two regimes
 
-### Pass A · Legacy MLP baseline (proves the env is solvable)
+We ran two regimes of training, in three rounds:
+
+* **Deep regime** (round 1 + round 2) — many PPO updates per task, on a small
+  hand‑curated set of **7–11 tasks**. The point: prove the rubric is
+  learnable, debug the reward signal, and validate that an LLM actor with a
+  judge critic gives a usable advantage estimate before paying for a long
+  GPU run.
+* **Shallow regime** (round 3) — short PPO loop per task, but on the full
+  **381 procedural scenarios** with saboteur + Slack noise + multi‑fault.
+  The point: prove that the same loop generalises to a hard, broad,
+  adversarial task pool — and ship a LoRA adapter for the demo.
+
+The deep rounds came first; they're the reason we trusted the reward
+signal enough to spend three free Kaggle accounts on the shallow round.
+
+### Pass A · Round 1 — Legacy SB3 PPO/MLP (proves the env is solvable)
 
 Before any LLM work, we needed to know the reward signal isn't broken.
 We ran a stable‑baselines3 PPO agent against a **gym wrapper** of the env,
@@ -305,9 +320,67 @@ a real signal in there for any policy that bothers to investigate before
 acting. The action distribution from the trained MLP is
 `6× query_logs → submit_postmortem` — it memorised the *minimum sufficient
 investigation* for the easy/medium tasks. That's a floor. Now the question
-is: can an LLM agent do better on the **hard** version?
+was: can an *LLM* actor learn the same signal — and does a judge‑style
+critic produce useful advantages?
 
-### Pass B · LLM agent on 381 procedural scenarios
+### Pass A · Round 2 — Hybrid LLM‑actor + judge‑critic on 11 hand‑curated tasks
+
+Before committing GPU minutes to a 381‑task LoRA fine‑tune, we ran three
+shorter PPO loops with a tiny LLM actor and three different critic
+backends, all on **11 hand‑curated tasks** (`task1`…`task11` — the easy +
+medium + hard archetypes plus their variants). All three runs share the
+same trainer:
+[`rl-agent/training/train_hybrid.py`](https://github.com/r1cksync/meta-rl-hack/blob/main/incident-commander/rl-agent/training/train_hybrid.py).
+
+| Round | Actor | Critic | Updates | Episodes | Mean R | Best per‑task | Mitigation rate | Logs |
+| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
+| **v2** | heuristic | none (PPO baseline) | 33 | 99 | 1.17 | 1.60 (`task1`,`task4`) | **100%** | [`ppo-v2-heuristic/`](https://github.com/r1cksync/meta-rl-hack/tree/main/incident-commander/rl-agent/checkpoints/ppo-v2-heuristic) |
+| **v3** | Qwen2.5:0.5b (Ollama) | heuristic fallback | 12 | 36 | 1.32 | 1.72 (`task10`) | 69% | [`ppo-v3-hybrid-ollama-bedrock/`](https://github.com/r1cksync/meta-rl-hack/tree/main/incident-commander/rl-agent/checkpoints/ppo-v3-hybrid-ollama-bedrock) |
+| **v4** | Qwen2.5:0.5b (Ollama) | **Groq Llama‑3.1‑8B‑instant** | 12 | 36 | **1.78** | **2.41** (`task9`) | 44% | [`ppo-v4-hybrid-ollama-groq/`](https://github.com/r1cksync/meta-rl-hack/tree/main/incident-commander/rl-agent/checkpoints/ppo-v4-hybrid-ollama-groq) |
+
+Every row is a real run — `metrics.jsonl` + `summary.json` + reward‑breakdown
+history all sit in the linked checkpoint folders. The trainer is invoked as:
+
+```bash
+# v2 — pure heuristic actor, PPO baseline
+python -m rl_agent.training.train_hybrid --mode heuristic \
+    --out-dir rl-agent/checkpoints/ppo-v2-heuristic
+
+# v3 — Ollama Qwen2.5:0.5b actor + heuristic critic (Bedrock fallback)
+python -m rl_agent.training.train_hybrid \
+    --mode hybrid-ollama-bedrock --ollama-model qwen2.5:0.5b \
+    --out-dir rl-agent/checkpoints/ppo-v3-hybrid-ollama-bedrock
+
+# v4 — Ollama Qwen2.5:0.5b actor + Groq Llama‑3.1‑8B‑instant critic
+python -m rl_agent.training.train_hybrid \
+    --mode hybrid-ollama-groq --ollama-model qwen2.5:0.5b \
+    --groq-model llama-3.1-8b-instant \
+    --out-dir rl-agent/checkpoints/ppo-v4-hybrid-ollama-groq
+```
+
+![Hybrid PPO loops on 11 tasks — policy loss collapses, entropy compresses, Groq critic delivers the highest mean reward](assets/blog/legacy_deep_training.png)
+
+*Three signs the deep regime worked:*
+
+* **Policy loss collapses on every run.** v2 falls from 1.20 → 0.083
+  (**−93%**) over 33 updates; v3 and v4 both fall from 1.10 → 0.50 (**−55%**)
+  in just 12 updates. Same shape, same trajectory — the loop is healthy.
+* **Entropy compresses smoothly** from ~2.0 → 0.39 (v2) and ~1.9 → 1.21
+  (v3/v4) — the actor distribution is sharpening on a coherent strategy,
+  not collapsing prematurely.
+* **Per‑task max reward keeps rising.** v4's Qwen2.5 actor with the Groq
+  Llama‑3.1‑8B critic posts mean reward **2.41 on `task9`**, **2.39 on
+  `task1`**, **2.29 on `task10`** — well above the heuristic v2 ceiling of
+  1.60. The judge‑critic is providing a useful signal.
+
+What this established: (a) the reward signal is dense enough that a 0.5B
+LLM actor moves it; (b) a frozen LLM judge as critic produces advantages
+that actually push the policy upward (v4 > v3 > v2 on mean reward); (c) PPO
+hyper‑parameters lifted from these runs (γ=0.95, λ=0.92, clip=0.2, KL=0.02,
+entropy=0.01) are the same ones we used in Pass B. It's the bridge that
+made the 381‑task run worth attempting.
+
+### Pass B · Round 3 — LLM agent on 381 procedural scenarios
 
 This is the headline run. The same env, but two changes:
 
