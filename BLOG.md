@@ -40,6 +40,8 @@ one fix is never enough?*
 
 ## 2 · The environment — what does the agent see, do, and get rewarded for?
 
+> **Standalone env reference docs** — for a full per‑task / per‑action / per‑reward spec of each training regime see [`docs/ENV_DEEP.md`](docs/ENV_DEEP.md) (the 11 hand‑curated archetypes used by Rounds 1 + 2) and [`docs/ENV_SHALLOW.md`](docs/ENV_SHALLOW.md) (the 381 procedural scenarios used by Round 3).
+
 `IncidentCommanderEnv` is an OpenEnv `Environment` subclass that drops the
 agent into an active production incident at **AcmeCorp** — a fictitious
 e‑commerce company with five microservices, Kafka, Redis, Postgres, and full
@@ -651,6 +653,366 @@ categories specifically improving.
   ```
 * **Read the source:** [github.com/r1cksync/meta-rl-hack](https://github.com/r1cksync/meta-rl-hack).
   Start at `incident-commander/README.md`.
+
+---
+
+## 10 · Reference appendix
+
+> Everything below is the same factual reference material that lives in
+> [`README.md`](https://github.com/r1cksync/meta-rl-hack/blob/main/incident-commander/README.md),
+> reproduced here so the blog is self‑contained for judges reading on the
+> Hugging Face Space.
+
+### 10.1 Submission materials
+
+| | |
+|---|---|
+| 📝 **Blog / writeup** | [`BLOG.md`](https://github.com/r1cksync/meta-rl-hack/blob/main/incident-commander/BLOG.md) — story‑driven walkthrough (problem · env · novelties · results · pipeline) |
+| 🎥 **Video walkthrough** | [https://youtu.be/8bDJ0MMZ1DM](https://youtu.be/8bDJ0MMZ1DM) |
+| 🧪 **Live env (HF Space)** | [sagnik-mukherjee/incodent-commander](https://huggingface.co/spaces/sagnik-mukherjee/incodent-commander) |
+| 💻 **Source (GitHub)** | [r1cksync/meta-rl-hack](https://github.com/r1cksync/meta-rl-hack) |
+| 📊 **Training notebooks** | [`kaggle/`](https://github.com/r1cksync/meta-rl-hack/tree/main/incident-commander/kaggle) (3 shards × Phi‑3.5 + DeepSeek‑R1) · [`notebooks/`](https://github.com/r1cksync/meta-rl-hack/tree/main/incident-commander/notebooks) (legacy SB3 PPO baseline) |
+| 📦 **Trained adapters** | [`kaggle ran notebooks/shard {1,2,3}/adapter_kaggle{N}/`](https://github.com/r1cksync/meta-rl-hack/tree/main/incident-commander/kaggle%20ran%20notebooks) |
+| 🎚️ **Per‑update training logs** | **Round 3 (shallow, 381 tasks):** [`shard {1,2,3}/training_kaggle{N}.json`](https://github.com/r1cksync/meta-rl-hack/tree/main/incident-commander/kaggle%20ran%20notebooks) · **Round 2 (deep, 11 tasks):** [`rl-agent/checkpoints/ppo-v{2,3,4}-*/metrics.jsonl`](https://github.com/r1cksync/meta-rl-hack/tree/main/incident-commander/rl-agent/checkpoints) · **Round 1 (legacy SB3):** [`rl-agent/checkpoints/training_metrics.json`](https://github.com/r1cksync/meta-rl-hack/blob/main/incident-commander/rl-agent/checkpoints/training_metrics.json) |
+| 🌟 **Showcase page** | [/showcase](https://sagnik-mukherjee-incodent-commander.hf.space/showcase) |
+| 📡 **Live dashboard** | [/dashboard](https://sagnik-mukherjee-incodent-commander.hf.space/dashboard) |
+| 🩺 **API health** | [/health](https://sagnik-mukherjee-incodent-commander.hf.space/health) |
+| 📖 **API docs (Swagger)** | [/docs](https://sagnik-mukherjee-incodent-commander.hf.space/docs) |
+
+### 10.2 The 7 hand‑curated tasks (the original archetypes)
+
+§3.10 covers the 381 procedural scenarios. Underneath them sit **7 hand‑curated archetypes** that every procedural variant is a perturbation of:
+
+| ID | Difficulty | Root cause | What goes wrong |
+| --- | --- | --- | --- |
+| `task1` | Easy | Redis pool exhaustion | Chaos Mesh injects latency → pool saturates → inventory‑service errors |
+| `task2` | Medium | Payments OOM cascade | Memory stress → OOM kills → Kafka lag cascades to other services |
+| `task3` | Hard | Decimal corruption | Bad deploy truncates NUMERIC precision. Postgres VACUUM is a red herring |
+| `task4` | Easy | Kafka network partition | Chaos Mesh partitions broker → consumer lag spikes across workers |
+| `task5` | Medium | DNS resolution failure | DNS chaos → NXDOMAIN across services. "Connection refused" is secondary |
+| `task6` | Hard | TLS certificate expiry | Expired mTLS cert → all DB connections fail. ECONNRESET is a symptom |
+| `task7` | Hard | ConfigMap hot‑reload race | ConfigMap race → inconsistent pricing across pods. Redis/GC alerts are red herrings |
+
+Easy tasks have one obvious signal. Medium tasks need cross‑service investigation. Hard tasks actively mislead with plausible red herrings. Heuristic agent baseline scores against these 7 are below.
+
+### 10.3 Heuristic baseline scores
+
+The `/baseline` endpoint runs a fixed‑strategy heuristic (investigate → mitigate → postmortem) per task. It demonstrates the rubric is achievable; an LLM agent has to figure it out from observations alone.
+
+| Task | Heuristic score | Target score |
+| --- | ---: | ---: |
+| `task1` (Easy) | 0.90 | 0.80 |
+| `task2` (Medium) | 0.85 | 0.45 |
+| `task3` (Hard) | 0.85 | 0.20 |
+| `task4` (Easy) | 0.90 | 0.80 |
+| `task5` (Medium) | 0.85 | 0.45 |
+| `task6` (Hard) | 0.80 | 0.20 |
+| `task7` (Hard) | 0.80 | 0.20 |
+| **Average** | **0.85** | — |
+
+### 10.4 Curriculum tier table
+
+Inspired by kube‑sre‑gym. Pass `use_curriculum: true` to `POST /reset`.
+
+| Tier | Task pool | Multi‑fault | Adversarial designer |
+| --- | --- | --- | --- |
+| `warmup` | task1, task4 (easy single‑fault) | No | No |
+| `beginner` | task1, task2, task4, task5 | No | No |
+| `intermediate` | all 7 tasks | No | No |
+| `advanced` | all 7 tasks | 2 concurrent faults | No |
+| `expert` | all 7 tasks | 2–3 faults | LLM‑designed novel scenarios |
+
+**Promotion rule:** after ≥6 episodes in the current tier, if the rolling success rate (score ≥ target) over the last 8 episodes is ≥ 0.65, the agent is auto‑promoted. Sampling is **weakness‑biased** — tasks with lower mastery are oversampled within the current tier.
+
+### 10.5 LLM‑judge persona ranges
+
+| Persona | Score range | Style |
+| --- | --- | --- |
+| `junior` | [−0.5, 1.0] | Lenient; partial credit; rewards any reasonable attempt |
+| `senior` | [−0.75, 1.0] | Standard SRE expectations; rewards systematic diagnosis |
+| `principal` | [−1.0, 1.0] | Strict; penalises repeat commands and wrong targets, rewards minimal fixes |
+
+Switch persona mid‑training:
+
+```bash
+curl -X POST $BASE/judge/config -H 'Content-Type: application/json' \
+  -d '{"persona":"principal","use_llm":true}'
+```
+
+The judge also labels each action with an SRE phase (`triage / investigate / fix / verify`) which feeds the phase‑order bonus. With no API key, it falls back to a deterministic heuristic so training and CI keep working.
+
+### 10.6 Holistic grader breakdown
+
+Separate from per‑step reward — runs on episode end:
+
+| Component | Max | What it measures |
+| --- | ---: | --- |
+| Investigation thoroughness | 0.25 | Did the agent inspect logs, metrics, deps, traces? |
+| Correct mitigation | 0.25 | Was the right fix applied? |
+| Root cause identification | 0.25 | Did the postmortem identify the real root cause? |
+| Efficiency | 0.15 | How many steps (fewer = better)? |
+| No unnecessary damage | 0.10 | Did write actions avoid making things worse? |
+| **Total** | **1.00** | Clamped to [0.001, 0.999] for grader compliance |
+
+### 10.7 Setup / quickstart
+
+```bash
+# Local development
+python3 -m venv .venv && source .venv/bin/activate
+pip install fastapi uvicorn pydantic httpx structlog numpy openai
+cd rl-agent && uvicorn server:app --host 0.0.0.0 --port 7860
+
+# Docker
+docker build -t incident-commander .
+docker run -p 7860:7860 incident-commander
+
+# Run heuristic baseline (no API key needed)
+curl -X POST http://localhost:7860/baseline \
+     -H 'Content-Type: application/json' -d '{"task_id":"task1"}'
+
+# Reset with curriculum + adversarial
+curl -X POST http://localhost:7860/reset \
+     -H 'Content-Type: application/json' \
+     -d '{"use_curriculum":true,"persona":"senior"}'
+
+# Inspect current curriculum state
+curl http://localhost:7860/curriculum
+
+# Design a novel adversarial scenario (procedural, no API key needed)
+curl -X POST http://localhost:7860/adversarial/design \
+     -H 'Content-Type: application/json' \
+     -d '{"primary_task_id":"task3","companion_task_ids":["task6"]}'
+
+# Run LLM inference
+API_BASE_URL=https://api.openai.com/v1 MODEL_NAME=gpt-4o HF_TOKEN=sk-... \
+    python inference.py
+```
+
+### 10.8 Environment variables
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `MOCK_MODE` | `true` | When `true`, all write actions return `[MOCK]` results. |
+| `REAL_K8S` | `false` | When `true` (and the `kubernetes` Python client is installed), write actions (rollback/restart/scale/apply_config_patch) go to a real cluster via the active kubeconfig. |
+| `USE_LLM_JUDGE` | `false` | Enable LLM‑based per‑step judging. Requires `OPENAI_API_KEY` or `HF_TOKEN`. |
+| `JUDGE_PERSONA` | `senior` | `junior` / `senior` / `principal`. |
+| `OPENAI_API_KEY` / `HF_TOKEN` | — | Auth for LLM judge + adversarial designer. |
+| `API_BASE_URL` | `https://api.openai.com/v1` | LLM endpoint (OpenAI‑compatible). |
+| `MODEL_NAME` | `gpt-4o-mini` | Default LLM for judge/designer. |
+
+### 10.9 GRPO training pipeline (the original plan)
+
+The repo also ships a full TRL + vLLM colocate GRPO pipeline at
+[`rl-agent/training/train_grpo.py`](https://github.com/r1cksync/meta-rl-hack/blob/main/incident-commander/rl-agent/training/train_grpo.py)
+— it was the original Week‑2 plan before we pivoted to the custom 3‑round PPO
+loop documented in §4. It still works:
+
+```bash
+# Dry run — no GPU required, verifies rollouts & reward computation
+python -m training.train_grpo --dry-run --env-url http://localhost:7860
+
+# Full training (requires ≥A100 40GB)
+python -m training.train_grpo \
+    --model Qwen/Qwen2.5-1.5B-Instruct \
+    --env-url https://sagnik-mukherjee-incodent-commander.hf.space \
+    --num-generations 8 --max-steps 200 --grad-accum 8 \
+    --vllm-mode colocate --hub-repo <your-name>/incident-commander-grpo
+```
+
+#### Evaluation (base vs trained)
+
+```bash
+# Heuristic-only (zero GPU)
+python -m rl_agent.eval --env-url http://localhost:7860 --episodes-per-task 3
+
+# Compare base vs LoRA checkpoint (needs transformers+torch)
+python -m rl_agent.eval \
+    --base-model Qwen/Qwen2.5-1.5B-Instruct \
+    --trained-model <your-name>/incident-commander-grpo \
+    --episodes-per-task 5 --adversarial
+```
+
+#### Original training roadmap (for context)
+
+1. **Week 1 (zero GPU)** — heuristic baseline already solves easy tasks; tune LLM‑judge prompts, adversarial designer prompts, and reward weights against the live Space.
+2. **Week 2 (HF GPU credits)** — launch GRPO on Qwen2.5‑1.5B with LoRA r=16, 200 steps, 8 generations per prompt. Expected ~6 h on A100 40GB.
+3. **Week 3** — compare against heuristic and against kube‑sre‑gym's reported numbers using `eval.py --adversarial`. Push best LoRA adapter to the Hub.
+
+In practice, weeks 2–3 became the 3‑round PPO regime in §4 because the free Kaggle T4 path proved faster and cheaper than waiting on credits.
+
+### 10.10 Production pipeline (Terraform → Hetzner → k3s)
+
+Write actions normally land in a mock cluster (`MOCK_MODE=true`), but the same code path drives a real Kubernetes cluster (`REAL_K8S=true`). We provision that cluster with Terraform on Hetzner Cloud — €20 / month for a usable demo cluster.
+
+```
+infra/terraform/main.tf       Hetzner Cloud network + 3 servers + load balancer
+infra/k8s/                    Deployments / Services / ConfigMaps for the 5 microservices
+infra/helm/acmecorp/          Helm chart that rolls everything out
+infra/aws/   infra/eks/       Optional AWS variant if you have free EKS credits
+```
+
+The Terraform module declares:
+
+| Resource | Purpose |
+| --- | --- |
+| `hcloud_network` | Private 10.0.0.0/16 VPC |
+| `hcloud_network_subnet` | 10.0.1.0/24 in `eu-central` |
+| `hcloud_ssh_key` | Reads `~/.ssh/id_rsa.pub` |
+| `hcloud_server` × 3 | `cx21` Ubuntu nodes (1 master + 2 worker) |
+| `hcloud_load_balancer` | `lb11` in front of the cluster |
+| `hcloud_load_balancer_target` × 3 | Health‑checked targets |
+| `hcloud_load_balancer_service` × 2 | Public HTTP (80) + HTTPS (443) listeners |
+
+Bring‑up:
+
+```bash
+cd infra/terraform
+terraform init
+terraform apply -var="hcloud_token=$HCLOUD_TOKEN"
+
+# Master IP from terraform output
+ssh root@$MASTER curl -sfL https://get.k3s.io | sh -
+
+# Roll out AcmeCorp microservices
+helm install acmecorp infra/helm/acmecorp --set image.tag=$GIT_SHA
+
+# Point the agent at the live cluster
+export REAL_K8S=true
+export KUBECONFIG=~/.kube/config
+python -m rl_agent.server
+```
+
+### 10.11 Full API endpoint reference
+
+| Endpoint | Method | Description |
+| --- | --- | --- |
+| `/health` | GET | Health check |
+| `/tasks` | GET | Task list with action schema |
+| `/reset` | POST | Reset environment (`task_id`, `adversarial`, `use_curriculum`, `persona`, `use_llm_judge`) |
+| `/step` | POST | Execute an action |
+| `/state` | GET | Current episode state with investigation tracking, phase, judge result |
+| `/grader` | POST | Holistic score for last completed episode + curriculum block |
+| `/baseline` | POST | Run heuristic agent and return episode trace |
+| `/curriculum` | GET | Current tier, mastery map, episode counts |
+| `/curriculum/reset` | POST | Reset curriculum state (optional `tier` to pin) |
+| `/adversarial/design` | POST | Design a novel scenario (LLM or procedural) |
+| `/judge/config` | POST | Switch judge persona / toggle LLM judge |
+| `/dashboard` | GET | **Live diagnostic dashboard** with tier + phase indicators |
+| `/showcase` | GET | **Showcase page** — every task, action, reward, training curve, file index |
+| `/showcase/data` | GET | Pre‑computed JSON bundle (381 scenarios + 3 shards × 60 updates) |
+| `/docs` | GET | Swagger UI |
+
+### 10.12 File / JSON index
+
+| Path | What it is |
+| --- | --- |
+| `rl-agent/scenarios/{easy,medium,hard}/*.json` | 23 hand‑curated incident archetypes (id, difficulty, title, description, preconditions, correct_action_chain, target_score, max_steps). |
+| `rl-agent/scenarios/sim/{easy,medium,hard}/*.json` | 381 simulator‑grade RL scenarios (156 + 128 + 97). Adds `topology_overrides`, `saboteur`, `slack`, `traffic_profile`, `k8s_controller`, `seed`. |
+| `colab/logs/training_kaggle{1,2,3}.json` | Per‑update training metrics for one shard: `update, elapsed_s, mean_reward, mean_value, ppo{loss, kl, policy_loss, value_err}, rewards_by_task`. The union of `rewards_by_task` keys across all three files = full 381‑task coverage proof. |
+| `kaggle ran notebooks/shard {1,2,3}/adapter_kaggle{N}/adapter_config.json` | LoRA configuration emitted by PEFT (`r=16, alpha=32, target_modules=[…]`). |
+| `kaggle ran notebooks/shard {1,2,3}/adapter_kaggle{N}/adapter_model.safetensors` | The actual LoRA delta — ~50 MB per shard. Loadable with `PeftModel.from_pretrained(base, path)`. |
+| `rl-agent/checkpoints/ppo-v{2,3,4}-*/metrics.jsonl` | Per‑update metrics for the Round 2 deep runs (heuristic / hybrid Ollama+heuristic / hybrid Ollama+Groq). |
+| `rl-agent/checkpoints/training_metrics.json` + `evaluation_report.json` | Round 1 (legacy SB3 PPO + MLP) per‑checkpoint metrics and 90‑episode evaluation summary. |
+| `rl-agent/showcase_data.json` | Pre‑computed bundle that hydrates the `/showcase` page. Built by `scripts/build_showcase_data.py`. |
+| `openenv.yaml` | OpenEnv manifest declaring `/reset, /step, /state, /health`. |
+| `frontend/package.json` | Next.js 14 AcmeCorp e‑commerce app — both chaos target and live UI. |
+| `frontend/tsconfig.json` | Strict TS configuration. |
+| `frontend/tailwind.config.js`, `postcss.config.js` | Frontend styling stack. |
+| `backend/{payments-api,inventory-service,notification-service,order-worker}/package.json` | Per‑service Node apps that get rolled out, restarted, scaled, and patched by agent actions. |
+| `infra/terraform/main.tf` | Hetzner cluster provisioning (network, subnet, ssh key, 3 servers, load balancer, listeners). |
+| `infra/k8s/*.yaml` | Deployments, Services, ConfigMaps, ChaosMesh experiments for the live cluster. |
+
+### 10.13 System architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    IncidentCommander                            │
+│                                                                 │
+│  ┌──────────┐  ┌─────────────┐  ┌──────────────┐                │
+│  │ RL Agent │──│ OpenEnv API │──│ Graders      │                │
+│  │ (LLM /   │  │ reset()     │  │ - Postmortem │                │
+│  │  PPO /   │  │ step()      │  │ - BlastRadius│                │
+│  │Heuristic)│  │ state()     │  │ - Holistic   │                │
+│  └──────────┘  │ grader()    │  └──────────────┘                │
+│                │ baseline()  │                                  │
+│                └──────┬──────┘                                  │
+│                       │                                         │
+│         ┌─────────────┼──────────────┐                          │
+│         ▼             ▼              ▼                          │
+│  ┌────────────┐ ┌──────────┐ ┌─────────────┐                    │
+│  │ Prometheus │ │   Loki   │ │ Chaos Mesh  │                    │
+│  │  Metrics   │ │   Logs   │ │ Fault Inject│                    │
+│  └─────┬──────┘ └────┬─────┘ └──────┬──────┘                    │
+│        └──────────────┼──────────────┘                          │
+│                       ▼                                         │
+│  ┌─────────────────────────────────────────┐                    │
+│  │        AcmeCorp E-Commerce Platform     │                    │
+│  │  5 microservices + Kafka + Redis +      │                    │
+│  │  Postgres + full observability stack    │                    │
+│  └─────────────────────────────────────────┘                    │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### 10.14 Project structure
+
+```
+incident-commander/
+├── openenv.yaml                 # OpenEnv spec (7 tasks, endpoints, scoring)
+├── inference.py                 # LLM agent (OpenAI function calling)
+├── Dockerfile                   # HF Spaces deployment
+├── pyproject.toml               # Python packaging + uv
+├── docker-compose.yml           # Full stack orchestration
+│
+├── rl-agent/                    # Core RL environment
+│   ├── server.py                # FastAPI server (reset/step/state/grader/baseline/dashboard)
+│   ├── dashboard.html           # Live Plotly.js diagnostic dashboard
+│   ├── environment/
+│   │   ├── env.py               # IncidentCommanderEnv — context-gated rewards, 7 tasks
+│   │   ├── models.py            # Pydantic models (Observation, Action, StepResult)
+│   │   ├── prometheus_client.py # Prometheus/Alertmanager async client
+│   │   ├── loki_client.py       # Loki log query client
+│   │   ├── chaos_client.py      # Chaos Mesh API client
+│   │   └── graders/
+│   │       ├── postmortem_grader.py  # NLP postmortem scoring
+│   │       └── blast_radius_tracker.py
+│   ├── scenarios/               # 7 task scenario definitions (JSON)
+│   ├── training/                # PPO training scripts (legacy SB3 + hybrid + GRPO)
+│   └── tests/                   # Pytest suite
+│
+├── frontend/                    # Next.js 14 storefront
+├── backend/                     # 4 microservices (Python/Go/TS)
+│   ├── payments-api/            # FastAPI — orders, payments, Kafka
+│   ├── inventory-service/       # Go/Gin — product catalog, Redis
+│   ├── order-worker/            # Celery — async order processing
+│   └── notification-service/    # Express/TS — email notifications
+│
+├── observability/               # Prometheus + Loki + Grafana + Alertmanager
+├── chaos/                       # Chaos Mesh fault definitions (7 scenarios)
+├── infra/                       # K8s manifests, Helm charts, Terraform
+├── traffic/                     # Locust load generator
+├── colab/                       # Round‑3 PPO trainer library
+├── kaggle/                      # Round‑3 Kaggle notebooks (3 shards)
+├── kaggle ran notebooks/        # Round‑3 outputs: per‑shard adapters + JSON logs
+└── scripts/                     # Cluster setup, training entry point, LoRA merge, helpers
+```
+
+### 10.15 Key differentiators
+
+| Feature | IncidentCommander | Typical RL env |
+| --- | --- | --- |
+| Tasks | 7 archetypes × 381 procedural variants | 1–3 |
+| Observations | Real Prometheus / Loki / Alertmanager / Slack chatter | Synthetic |
+| Actions | 10 types with real K8s effects | Simple discrete |
+| Red herrings | Yes (tasks 3, 5, 6, 7 + procedural variants) | No |
+| Context‑gated rewards | Yes (−0.20 for acting blind) | No |
+| Holistic grading | Investigation + mitigation + efficiency + damage | Final reward only |
+| Live dashboard | Plotly.js at `/dashboard` | None |
+| Baseline agent | Built‑in heuristic at `/baseline` | External |
+| Infrastructure | 5 microservices + full observability | Simulated |
+
+### 10.16 License
+
+MIT. See [`LICENSE`](https://github.com/r1cksync/meta-rl-hack/blob/main/incident-commander/README.md) (declared at the bottom of the README).
 
 ---
 

@@ -26,6 +26,7 @@ Built for the **Meta PyTorch OpenEnv Hackathon x Scaler School of Technology, 20
 | | |
 |---|---|
 | 📝 **Blog / writeup** | [`BLOG.md`](BLOG.md) — story-driven walkthrough (problem · env · novelties · results · pipeline) |
+| 📖 **Env reference docs** | [`docs/ENV_DEEP.md`](docs/ENV_DEEP.md) (11 hand‑curated tasks · Rounds 1 + 2) · [`docs/ENV_SHALLOW.md`](docs/ENV_SHALLOW.md) (381 procedural scenarios · Round 3) — full per‑task / per‑action / per‑reward spec |
 | 🎥 **Video walkthrough** | [https://youtu.be/8bDJ0MMZ1DM](https://youtu.be/8bDJ0MMZ1DM) |
 | 🧪 **Live env (HF Space)** | [sagnik-mukherjee/incodent-commander](https://huggingface.co/spaces/sagnik-mukherjee/incodent-commander) |
 | 💻 **Source (GitHub)** | [r1cksync/meta-rl-hack](https://github.com/r1cksync/meta-rl-hack) |
