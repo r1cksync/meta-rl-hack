@@ -1,1 +1,1 @@
-Every task. Every reward. Filter by hard. Search saboteur — duels where a bot re-injects faults. Click any card — description, ground-truth actions, per-shard reward curve. This one went from minus point 6 to plus point 3. It learned.
+Every task. Every reward. Filter by hard. Search saboteur — adversarial duels where a bot keeps re-injecting faults, so a single fix is never enough. Click any card — full description, design intention, ground-truth action chain, and the per-shard reward trajectory. The hard ones really are hard.

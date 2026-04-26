@@ -131,8 +131,8 @@ For every scene: **press OBS Start → wait 2 s → do the on-screen actions slo
 |---:|---|
 | 0:00 | Scroll lands the section. Click the **Hard** chip — grid shrinks to 97 cards. |
 | 0:04 | Move to the search box. Type `saboteur` quickly. |
-| 0:08 | **Click any saboteur task card.** Modal opens with description + ground-truth actions + per-shard reward trajectory. |
-| 0:12 | Cursor lands on the reward trajectory's final positive value (e.g. +0.30). Hold while voice says "minus point 6 to plus point 3 — it learned." |
+| 0:08 | **Click any saboteur task card.** Modal opens with description + design intention + ground-truth action chain + per-shard reward trajectory. |
+| 0:12 | Cursor sweeps the action-chain steps, then drops to the per-shard trajectory table. Voice says "the hard ones really are hard." |
 | 0:16 | Press Esc to close, scroll continues into next section. |
 
 **Post-effect:** click-zoom on the modal opening. Power-Window highlight on the green +0.30 final-reward number.

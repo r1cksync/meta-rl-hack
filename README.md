@@ -21,6 +21,18 @@ Built for the **Meta PyTorch OpenEnv Hackathon x Scaler School of Technology, 20
 
 [🌟 **Showcase Page**](https://sagnik-mukherjee-incodent-commander.hf.space/showcase) | [Live Dashboard](https://sagnik-mukherjee-incodent-commander.hf.space/dashboard) | [API Health](https://sagnik-mukherjee-incodent-commander.hf.space/health) | [API Docs](https://sagnik-mukherjee-incodent-commander.hf.space/docs)
 
+### 📚 Submission materials
+
+| | |
+|---|---|
+| 📝 **Blog / writeup** | [`BLOG.md`](BLOG.md) — story-driven walkthrough (problem · env · novelties · results · pipeline) |
+| 🎥 **Video walkthrough** | [https://youtu.be/8bDJ0MMZ1DM](https://youtu.be/8bDJ0MMZ1DM) |
+| 🧪 **Live env (HF Space)** | [sagnik-mukherjee/incodent-commander](https://huggingface.co/spaces/sagnik-mukherjee/incodent-commander) |
+| 💻 **Source (GitHub)** | [r1cksync/meta-rl-hack](https://github.com/r1cksync/meta-rl-hack) |
+| 📊 **Training notebooks (Kaggle)** | [`kaggle/`](kaggle/) (3 shards × Phi-3.5 + DeepSeek-R1) · [`notebooks/`](notebooks/) (legacy SB3 PPO baseline) |
+| 📦 **Trained adapters** | [`kaggle ran notebooks/shard {1,2,3}/adapter_kaggle{N}/`](kaggle%20ran%20notebooks/) |
+| 🎚️ **Per-update training logs** | [`kaggle ran notebooks/shard {1,2,3}/training_kaggle{N}.json`](kaggle%20ran%20notebooks/) · [`rl-agent/checkpoints/training_metrics.json`](rl-agent/checkpoints/training_metrics.json) |
+
 ---
 
 ## Why We Built This
