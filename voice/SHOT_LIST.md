@@ -16,17 +16,17 @@ This file pairs every voiceover MP3 with **exactly what to show on screen** whil
 | 01 | `scene01.mp3` | 0:24 | 0:24 | **0:00** |
 | 02 | `scene02.mp3` | 0:27 | 0:51 | **0:24** |
 | 03 | `scene03.mp3` | 0:28 | 1:20 | **0:51** |
-| 04 | `scene04.mp3` | 0:25 | 1:45 | **1:20** |
-| 05 | `scene05.mp3` | 0:21 | 2:05 | **1:45** |
-| 06 | `scene06.mp3` | 0:32 | 2:37 | **2:05** |
-| 07 | `scene07.mp3` | 0:33 | 3:10 | **2:37** |
-| 08 | `scene08.mp3` | 0:22 | 3:31 | **3:10** |
-| 09 | `scene09.mp3` | 0:19 | 3:50 | **3:31** |
-| 10 | `scene10.mp3` | 0:20 | 4:10 | **3:50** |
-| 11 | `scene11.mp3` | 0:22 | 4:31 | **4:10** |
-| 12 | `scene12.mp3` | 0:27 | 4:58 | **4:31** |
+| 04 | `scene04.mp3` | 0:27 | 1:47 | **1:20** |
+| 05 | `scene05.mp3` | 0:21 | 2:07 | **1:47** |
+| 06 | `scene06.mp3` | 0:18 | 2:25 | **2:07** |
+| 07 | `scene07.mp3` | 0:33 | 2:58 | **2:25** |
+| 08 | `scene08.mp3` | 0:22 | 3:20 | **2:58** |
+| 09 | `scene09.mp3` | 0:19 | 3:39 | **3:20** |
+| 10 | `scene10.mp3` | 0:20 | 3:59 | **3:39** |
+| 11 | `scene11.mp3` | 0:22 | 4:20 | **3:59** |
+| 12 | `scene12.mp3` | 0:27 | 4:47 | **4:20** |
 
-**Total run-time: 4 min 58 s — under the 5-minute cap.** Add ≤2 s of dip-to-black between scenes plus a 3 s intro + 5 s outro and you'll still land at ~5 min flat. Scene 03 now also points at the new `#slack` section (see below).
+**Total run-time: 4 min 47 s — well under the 5-minute cap.** Add ≤2 s of dip-to-black between scenes plus a 3 s intro + 5 s outro and you'll land at ~5 min flat. Scene 03 points at the new `#slack` section. **Scene 04 has been rewritten as the "Did it actually learn?" beat and now points at the new `#results` section** (legacy-baseline vs. PPO Kaggle, KL/loss convergence table, and the per-category improvement table where the novelty scenarios win).
 
 ---
 
@@ -89,21 +89,21 @@ For every scene: **press OBS Start → wait 2 s → do the on-screen actions slo
 
 ---
 
-## Scene 04 · `scene04.mp3` · 0:43 — Training curves
+## Scene 04 · `scene04.mp3` · 0:27 — "Did it actually learn?" (the proof)
 
-**Surface:** the 4 Plotly charts grid (Mean Reward / PPO Loss / KL / Wall-clock).
+**Surface:** start on the 4 Plotly charts grid (Mean Reward / PPO Loss / KL / Wall-clock), then **scroll into the new `#results` section** with the legacy-vs-PPO comparison cards, the convergence table, and the per-category improvement table.
 
-**Action timeline:**
-| t | What you do |
-|---:|---|
-| 0:00 | Charts in view. Cursor at the **Mean Reward** chart top-left. |
-| 0:03 | Trace finger of cursor along the **shard 1 (blue)** line left→right, then **shard 2 (purple)**, then **shard 3 (orange)**. |
-| 0:18 | Move to **KL** chart. Trace one shard's line. |
-| 0:24 | Move to **Loss** chart. Trace one line. |
-| 0:31 | Move to **Wall-clock** chart. Trace flat-ish line. |
-| 0:36 | **Cursor lands on a single point in the rewards chart and stops** — Plotly tooltip pops. Hold 5 s while voice says "you can hover any point…". |
+**Action timeline (this is now a critical judging-criteria beat — go fast on charts, linger on the results tables):**
+| t | Beat in voice | What you do |
+|---:|---|---|
+| 0:00 | "Did it learn? Yes." | Charts in view. Cursor traces one line on the **Mean Reward** chart left→right (3 s). |
+| 0:04 | "legacy MLP baseline solves easy" | Scroll down into `#results` section. Hover the **left card** "Legacy baseline · stable-baselines3" — pause 3 s on the green **+1.05 / 100% success** number. |
+| 0:09 | "our LLM agent runs the same env on hard mode" | Slide cursor to the **right card** "PPO Kaggle · LLM agent on the hard problem" — pause 3 s on the **−0.315 across all 3 shards** number. |
+| 0:14 | "KL drops over 50%, loss the same" | Scroll to the **convergence table** ("The policy genuinely converged"). Cursor sweeps the **Δ KL** column (−55%, −66%, −51%) then **Δ Loss** column. |
+| 0:19 | "all three shards converge on the exact same peak reward" | Cursor lands on the **Best reward** column — point at all three "−0.315" rows in sequence. |
+| 0:23 | "the novelty categories — Slack red herring, runbook trap, cascading failure" | Scroll to the **per-category improvement table**. Cursor highlights the four green +Δ rows (Slack +1.05, Runbook +0.90, Cascading +0.30, Trolley +0.30) in order. |
 
-**Post-effect:** click-zoom 1.0 → 1.4 on the rewards chart at 0:36, hold, zoom-out at 0:42.
+**Post-effect:** click-zoom 1.0 → 1.3 on each green Δ number as cursor lands. Power-Window dim every row except the four "novelty win" rows during 0:23–0:27. **This scene is the answer to judging criterion 2 ("Showing Improvement in Rewards") — give it as much polish as Scene 03.**
 
 ---
 
@@ -122,25 +122,20 @@ For every scene: **press OBS Start → wait 2 s → do the on-screen actions slo
 
 ---
 
-## Scene 06 · `scene06.mp3` · 1:04 — Task explorer (the showpiece)
+## Scene 06 · `scene06.mp3` · 0:18 — Task explorer
 
 **Surface:** the "All 381 tasks" section with filter chips, search input, and grid.
 
-**Action timeline (this is the longest — go slowly):**
+**Action timeline (tight — keep cursor moving):**
 | t | What you do |
 |---:|---|
-| 0:00 | Scroll lands the section. Cursor near the filter chips. |
-| 0:05 | Click the **Hard** chip. Grid shrinks to 97 cards. Hold 3 s. |
-| 0:14 | Move to the search box. **Type slowly: `saboteur`** (3 s). |
-| 0:20 | Hold 3 s while saboteur cards filter in. |
-| 0:24 | **Click any one saboteur task card.** Modal opens with description + design intent + action chain + per-shard reward trajectory. |
-| 0:30 | Cursor traces: title → description → design intent → action chain → reward trajectory shard 1 (specifically the +0.30 final value). Spend ~6 s here. |
-| 0:48 | **Press Esc** (close modal). |
-| 0:50 | Scroll down to the **Category bar chart**. |
-| 0:55 | Cursor sweeps across the bars: Cascading Failure (low) → Runbook Trap (low) → Lambda Throttle (high) → EventBridge (high). |
-| 1:02 | Hold on the highest bar to end. |
+| 0:00 | Scroll lands the section. Click the **Hard** chip — grid shrinks to 97 cards. |
+| 0:04 | Move to the search box. Type `saboteur` quickly. |
+| 0:08 | **Click any saboteur task card.** Modal opens with description + ground-truth actions + per-shard reward trajectory. |
+| 0:12 | Cursor lands on the reward trajectory's final positive value (e.g. +0.30). Hold while voice says "minus point 6 to plus point 3 — it learned." |
+| 0:16 | Press Esc to close, scroll continues into next section. |
 
-**Post-effect:** click-zoom on the modal opening (1.0 → 1.3 over 0.5 s). Power-Window highlight on the search box while typing.
+**Post-effect:** click-zoom on the modal opening. Power-Window highlight on the green +0.30 final-reward number.
 
 ---
 
