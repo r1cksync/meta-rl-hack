@@ -125,6 +125,31 @@ with two pools — `_GENERIC` (always in rotation) and `_PHASE_LINES` (fired
 when the saboteur escalates). Severity escalates the longer the incident
 drags, mirroring real pressure.
 
+```mermaid
+%%{init: {'theme':'dark','themeVariables':{'primaryColor':'#11162b','primaryTextColor':'#e9eeff','primaryBorderColor':'#7aa7ff','lineColor':'#7aa7ff','tertiaryColor':'#0a0d1c'}}}%%
+flowchart LR
+    SC["Scenario JSON<br/>slack: msgs_per_tick=1.4"] --> SS["SlackStream<br/>(deterministic, seed-driven)"]
+    SAB["Saboteur phase<br/>attack_primary / failover / dependency"] --> SS
+    SS -->|emit_for_tick| OBS["Observation<br/>{ metrics, traces, slack[] }"]
+    OBS --> ACT["Phi-3.5 Actor<br/>4-bit + LoRA"]
+    ACT -->|action JSON| ENV["IncidentCommanderEnv"]
+    ENV --> R{"Reward shaping"}
+    R -->|action targets a service<br/>mentioned in recent slack| RP["+0.10<br/>useful_log_query"]
+    R -->|action targets red-herring<br/>service from chatter| RH["−0.15<br/>red_herring_penalty"]
+    R -->|action ignores buried clue<br/>and acts blind| BA["−0.10<br/>blind_action_penalty"]
+    RP --> ADV["GAE advantage<br/>+ PPO update"]
+    RH --> ADV
+    BA --> ADV
+    ADV --> ACT
+
+    classDef good fill:#0e2a1c,stroke:#3ec78a,color:#cdeed8
+    classDef bad fill:#2a0e0e,stroke:#ff7a7a,color:#ffd6d6
+    class RP good
+    class RH,BA bad
+```
+
+*The Slack signal-vs-noise reward flow — pulled verbatim from the live [showcase page](https://sagnik-mukherjee-incodent-commander.hf.space/showcase).*
+
 ### 3.2 Saboteur — one fix is never enough
 
 On hard tasks, an adversarial bot watches the agent's actions and
@@ -225,6 +250,42 @@ helm install acmecorp infra/helm/acmecorp
 €20/month gets you a usable demo cluster. See
 [`infra/terraform/main.tf`](https://github.com/r1cksync/meta-rl-hack/blob/main/incident-commander/infra/terraform/main.tf).
 
+```mermaid
+%%{init:{'theme':'dark','themeVariables':{'primaryColor':'#11162b','primaryTextColor':'#e9eeff','primaryBorderColor':'#7aa7ff','lineColor':'#a78bfa','clusterBkg':'#0a0d1c','clusterBorder':'#7aa7ff'}}}%%
+flowchart TB
+    subgraph TF["infra/terraform/main.tf"]
+      direction LR
+      net[hcloud_network<br/>10.0.0.0/16]
+      subnet[hcloud_network_subnet<br/>10.0.1.0/24]
+      ssh[hcloud_ssh_key]
+      lb[hcloud_load_balancer<br/>lb11 · port 80/443]
+      n0[hcloud_server · master<br/>cx21 · ubuntu-22.04]
+      n1[hcloud_server · worker]
+      n2[hcloud_server · worker]
+    end
+    subgraph K3S["k3s cluster"]
+      direction LR
+      ing[ingress-nginx]
+      svc1[frontend]
+      svc2[payments-api]
+      svc3[inventory-service]
+      svc4[notification-service]
+      svc5[order-worker]
+    end
+    subgraph AGENT["IncidentCommander agent"]
+      direction LR
+      env["env.step(action)"]
+      adapter["LoRA adapter<br/>(merged)"]
+      env --> adapter
+      adapter --> env
+    end
+    TF -->|provision| K3S
+    AGENT -->|REAL_K8S=true| ing
+    ing --> svc1 & svc2 & svc3 & svc4 & svc5
+```
+
+*Same Hetzner topology that powers the live demo cluster — Terraform on the left provisions the k3s nodes, the agent talks to ingress over HTTP when `REAL_K8S=true`.*
+
 ### 3.10 381 procedurally‑generated scenarios
 
 Beyond the 7 hand‑curated archetypes, we generated **381 simulator‑grade
@@ -281,6 +342,10 @@ reward 1.05, success rate 100% over 90 evaluation episodes**, recorded in
 Per‑update metrics in
 [`rl-agent/checkpoints/training_metrics.json`](https://github.com/r1cksync/meta-rl-hack/blob/main/incident-commander/rl-agent/checkpoints/training_metrics.json)
 (40k → 200k timestep evaluation snapshots).
+
+![Legacy SB3 PPO — per-task mean reward and 100% success rate across 200k timesteps](assets/blog/legacy_training.png)
+
+*Left: per-task mean reward across the five evaluation snapshots — task3 (decimal corruption, hard) climbs from 1.00 → 1.05 by 80k and stays there. Right: success rate over 90 evaluation episodes — pinned at 100% from the first checkpoint onward.*
 
 The orchestrating notebook is
 [`notebooks/incident_commander_colab.ipynb`](https://github.com/r1cksync/meta-rl-hack/blob/main/incident-commander/notebooks/incident_commander_colab.ipynb)
@@ -373,6 +438,14 @@ has stabilised on a coherent strategy.
 | **kaggle‑2** | 2.57 | 0.87 | **−66%** | 1.52 | 0.78 | **−49%** | **−0.315 @ u6** |
 | **kaggle‑3** | 1.23 | 0.60 | **−51%** | 0.31 | 0.14 | **−54%** | **−0.315 @ u49** |
 
+![KL divergence to reference policy decays across all 3 shards](assets/blog/llm_kl_decay.png)
+
+![PPO loss decays 49–58% across all 3 shards](assets/blog/llm_loss_decay.png)
+
+![Best mean reward attained — all 3 shards converge on the same −0.315 peak](assets/blog/llm_best_reward.png)
+
+*Faint lines are raw per-update values; thick lines are 5-update trailing means. The bottom chart plots running max — note all three shards independently saturate at exactly **−0.315**, which is the strongest signal in the whole run that the policy found a real ceiling on the hard rubric rather than memorising one shard's idiosyncrasies.*
+
 That **all three shards converge on the exact same peak reward of −0.315** is
 a strong signal: the LLM‑on‑LoRA actor has found a consistent best‑effort
 policy on the hard rubric. Plain memorisation would produce three different
@@ -409,6 +482,10 @@ evidence that the added training signal is doing real work.
 | Generated · App Memory Leak | 34 | −5.64 | −6.61 | −0.97 | exploration overshoot |
 | Lambda Throttling | 20 | −3.86 | −5.00 | −1.14 | exploration overshoot |
 
+![Per-category Δ reward — the 4 novelty categories all improved](assets/blog/llm_category_delta.png)
+
+*Only the categories where the policy improved or hit ceiling are plotted (the two regression categories are still in the table above for honesty). The four bars in green are the **novelty** categories — exactly the ones that don't exist in any other RL-for-LLM benchmark.*
+
 The hardest scenarios have the most reward signal to extract — every Slack
 message that's a clue, every runbook line that's a trap, every cascade hop
 that needs `describe_topology` first. PPO finds those gradients faster than
@@ -430,6 +507,23 @@ free Kaggle GPU minutes.
 ---
 
 ## 6 · The training pipeline — GitHub → Kaggle → merged adapter
+
+```mermaid
+%%{init: {'theme':'dark','themeVariables':{'primaryColor':'#11162b','primaryTextColor':'#e9eeff','primaryBorderColor':'#7aa7ff','lineColor':'#7aa7ff','tertiaryColor':'#0a0d1c'}}}%%
+flowchart LR
+    A["Scenario JSON<br/>(381 files)"] --> B["IncidentCommanderEnv<br/>(reset + step)"]
+    B -->|observation| C["Phi-3.5-mini Actor<br/>4-bit + LoRA"]
+    C -->|action JSON| B
+    B -->|reward| D["DeepSeek-R1 Critic<br/>0–10 rubric"]
+    D -->|value| E["GAE advantages"]
+    C -->|log-prob| E
+    E --> F["PPO update<br/>clip + KL + entropy"]
+    F -->|grad| C
+    F --> G["training_kaggle*.json<br/>per-update metrics"]
+    F --> H["adapter_kaggle*<br/>LoRA delta"]
+```
+
+*The full Pass-B training DAG: scenario → env → 4-bit Phi-3.5 actor → DeepSeek-R1 frozen critic → GAE → PPO → LoRA delta + per-update JSON. This is the diagram that drives the three Kaggle shard runs in §4-Pass-B.*
 
 One thing we got right early: **the real training code lives on GitHub, and
 the Kaggle notebooks clone it at run‑time.** That means the notebooks are
