@@ -533,36 +533,56 @@
       <div class="card">
         <h3>Scenario JSON · Slack config</h3>
         <p style="font-size:13.5px;color:#aab3cf">From <code class="mono">scenarios/sim/hard/sim_gen_cascade_payments_db_005.json</code> — a hard cascade where the truth is in <code class="mono">payments_db</code> but alerts fire on <code class="mono">checkout</code>. Slack chatter is dialled to 1.4 messages per tick.</p>
-<pre class="codeblock"><span class="c-com">// scenario JSON declares the Slack stream</span>
+<pre class="codeblock" style="white-space:pre-wrap;word-break:break-word"><span class="c-com">// scenario JSON declares the Slack stream</span>
 {
   <span class="c-str">"id"</span>: <span class="c-str">"sim_gen_cascade_payments_db_005"</span>,
-  <span class="c-str">"saboteur"</span>: { <span class="c-str">"primary_target"</span>: <span class="c-str">"payments"</span>, <span class="c-str">"aggressiveness"</span>: <span class="c-num">0.5</span> },
+  <span class="c-str">"saboteur"</span>: {
+    <span class="c-str">"primary_target"</span>: <span class="c-str">"payments"</span>,
+    <span class="c-str">"aggressiveness"</span>: <span class="c-num">0.5</span>
+  },
   <span class="c-str">"slack"</span>: { <span class="c-str">"msgs_per_tick"</span>: <span class="c-num">1.4</span> },
   <span class="c-str">"correct_action_chain"</span>: [
-    { <span class="c-str">"id"</span>: <span class="c-str">"platform.read_slack"</span>, <span class="c-str">"params"</span>: { <span class="c-str">"last_n"</span>: <span class="c-num">5</span> } },
+    { <span class="c-str">"id"</span>: <span class="c-str">"platform.read_slack"</span>,
+      <span class="c-str">"params"</span>: { <span class="c-str">"last_n"</span>: <span class="c-num">5</span> } },
     { <span class="c-str">"id"</span>: <span class="c-str">"platform.describe_topology"</span> },
-    { <span class="c-str">"id"</span>: <span class="c-str">"platform.get_logs"</span>, <span class="c-str">"params"</span>: { <span class="c-str">"service"</span>: <span class="c-str">"payments_db"</span> } },
-    { <span class="c-str">"id"</span>: <span class="c-str">"platform.vacuum_freeze_db"</span>, <span class="c-str">"params"</span>: { <span class="c-str">"target"</span>: <span class="c-str">"payments_db"</span> } }
+    { <span class="c-str">"id"</span>: <span class="c-str">"platform.get_logs"</span>,
+      <span class="c-str">"params"</span>: { <span class="c-str">"service"</span>: <span class="c-str">"payments_db"</span> } },
+    { <span class="c-str">"id"</span>: <span class="c-str">"platform.vacuum_freeze_db"</span>,
+      <span class="c-str">"params"</span>: { <span class="c-str">"target"</span>: <span class="c-str">"payments_db"</span> } }
   ]
 }</pre>
       </div>
       <div class="card">
         <h3>Templates · what coworkers actually say</h3>
         <p style="font-size:13.5px;color:#aab3cf">From <code class="mono">rl-agent/simulator/slack.py</code> — fully deterministic per <code class="mono">seed</code>. Mix of generic + phase-coupled lines.</p>
-<pre class="codeblock"><span class="c-com"># rl-agent/simulator/slack.py — _GENERIC pool (excerpt)</span>
+<pre class="codeblock" style="white-space:pre-wrap;word-break:break-word"><span class="c-com"># rl-agent/simulator/slack.py — _GENERIC pool (excerpt)</span>
 [
-  (<span class="c-str">"@channel"</span>,           <span class="c-str">"info"</span>, <span class="c-str">"Customers reporting 500s on /checkout 🔥"</span>),
-  (<span class="c-str">"Sara (Frontend)"</span>,    <span class="c-str">"info"</span>, <span class="c-str">"Hey SRE, I just pushed a hotfix for the cart UI — could that be related?"</span>),  <span class="c-com"># red herring</span>
-  (<span class="c-str">"Intern (Jamal)"</span>,     <span class="c-str">"info"</span>, <span class="c-str">"Should I just restart the cluster? My friend said that fixes everything 😅"</span>),
-  (<span class="c-str">"DBA (Yuki)"</span>,         <span class="c-str">"info"</span>, <span class="c-str">"Postgres CPU is climbing on the replica btw. FYI."</span>),  <span class="c-com"># buried clue</span>
-  (<span class="c-str">"Finance"</span>,            <span class="c-str">"info"</span>, <span class="c-str">"Reminder: every minute of downtime is ~$8k for us."</span>),
-  (<span class="c-str">"CEO"</span>,                <span class="c-str">"high"</span>, <span class="c-str">"I'm getting calls. Tell me what's happening in plain English."</span>),
+  (<span class="c-str">"@channel"</span>, <span class="c-str">"info"</span>,
+     <span class="c-str">"Customers reporting 500s on /checkout 🔥"</span>),
+
+  (<span class="c-str">"Sara (Frontend)"</span>, <span class="c-str">"info"</span>,    <span class="c-com"># red herring</span>
+     <span class="c-str">"Hey SRE, I just pushed a hotfix for the cart UI"</span>
+     <span class="c-str">" — could that be related?"</span>),
+
+  (<span class="c-str">"Intern (Jamal)"</span>, <span class="c-str">"info"</span>,
+     <span class="c-str">"Should I just restart the cluster? 😅"</span>),
+
+  (<span class="c-str">"DBA (Yuki)"</span>, <span class="c-str">"info"</span>,             <span class="c-com"># buried clue</span>
+     <span class="c-str">"Postgres CPU is climbing on the replica btw."</span>),
+
+  (<span class="c-str">"Finance"</span>, <span class="c-str">"info"</span>,
+     <span class="c-str">"Every minute of downtime is ~$8k for us."</span>),
+
+  (<span class="c-str">"CEO"</span>, <span class="c-str">"high"</span>,
+     <span class="c-str">"I'm getting calls. Tell me what's happening."</span>),
 ]
 
-<span class="c-com"># Phase-coupled lines fire when the saboteur escalates:</span>
+<span class="c-com"># Phase-coupled lines fire when saboteur escalates:</span>
 _PHASE_LINES = {
   <span class="c-str">"attack_failover"</span>: [
-    (<span class="c-str">"DBA (Yuki)"</span>,    <span class="c-str">"high"</span>, <span class="c-str">"{svc} just spiked to 90% CPU. Did someone kick off a backup job?"</span>),
+    (<span class="c-str">"DBA (Yuki)"</span>, <span class="c-str">"high"</span>,
+       <span class="c-str">"{svc} spiked to 90% CPU."</span>
+       <span class="c-str">" Did someone kick off a backup?"</span>),
   ],
 }</pre>
       </div>
