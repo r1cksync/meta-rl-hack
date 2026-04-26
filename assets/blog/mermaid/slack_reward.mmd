@@ -1,0 +1,20 @@
+%%{init: {'theme':'dark','themeVariables':{'primaryColor':'#11162b','primaryTextColor':'#e9eeff','primaryBorderColor':'#7aa7ff','lineColor':'#7aa7ff','tertiaryColor':'#0a0d1c'}}}%%
+flowchart LR
+    SC["Scenario JSON<br/>slack: msgs_per_tick=1.4"] --> SS["SlackStream<br/>(deterministic, seed-driven)"]
+    SAB["Saboteur phase<br/>attack_primary / failover / dependency"] --> SS
+    SS -->|emit_for_tick| OBS["Observation<br/>{ metrics, traces, slack[] }"]
+    OBS --> ACT["Phi-3.5 Actor<br/>4-bit + LoRA"]
+    ACT -->|action JSON| ENV["IncidentCommanderEnv"]
+    ENV --> R{"Reward shaping"}
+    R -->|action targets a service<br/>mentioned in recent slack| RP["+0.10<br/>useful_log_query"]
+    R -->|action targets red-herring<br/>service from chatter| RH["−0.15<br/>red_herring_penalty"]
+    R -->|action ignores buried clue<br/>and acts blind| BA["−0.10<br/>blind_action_penalty"]
+    RP --> ADV["GAE advantage<br/>+ PPO update"]
+    RH --> ADV
+    BA --> ADV
+    ADV --> ACT
+
+    classDef good fill:#0e2a1c,stroke:#3ec78a,color:#cdeed8
+    classDef bad fill:#2a0e0e,stroke:#ff7a7a,color:#ffd6d6
+    class RP good
+    class RH,BA bad

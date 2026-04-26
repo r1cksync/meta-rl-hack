@@ -125,28 +125,7 @@ with two pools — `_GENERIC` (always in rotation) and `_PHASE_LINES` (fired
 when the saboteur escalates). Severity escalates the longer the incident
 drags, mirroring real pressure.
 
-```mermaid
-%%{init: {'theme':'dark','themeVariables':{'primaryColor':'#11162b','primaryTextColor':'#e9eeff','primaryBorderColor':'#7aa7ff','lineColor':'#7aa7ff','tertiaryColor':'#0a0d1c'}}}%%
-flowchart LR
-    SC["Scenario JSON<br/>slack: msgs_per_tick=1.4"] --> SS["SlackStream<br/>(deterministic, seed-driven)"]
-    SAB["Saboteur phase<br/>attack_primary / failover / dependency"] --> SS
-    SS -->|emit_for_tick| OBS["Observation<br/>{ metrics, traces, slack[] }"]
-    OBS --> ACT["Phi-3.5 Actor<br/>4-bit + LoRA"]
-    ACT -->|action JSON| ENV["IncidentCommanderEnv"]
-    ENV --> R{"Reward shaping"}
-    R -->|action targets a service<br/>mentioned in recent slack| RP["+0.10<br/>useful_log_query"]
-    R -->|action targets red-herring<br/>service from chatter| RH["−0.15<br/>red_herring_penalty"]
-    R -->|action ignores buried clue<br/>and acts blind| BA["−0.10<br/>blind_action_penalty"]
-    RP --> ADV["GAE advantage<br/>+ PPO update"]
-    RH --> ADV
-    BA --> ADV
-    ADV --> ACT
-
-    classDef good fill:#0e2a1c,stroke:#3ec78a,color:#cdeed8
-    classDef bad fill:#2a0e0e,stroke:#ff7a7a,color:#ffd6d6
-    class RP good
-    class RH,BA bad
-```
+![Slack signal-vs-noise reward flow — Phi-3.5 actor, env, reward shaper, GAE/PPO loop](assets/blog/mermaid_slack_reward.png)
 
 *The Slack signal-vs-noise reward flow — pulled verbatim from the live [showcase page](https://sagnik-mukherjee-incodent-commander.hf.space/showcase).*
 
@@ -250,39 +229,7 @@ helm install acmecorp infra/helm/acmecorp
 €20/month gets you a usable demo cluster. See
 [`infra/terraform/main.tf`](https://github.com/r1cksync/meta-rl-hack/blob/main/incident-commander/infra/terraform/main.tf).
 
-```mermaid
-%%{init:{'theme':'dark','themeVariables':{'primaryColor':'#11162b','primaryTextColor':'#e9eeff','primaryBorderColor':'#7aa7ff','lineColor':'#a78bfa','clusterBkg':'#0a0d1c','clusterBorder':'#7aa7ff'}}}%%
-flowchart TB
-    subgraph TF["infra/terraform/main.tf"]
-      direction LR
-      net[hcloud_network<br/>10.0.0.0/16]
-      subnet[hcloud_network_subnet<br/>10.0.1.0/24]
-      ssh[hcloud_ssh_key]
-      lb[hcloud_load_balancer<br/>lb11 · port 80/443]
-      n0[hcloud_server · master<br/>cx21 · ubuntu-22.04]
-      n1[hcloud_server · worker]
-      n2[hcloud_server · worker]
-    end
-    subgraph K3S["k3s cluster"]
-      direction LR
-      ing[ingress-nginx]
-      svc1[frontend]
-      svc2[payments-api]
-      svc3[inventory-service]
-      svc4[notification-service]
-      svc5[order-worker]
-    end
-    subgraph AGENT["IncidentCommander agent"]
-      direction LR
-      env["env.step(action)"]
-      adapter["LoRA adapter<br/>(merged)"]
-      env --> adapter
-      adapter --> env
-    end
-    TF -->|provision| K3S
-    AGENT -->|REAL_K8S=true| ing
-    ing --> svc1 & svc2 & svc3 & svc4 & svc5
-```
+![Hetzner Cloud k3s topology — Terraform on the left provisions the k3s cluster on the right; the agent talks to ingress over HTTP](assets/blog/mermaid_hetzner_infra.png)
 
 *Same Hetzner topology that powers the live demo cluster — Terraform on the left provisions the k3s nodes, the agent talks to ingress over HTTP when `REAL_K8S=true`.*
 
@@ -508,20 +455,7 @@ free Kaggle GPU minutes.
 
 ## 6 · The training pipeline — GitHub → Kaggle → merged adapter
 
-```mermaid
-%%{init: {'theme':'dark','themeVariables':{'primaryColor':'#11162b','primaryTextColor':'#e9eeff','primaryBorderColor':'#7aa7ff','lineColor':'#7aa7ff','tertiaryColor':'#0a0d1c'}}}%%
-flowchart LR
-    A["Scenario JSON<br/>(381 files)"] --> B["IncidentCommanderEnv<br/>(reset + step)"]
-    B -->|observation| C["Phi-3.5-mini Actor<br/>4-bit + LoRA"]
-    C -->|action JSON| B
-    B -->|reward| D["DeepSeek-R1 Critic<br/>0–10 rubric"]
-    D -->|value| E["GAE advantages"]
-    C -->|log-prob| E
-    E --> F["PPO update<br/>clip + KL + entropy"]
-    F -->|grad| C
-    F --> G["training_kaggle*.json<br/>per-update metrics"]
-    F --> H["adapter_kaggle*<br/>LoRA delta"]
-```
+![Pass-B training DAG — scenario → env → 4-bit Phi-3.5 actor → DeepSeek-R1 critic → GAE → PPO → LoRA delta](assets/blog/mermaid_training_dag.png)
 
 *The full Pass-B training DAG: scenario → env → 4-bit Phi-3.5 actor → DeepSeek-R1 frozen critic → GAE → PPO → LoRA delta + per-update JSON. This is the diagram that drives the three Kaggle shard runs in §4-Pass-B.*
 

@@ -1,0 +1,31 @@
+%%{init:{'theme':'dark','themeVariables':{'primaryColor':'#11162b','primaryTextColor':'#e9eeff','primaryBorderColor':'#7aa7ff','lineColor':'#a78bfa','clusterBkg':'#0a0d1c','clusterBorder':'#7aa7ff'}}}%%
+flowchart TB
+    subgraph TF["infra/terraform/main.tf"]
+      direction LR
+      net[hcloud_network<br/>10.0.0.0/16]
+      subnet[hcloud_network_subnet<br/>10.0.1.0/24]
+      ssh[hcloud_ssh_key]
+      lb[hcloud_load_balancer<br/>lb11 · port 80/443]
+      n0[hcloud_server · master<br/>cx21 · ubuntu-22.04]
+      n1[hcloud_server · worker]
+      n2[hcloud_server · worker]
+    end
+    subgraph K3S["k3s cluster"]
+      direction LR
+      ing[ingress-nginx]
+      svc1[frontend]
+      svc2[payments-api]
+      svc3[inventory-service]
+      svc4[notification-service]
+      svc5[order-worker]
+    end
+    subgraph AGENT["IncidentCommander agent"]
+      direction LR
+      env["env.step(action)"]
+      adapter["LoRA adapter<br/>(merged)"]
+      env --> adapter
+      adapter --> env
+    end
+    TF -->|provision| K3S
+    AGENT -->|REAL_K8S=true| ing
+    ing --> svc1 & svc2 & svc3 & svc4 & svc5

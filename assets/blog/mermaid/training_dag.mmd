@@ -1,0 +1,12 @@
+%%{init: {'theme':'dark','themeVariables':{'primaryColor':'#11162b','primaryTextColor':'#e9eeff','primaryBorderColor':'#7aa7ff','lineColor':'#7aa7ff','tertiaryColor':'#0a0d1c'}}}%%
+flowchart LR
+    A["Scenario JSON<br/>(381 files)"] --> B["IncidentCommanderEnv<br/>(reset + step)"]
+    B -->|observation| C["Phi-3.5-mini Actor<br/>4-bit + LoRA"]
+    C -->|action JSON| B
+    B -->|reward| D["DeepSeek-R1 Critic<br/>0–10 rubric"]
+    D -->|value| E["GAE advantages"]
+    C -->|log-prob| E
+    E --> F["PPO update<br/>clip + KL + entropy"]
+    F -->|grad| C
+    F --> G["training_kaggle*.json<br/>per-update metrics"]
+    F --> H["adapter_kaggle*<br/>LoRA delta"]
