@@ -210,8 +210,19 @@ def observability_status() -> dict:
         return {"error": str(e), "services": {}}
 
 
-@app.get("/")
-def root() -> dict:
+@app.get("/", response_class=HTMLResponse)
+def root():
+    """Root serves the showcase page so the HF Space embed and the
+    direct `*.hf.space/showcase` URL render the same UI. Machine-readable
+    metadata previously served here lives at /info."""
+    html_path = Path(__file__).resolve().parent / "showcase.html"
+    if html_path.exists():
+        return HTMLResponse(content=html_path.read_text(encoding="utf-8"), status_code=200)
+    return HTMLResponse(content="<h1>Showcase not found — rebuild Docker image.</h1>", status_code=404)
+
+
+@app.get("/info")
+def root_info() -> dict:
     return {
         "name": "incident-commander",
         "version": "2.0.0",
@@ -232,7 +243,7 @@ def root() -> dict:
         "endpoints": [
             "/reset", "/step", "/state", "/health", "/tasks", "/grader", "/baseline",
             "/dashboard", "/curriculum", "/curriculum/reset", "/adversarial/design",
-            "/judge/config", "/docs",
+            "/judge/config", "/showcase", "/docs",
         ],
     }
 
